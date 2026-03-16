@@ -9,7 +9,7 @@ const MESSAGES = [
   'Verifying security protocols\u2026',
   'Loading financial profile\u2026',
   'Synchronizing account data\u2026',
-  'Welcome to Aurix Bank.',
+  'Welcome to Londway Capital.',
 ];
 
 // Floating gold particle
@@ -185,7 +185,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
             fontSize: '1.35rem', fontWeight: 800, letterSpacing: '0.2em',
             color: '#EAE0D0', fontFamily: "'Inter',sans-serif",
           }}>
-            AURIX<span style={{ color: G }}> BANK</span>
+            LONDWAY<span style={{ color: G }}> CAPITAL</span>
           </div>
           <div style={{
             fontSize: '0.58rem', color: 'rgba(196,160,82,0.4)',

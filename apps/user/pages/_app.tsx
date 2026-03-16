@@ -17,7 +17,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem('aurix_user');
+    const stored = window.localStorage.getItem('londway_user');
     if (stored) {
       try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
     }
@@ -25,7 +25,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   }, []);
 
   useEffect(() => {
-    if (user) window.localStorage.setItem('aurix_user', JSON.stringify(user));
+    if (user) window.localStorage.setItem('londway_user', JSON.stringify(user));
   }, [user]);
 
   const handleLogin = (u: UserType) => {
@@ -35,7 +35,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   const handleLogout = () => {
     setUser(null);
-    window.localStorage.removeItem('aurix_user');
+    window.localStorage.removeItem('londway_user');
   };
 
   if (!hydrated) return null;

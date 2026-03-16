@@ -97,7 +97,7 @@ export default function HealthScore() {
               <ScoreGauge score={SCORE} size={220} />
             </div>
             <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#60707E', lineHeight: 1.6 }}>
-              You're in the top <span style={{ color: '#C4A052', fontWeight: 700 }}>18%</span> of Aurix users
+              You're in the top <span style={{ color: '#C4A052', fontWeight: 700 }}>18%</span> of Londway Capital users
             </div>
             <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center', gap: 10 }}>
               <div style={{ background: 'rgba(196,160,82,0.08)', border: '1px solid rgba(196,160,82,0.15)', borderRadius: 8, padding: '0.5rem 0.9rem', fontSize: '0.72rem', color: '#C4A052', fontWeight: 600 }}>Gold Tier</div>

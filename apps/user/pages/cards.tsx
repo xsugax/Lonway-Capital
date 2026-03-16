@@ -273,7 +273,7 @@ function CardSvg({ def, network, holderName, animated }: {
         <rect width="3" height={H} fill={def.accent} opacity="0.1"/>
       </g>
 
-      {/* ── AURIX Logotype ── */}
+      {/* ── LONDWAY Logotype ── */}
       <text x="20" y="38" fill={def.accent} fontSize="16" fontWeight="800"
         fontFamily="Inter, system-ui, sans-serif" letterSpacing="2.5">◢ LONDWAY</text>
 

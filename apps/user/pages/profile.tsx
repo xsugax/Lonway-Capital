@@ -51,7 +51,7 @@ const SECTIONS = [
     fields: [
       { label: 'Account Number', value: '  4521' },
       { label: 'Member Since', value: 'January 2021' },
-      { label: 'Account Tier', value: 'Aurix Premium' },
+      { label: 'Account Tier', value: 'Londway Premium' },
       { label: 'Currency', value: 'USD' },
     ],
   },
@@ -89,7 +89,7 @@ export default function Profile() {
                 <h1 style={{ margin: 0, fontSize: '1.7rem', fontWeight: 700, color: '#EAE0D0' }}>Jane Doe</h1>
                 <KycBadge />
               </div>
-              <div style={{ color: '#60707E', fontSize: '0.85rem', marginTop: 4 }}>jane.doe@email.com &nbsp;&middot;&nbsp; Aurix Premium Member</div>
+              <div style={{ color: '#60707E', fontSize: '0.85rem', marginTop: 4 }}>jane.doe@email.com &nbsp;&middot;&nbsp; Londway Premium Member</div>
             </div>
           </div>
           {/* Tabs */}
