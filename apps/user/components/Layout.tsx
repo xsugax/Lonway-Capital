@@ -44,14 +44,6 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
         boxShadow: '0 2px 8px rgba(196,160,82,0.07)',
       }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Mobile hamburger — left side under logo */}
-          <button onClick={() => setMobileNavOpen(o => !o)} style={{
-            display: 'none', background: 'none', border: `1px solid ${colors.border}`,
-            color: colors.gold, width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
-            alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', padding: 0, flexShrink: 0,
-          }} className="layout-mobile-btn">
-            {mobileNavOpen ? '✕' : '☰'}
-          </button>
           <span style={{ color: colors.gold, fontWeight: 800, fontSize: '1.2rem', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
             <circle cx="18" cy="18" r="15.5" stroke={colors.gold} strokeWidth="1.3" fill="none"/>
@@ -60,9 +52,17 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
           </svg>
           LONDWAY
         </span>
+          {/* Mobile hamburger — under logo */}
+          <button onClick={() => setMobileNavOpen(o => !o)} style={{
+            display: 'none', background: 'none', border: `1px solid ${colors.border}`,
+            color: colors.gold, width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
+            alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', padding: 0, flexShrink: 0,
+          }} className="layout-mobile-btn">
+            {mobileNavOpen ? '✕' : '☰'}
+          </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Language selector */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setLangOpen(o => !o)} title="Select Language" style={{
@@ -103,7 +103,7 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
           </button>
 
           {userName && (
-            <span style={{ color: colors.gold, fontWeight: 600, fontSize: '0.9rem' }}>👤 {userName}</span>
+            <span className="layout-user-info" style={{ color: colors.gold, fontWeight: 600, fontSize: '0.9rem' }}>👤 {userName}</span>
           )}
           {onLogout && (
             <button onClick={onLogout} style={{
@@ -143,6 +143,14 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
           background: colors.navBg, padding: '1rem', overflowY: 'auto',
           display: 'flex', flexDirection: 'column', gap: 4,
         }}>
+          {userName && (
+            <div style={{
+              padding: '0.7rem 1rem', borderRadius: 8,
+              background: colors.goldBg, border: `1px solid ${colors.border}`,
+              color: colors.gold, fontWeight: 600, fontSize: '0.95rem',
+              marginBottom: 4,
+            }}>👤 {userName}</div>
+          )}
           {NAV_KEYS.map(({ href, key }) => (
             <Link key={href} href={href} legacyBehavior>
               <a onClick={() => setMobileNavOpen(false)} style={{
@@ -163,6 +171,7 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
         @media (max-width: 768px) {
           .layout-nav-row { display: none !important; }
           .layout-mobile-btn { display: flex !important; }
+          .layout-user-info { display: none !important; }
         }
         @media (max-width: 480px) {
           .login-card { padding: 1.3rem !important; }
