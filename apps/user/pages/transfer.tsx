@@ -125,7 +125,7 @@ export default function Transfer({ user }: { user: { token: string } }) {
       </div>
 
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '2.5rem 1.5rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: '2rem', alignItems: 'start' }}>
+        <div className="transfer-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: '2rem', alignItems: 'start' }}>
 
           {/* Form */}
           <div style={{ background: '#0D1628', borderRadius: 20, border: '1px solid rgba(196,160,82,0.1)', padding: '2rem' }}>
@@ -158,11 +158,11 @@ export default function Transfer({ user }: { user: { token: string } }) {
               ) : (
                 <>
                   <div style={{ marginBottom: 16 }}><label style={lbl}>Beneficiary Name</label><input style={inp} value={intlName} onChange={e => setIntlName(e.target.value)} placeholder="Full legal name" required /></div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div className="transfer-fields-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                     <div><label style={lbl}>IBAN / Account No.</label><input style={inp} value={intlIban} onChange={e => setIntlIban(e.target.value)} placeholder="e.g. GB29 NWBK…" /></div>
                     <div><label style={lbl}>SWIFT / BIC</label><input style={inp} value={intlSwift} onChange={e => setIntlSwift(e.target.value)} placeholder="e.g. BNPAFRPP" /></div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div className="transfer-fields-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                     <div><label style={lbl}>Bank Name</label><input style={inp} value={intlBankName} onChange={e => setIntlBankName(e.target.value)} placeholder="Beneficiary bank" /></div>
                     <div><label style={lbl}>Country</label>
                       <select style={inp} value={intlCountry} onChange={e => setIntlCountry(e.target.value)} required>
@@ -258,6 +258,12 @@ export default function Transfer({ user }: { user: { token: string } }) {
           )}
         </div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .transfer-main-grid { grid-template-columns: 1fr !important; }
+          .transfer-fields-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </main>
   );
 }

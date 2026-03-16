@@ -242,7 +242,7 @@ export default function Invest({ user }: { user: { token: string } }) {
             </div>
 
             {/* Allocation + Holdings */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) minmax(0, 2fr)', gap: '1.4rem' }}>
+            <div className="invest-alloc-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) minmax(0, 2fr)', gap: '1.4rem' }}>
               {/* Allocation donut */}
               <div style={{ background: colors.surface, borderRadius: 20, padding: '1.8rem', border: `1px solid ${colors.border}`, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
                 <div style={{ fontSize: '0.62rem', color: colors.textFaint, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1.2rem' }}>{t('assetAllocation')}</div>
@@ -390,7 +390,12 @@ export default function Invest({ user }: { user: { token: string } }) {
           </div>
         </div>
       )}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .invest-alloc-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </main>
   );
 }

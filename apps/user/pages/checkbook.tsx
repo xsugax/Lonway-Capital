@@ -140,7 +140,7 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
           <div style={{ background: '#0D1628', borderRadius: 16, border: '1px solid rgba(196,160,82,0.15)', padding: '1.8rem', marginBottom: '1.5rem' }}>
             <h3 style={{ color: '#C4A052', fontWeight: 700, margin: '0 0 18px', fontSize: '1rem' }}>New Checkbook Request</h3>
             <form onSubmit={handleRequest}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+              <div className="cb-fields-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
                 <div><label style={lbl}>Delivery Address</label><input style={inp} value={reqForm.address} onChange={e => setReqForm(f => ({ ...f, address: e.target.value }))} placeholder="123 Main St, New York, NY 10001" required /></div>
                 <div><label style={lbl}>Notes (Optional)</label><input style={inp} value={reqForm.notes} onChange={e => setReqForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Business account checkbook" /></div>
               </div>
@@ -260,7 +260,7 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
                 </select>
               </div>
               <div style={{ marginBottom: 14 }}><label style={lbl}>Payee</label><input style={inp} value={editData.payee || ''} onChange={e => setEditData(d => ({ ...d, payee: e.target.value }))} placeholder="Payee name" /></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div className="cb-fields-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
                 <div><label style={lbl}>Amount</label><input style={inp} type="number" min="0" step="0.01" value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || undefined }))} placeholder="0.00" /></div>
                 <div><label style={lbl}>Date</label><input style={inp} type="date" value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} /></div>
               </div>
@@ -273,6 +273,11 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
           </div>
         </div>
       )}
+      <style>{`
+        @media (max-width: 768px) {
+          .cb-fields-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </main>
   );
 }

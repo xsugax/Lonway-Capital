@@ -88,7 +88,7 @@ export default function HealthScore() {
       </div>
 
       <section style={{ maxWidth: 960, margin: '0 auto', padding: '2.5rem 2rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '2rem', alignItems: 'start' }}>
+        <div className="hs-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '2rem', alignItems: 'start' }}>
           {/* Gauge card */}
           <div style={{ background: '#0D1628', borderRadius: 20, padding: '2.2rem', border: '1px solid rgba(196,160,82,0.12)', boxShadow: '0 8px 40px rgba(0,0,0,0.5)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: '-30%', left: '-20%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(196,160,82,0.04) 0%, transparent 60%)', pointerEvents: 'none' }}/>
@@ -130,6 +130,11 @@ export default function HealthScore() {
           </div>
         </div>
       </section>
+      <style>{`
+        @media (max-width: 768px) {
+          .hs-main-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </main>
   );
 }

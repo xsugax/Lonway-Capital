@@ -252,7 +252,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
           </p>
 
           {/* Balance hero strip — redesigned with glass cards */}
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'stretch' }}>
+          <div className="dash-hero-cards" style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'stretch' }}>
             {/* Total Balance Card */}
             <div style={{
               background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
@@ -346,7 +346,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
         </div>
 
         {/* ── Portfolio Performance + Accounts ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14, marginBottom: '1.8rem' }}>
+        <div className="dash-perf-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14, marginBottom: '1.8rem' }}>
           {/* Area Chart — enhanced */}
           <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, padding: '1.5rem 1.5rem 0.5rem', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: 120, height: 120, borderRadius: '50%', background: `${colors.gold}04`, filter: 'blur(30px)', pointerEvents: 'none' }}/>
@@ -422,7 +422,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
         </div>
 
         {/* ── Bottom Row: Recent Transactions + AI Insight ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14 }}>
+        <div className="dash-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14 }}>
           {/* Recent Transactions — enhanced */}
           <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
@@ -478,7 +478,14 @@ export default function Dashboard({ user }: { user: { token: string } }) {
         </div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .dash-perf-grid { grid-template-columns: 1fr !important; }
+          .dash-bottom-grid { grid-template-columns: 1fr !important; }
+          .dash-hero-cards > div { min-width: 0 !important; flex: 1 1 100% !important; }
+        }
+      `}</style>
     </main>
   );
 }

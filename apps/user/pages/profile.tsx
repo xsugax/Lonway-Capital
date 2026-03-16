@@ -93,10 +93,10 @@ export default function Profile() {
             </div>
           </div>
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(196,160,82,0.08)' }}>
+          <div className="profile-tabs" style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(196,160,82,0.08)', overflowX: 'auto' }}>
             {SECTIONS.map(s => (
               <button key={s.title} onClick={() => setActiveTab(s.title)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.75rem 1.3rem', fontSize: '0.82rem', fontWeight: 600, color: activeTab === s.title ? '#C4A052' : '#60707E', borderBottom: activeTab === s.title ? '2px solid #C4A052' : '2px solid transparent', transition: 'all 0.2s', fontFamily: "'Inter', sans-serif", letterSpacing: '0.04em' }}>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.75rem 1.3rem', fontSize: '0.82rem', fontWeight: 600, color: activeTab === s.title ? '#C4A052' : '#60707E', borderBottom: activeTab === s.title ? '2px solid #C4A052' : '2px solid transparent', transition: 'all 0.2s', fontFamily: "'Inter', sans-serif", letterSpacing: '0.04em', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {s.icon} {s.title}
               </button>
             ))}
@@ -126,7 +126,7 @@ export default function Profile() {
         ))}
 
         {/* Danger Zone */}
-        <div style={{ marginTop: 16, background: '#0D1628', borderRadius: 14, border: '1px solid rgba(255,77,79,0.12)', padding: '1.2rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="profile-danger" style={{ marginTop: 16, background: '#0D1628', borderRadius: 14, border: '1px solid rgba(255,77,79,0.12)', padding: '1.2rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ff4d4f', marginBottom: 2 }}>Close Account</div>
             <div style={{ color: '#60707E', fontSize: '0.78rem' }}>Permanently remove your account and all associated data.</div>
@@ -134,6 +134,12 @@ export default function Profile() {
           <button style={{ background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.25)', borderRadius: 8, color: '#ff4d4f', fontSize: '0.78rem', fontWeight: 600, padding: '6px 14px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>Close Account</button>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .profile-tabs { scrollbar-width: none; -ms-overflow-style: none; }
+          .profile-tabs::-webkit-scrollbar { display: none; }
+        }
+      `}</style>
     </main>
   );
 }

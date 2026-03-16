@@ -523,7 +523,7 @@ export default function Cards({ user }: { user: { token: string } }) {
           </div>
         ) : step === 'form' ? (
           /* ── Form Step ── */
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '2rem', alignItems: 'start' }}>
+          <div className="cards-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '2rem', alignItems: 'start' }}>
             <div>
               <div style={{ marginBottom: '1.8rem' }}>
                 <div style={{ fontSize: '0.62rem', color: colors.textFaint, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1rem' }}>Card Preview</div>
@@ -591,7 +591,7 @@ export default function Cards({ user }: { user: { token: string } }) {
             </div>
 
             {/* Large card preview + features */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
+            <div className="cards-pick-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
               {/* Card 3D preview */}
               <div>
                 <div style={{ fontSize: '0.62rem', color: colors.textFaint, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1.2rem' }}>Preview</div>
@@ -704,6 +704,10 @@ export default function Cards({ user }: { user: { token: string } }) {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         button:hover { opacity: 0.92; }
+        @media (max-width: 768px) {
+          .cards-pick-grid { grid-template-columns: 1fr !important; }
+          .cards-form-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
     </main>
   );
