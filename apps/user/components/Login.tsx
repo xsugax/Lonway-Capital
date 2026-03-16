@@ -1,12 +1,35 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../lib/api';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string }) => void;
   onClose?: () => void;
   modal?: boolean;
   onOpenAccount?: () => void;
+}
+
+// Registered accounts stored in localStorage
+const ACCOUNTS_KEY = 'londway_accounts';
+
+function getAccounts(): { email: string; password: string; name: string; role: string }[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* */ }
+  // Seed default demo accounts
+  const defaults = [
+    { email: 'user@londwaycapital.com', password: 'password123', name: 'Jane Doe', role: 'user' },
+    { email: 'admin@londwaycapital.com', password: 'admin123', name: 'Admin', role: 'admin' },
+  ];
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveAccount(account: { email: string; password: string; name: string; role: string }) {
+  const accounts = getAccounts();
+  accounts.push(account);
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
 export default function Login({ onLogin, onClose, modal = false, onOpenAccount }: LoginProps) {
@@ -21,42 +44,21 @@ export default function Login({ onLogin, onClose, modal = false, onOpenAccount }
     return () => clearTimeout(t);
   }, []);
 
-  // Demo credentials that work without a backend
-  const DEMO_ACCOUNTS = [
-    { email: 'user@londwaycapital.com', password: 'password123', name: 'Jane Doe', role: 'user' },
-    { email: 'admin@londwaycapital.com', password: 'admin123', name: 'Admin', role: 'admin' },
-  ];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // Try API first, fall back to demo auth
-    try {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      setLoading(false);
-      if (data.success) {
-        onLogin({ name: data.user.name, token: data.token, role: data.user.role });
-        return;
-      } else {
-        setError(data.message || 'Invalid credentials');
-        return;
-      }
-    } catch {
-      // API unavailable — use demo credentials
-      const match = DEMO_ACCOUNTS.find(a => a.email === email && a.password === password);
-      setLoading(false);
-      if (match) {
-        onLogin({ name: match.name, token: 'demo-token-' + Date.now(), role: match.role });
-      } else {
-        setError('Invalid email or password.');
-      }
+    // Small delay for UX feel
+    await new Promise(r => setTimeout(r, 600));
+
+    const accounts = getAccounts();
+    const match = accounts.find(a => a.email === email && a.password === password);
+    setLoading(false);
+    if (match) {
+      onLogin({ name: match.name, token: 'token-' + Date.now(), role: match.role });
+    } else {
+      setError('Invalid email or password.');
     }
   };
 
