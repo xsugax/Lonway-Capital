@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { API_URL } from '../lib/api';
+import { getNotifications as loadNotifications } from '../lib/store';
 
 interface Notification {
   id: string;
@@ -16,24 +16,9 @@ export default function Notifications({ user }: { user: { token: string } }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchNotifications() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${API_URL}/notifications`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        if (!res.ok) throw new Error('Failed to fetch notifications');
-        const data = await res.json();
-        setNotifications(data.notifications || []);
-      } catch (err: any) {
-        setError(err.message || 'Error fetching notifications');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchNotifications();
-  }, [user.token]);
+    setNotifications(loadNotifications());
+    setLoading(false);
+  }, []);
 
   return (
     <main style={{ background: '#060913', minHeight: '100vh', color: '#EAE0D0', fontFamily: 'Inter, sans-serif' }}>

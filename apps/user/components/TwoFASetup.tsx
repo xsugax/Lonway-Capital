@@ -1,6 +1,5 @@
 'use client';
 import React, { useState } from 'react';
-import { API_URL } from '../lib/api';
 
 export default function TwoFASetup({ user }: { user: { token: string } }) {
   const [step, setStep] = useState<'init' | 'verify' | 'done'>('init');
@@ -10,48 +9,28 @@ export default function TwoFASetup({ user }: { user: { token: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const startSetup = async () => {
+  const startSetup = () => {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(`${API_URL}/security/twofa/setup`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      const data = await res.json();
-      setSecret(data.secret);
-      setOtpauthUrl(data.otpauth_url);
-      setStep('verify');
-    } catch (err: any) {
-      setError('Failed to start 2FA setup');
-    } finally {
-      setLoading(false);
-    }
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let s = '';
+    for (let i = 0; i < 16; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    setSecret(s);
+    setOtpauthUrl(`otpauth://totp/LondwayCapital?secret=${s}&issuer=LondwayCapital`);
+    setStep('verify');
+    setLoading(false);
   };
 
-  const verifyToken = async () => {
+  const verifyToken = () => {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(`${API_URL}/security/twofa/enable`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ token }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setStep('done');
-      } else {
-        setError(data.message || 'Invalid token');
-      }
-    } catch (err: any) {
-      setError('Failed to verify token');
-    } finally {
-      setLoading(false);
+    if (token.length === 6 && /^\d+$/.test(token)) {
+      localStorage.setItem('londway_2fa', JSON.stringify({ enabled: true, secret }));
+      setStep('done');
+    } else {
+      setError('Please enter a valid 6-digit code');
     }
+    setLoading(false);
   };
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../lib/api';
+import { getTransfers, saveTransfers } from '../lib/store';
 
 type TransferType = 'local' | 'international';
 type TransferStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'failed' | 'reversed';
@@ -65,43 +65,40 @@ export default function Transfer({ user }: { user: { token: string } }) {
 
   useEffect(() => { fetchHistory(); }, []);
 
-  async function fetchHistory() {
+  function fetchHistory() {
     setHistoryLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/transfer`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      if (res.ok) { const d = await res.json(); setHistory(Array.isArray(d) ? d : []); }
-    } catch { /* ignore */ }
+    setHistory(getTransfers());
     setHistoryLoading(false);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setSubmitResult(null);
     const isLocal = tab === 'local';
     const amt = parseFloat(isLocal ? localAmount : intlAmount);
     if (!amt || amt <= 0) { setLoading(false); setSubmitResult({ ok: false, message: 'Please enter a valid amount.' }); return; }
-    const body = isLocal
-      ? { fromAccountId: 'acc-demo-001', toAccountId: localAccount, recipientName: localRecipient, amount: amt, currency: 'USD', type: 'local', description: localMemo || 'Local Transfer' }
-      : { fromAccountId: 'acc-demo-001', toAccountId: intlIban || intlSwift, recipientName: intlName, amount: amt, currency: intlCurrency, type: 'international', description: intlMemo || 'International Wire', iban: intlIban, swift: intlSwift, country: intlCountry, bankName: intlBankName };
-    try {
-      const res = await fetch(`${API_URL}/transfer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSubmitResult({ ok: true, message: 'Transfer submitted. Pending admin review.', ref: data.reference });
-        setLocalRecipient(''); setLocalAccount(''); setLocalAmount(''); setLocalMemo('');
-        setIntlName(''); setIntlIban(''); setIntlSwift(''); setIntlBankName(''); setIntlCountry(''); setIntlCurrency('EUR'); setIntlAmount(''); setIntlMemo('');
-        fetchHistory();
-      } else {
-        setSubmitResult({ ok: false, message: data.message || 'Transfer failed.' });
-      }
-    } catch { setSubmitResult({ ok: false, message: 'Network error. Please try again.' }); }
+    const ref = 'TRF-' + Date.now().toString(36).toUpperCase();
+    const newTransfer: any = {
+      id: 'tr-' + Date.now(),
+      recipientName: isLocal ? localRecipient : intlName,
+      toAccountId: isLocal ? localAccount : (intlIban || intlSwift),
+      amount: amt,
+      currency: isLocal ? 'USD' : intlCurrency,
+      type: tab,
+      status: 'pending',
+      reference: ref,
+      description: isLocal ? (localMemo || 'Local Transfer') : (intlMemo || 'International Wire'),
+      createdAt: new Date().toISOString(),
+      ...(tab === 'international' ? { country: intlCountry } : {}),
+    };
+    const all = getTransfers();
+    all.unshift(newTransfer);
+    saveTransfers(all);
+    setSubmitResult({ ok: true, message: 'Transfer submitted. Pending admin review.', ref });
+    setLocalRecipient(''); setLocalAccount(''); setLocalAmount(''); setLocalMemo('');
+    setIntlName(''); setIntlIban(''); setIntlSwift(''); setIntlBankName(''); setIntlCountry(''); setIntlCurrency('EUR'); setIntlAmount(''); setIntlMemo('');
+    fetchHistory();
     setLoading(false);
   }
 

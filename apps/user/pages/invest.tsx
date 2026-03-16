@@ -1,8 +1,7 @@
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
-import { API_URL } from '../lib/api';
 
 interface Holding {
   id: string;
@@ -132,49 +131,21 @@ export default function Invest({ user }: { user: { token: string } }) {
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeSuccess, setTradeSuccess] = useState(false);
 
-  const fetchPortfolio = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/investments/portfolio`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch portfolio');
-      const data = await res.json();
-      setPortfolio(data.portfolio ?? data ?? DEMO_PORTFOLIO);
-    } catch {
-      setPortfolio(DEMO_PORTFOLIO);
-    } finally {
-      setLoading(false);
-    }
-  }, [user.token]);
+  useEffect(() => {
+    setPortfolio(DEMO_PORTFOLIO);
+    setLoading(false);
+  }, []);
 
-  useEffect(() => { fetchPortfolio(); }, [fetchPortfolio]);
-
-  const handleTrade = async () => {
-    if (!tradeModal || !tradeAmount || !tradeModal.holding.investmentId) return;
+  const handleTrade = () => {
+    if (!tradeModal || !tradeAmount) return;
     setTradeLoading(true);
-    const { holding, type } = tradeModal;
-    try {
-      const res = await fetch(`${API_URL}/investments/${holding.investmentId}/${type}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(tradeAmount), description: `${type === 'buy' ? 'Buy' : 'Sell'} ${holding.ticker}` }),
-      });
-      if (!res.ok) throw new Error('Trade failed');
-      setTradeSuccess(true);
-      setTimeout(() => {
-        setTradeModal(null);
-        setTradeAmount('');
-        setTradeSuccess(false);
-        fetchPortfolio();
-      }, 1400);
-    } catch {
+    setTradeSuccess(true);
+    setTimeout(() => {
       setTradeModal(null);
       setTradeAmount('');
-    } finally {
+      setTradeSuccess(false);
       setTradeLoading(false);
-    }
+    }, 1400);
   };
 
   const openTrade = (holding: Holding, type: 'buy' | 'sell') => {

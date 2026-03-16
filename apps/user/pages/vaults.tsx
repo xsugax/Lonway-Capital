@@ -1,8 +1,8 @@
 ﻿'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
-import { API_URL } from '../lib/api';
+import { getVaults, saveVaults } from '../lib/store';
 
 interface Vault {
   id: string;
@@ -94,54 +94,41 @@ export default function Vaults({ user }: { user: { token: string } }) {
   const [modalAmount, setModalAmount] = useState('');
   const [modalLoading, setModalLoading] = useState(false);
 
-  const fetchVaults = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/vaults`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch vaults');
-      const data = await res.json();
-      setVaults(Array.isArray(data) ? data : (data.vaults ?? []));
-    } catch (err: any) {
-      setError(err.message ?? 'Error loading vaults');
-    } finally {
-      setLoading(false);
-    }
-  }, [user.token]);
-
-  useEffect(() => { fetchVaults(); }, [fetchVaults]);
-
-  const handleCreate = async () => {
-    if (!newName.trim() || !newGoal) return;
-    setCreating(true);
-    try {
-      await fetch(`${API_URL}/vaults`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, goal: parseFloat(newGoal), currency: newCurrency }),
-      });
-      setShowCreate(false);
-      setNewName(''); setNewGoal('');
-      fetchVaults();
-    } catch {} finally { setCreating(false); }
+  const loadVaults = () => {
+    const data = getVaults();
+    setVaults(data);
+    setLoading(false);
   };
 
-  const handleAction = async () => {
+  useEffect(() => { loadVaults(); }, []);
+
+  const handleCreate = () => {
+    if (!newName.trim() || !newGoal) return;
+    setCreating(true);
+    const v = { id: 'vault-' + Date.now(), name: newName, balance: 0, goal: parseFloat(newGoal), currency: newCurrency, createdAt: new Date().toISOString() };
+    const updated = [...getVaults(), v];
+    saveVaults(updated);
+    setShowCreate(false);
+    setNewName(''); setNewGoal('');
+    loadVaults();
+    setCreating(false);
+  };
+
+  const handleAction = () => {
     if (!activeModal || !modalAmount) return;
     setModalLoading(true);
     const { type, vault } = activeModal;
-    try {
-      await fetch(`${API_URL}/vaults/${vault.id}/${type === 'topup' ? 'deposit' : 'withdraw'}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(modalAmount) }),
-      });
-      setActiveModal(null);
-      setModalAmount('');
-      fetchVaults();
-    } catch {} finally { setModalLoading(false); }
+    const all = getVaults();
+    const v = all.find((x: any) => x.id === vault.id);
+    if (v) {
+      if (type === 'topup') v.balance += parseFloat(modalAmount);
+      else v.balance = Math.max(0, v.balance - parseFloat(modalAmount));
+      saveVaults(all);
+    }
+    setActiveModal(null);
+    setModalAmount('');
+    loadVaults();
+    setModalLoading(false);
   };
 
   const getProjectedMonths = (v: Vault) => {

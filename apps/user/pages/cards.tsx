@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
-import { API_URL } from '../lib/api';
+import { getCards, saveCards } from '../lib/store';
 
 type Network = 'debit' | 'mastercard';
 type Tier = 'standard' | 'platinum' | 'gold' | 'black' | 'black_world_elite';
@@ -437,12 +437,9 @@ export default function Cards({ user }: { user: { token: string } }) {
   const cards = network === 'debit' ? DEBIT_CARDS : MC_CARDS;
   const def = cards.find(c => c.tier === selectedTier) ?? cards[0];
 
-  const fetchCards = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/cards`, { headers: { Authorization: `Bearer ${user.token}` } });
-      if (res.ok) { const d = await res.json(); setExistingCards(d.cards ?? []); }
-    } catch {}
-  }, [user.token]);
+  const fetchCards = useCallback(() => {
+    setExistingCards(getCards());
+  }, []);
 
   useEffect(() => { fetchCards(); }, [fetchCards]);
 
@@ -454,21 +451,17 @@ export default function Cards({ user }: { user: { token: string } }) {
     if (!exists) setSelectedTier(list[0].tier);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!fullName.trim() || !address.trim() || !city.trim() || !country.trim()) return;
     setSubmitting(true);
-    try {
-      const res = await fetch(`${API_URL}/cards/request`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ network, tier: def.tier, holderName: fullName, deliveryAddress: address, city, country }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setResult(data);
-      setStep('success');
-      fetchCards();
-    } catch {} finally { setSubmitting(false); }
+    const card = { id: 'card-' + Date.now(), network, tier: def.tier, holderName: fullName, deliveryAddress: address, city, country, status: 'pending', requestedAt: new Date().toISOString() };
+    const all = getCards();
+    all.push(card);
+    saveCards(all);
+    setResult(card);
+    setStep('success');
+    fetchCards();
+    setSubmitting(false);
   };
 
   return (

@@ -1,8 +1,7 @@
 ﻿'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
-import { API_URL } from '../lib/api';
 
 interface Insight {
   id: string;
@@ -146,24 +145,10 @@ export default function Insights({ user }: { user: { token: string } }) {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
-  const fetchInsights = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/insights`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      const list = data.insights || [];
-      setInsights(list.length > 0 ? list : DEMO_INSIGHTS);
-    } catch {
-      setInsights(DEMO_INSIGHTS);
-    } finally {
-      setLoading(false);
-    }
-  }, [user.token]);
-
-  useEffect(() => { fetchInsights(); }, [fetchInsights]);
+  useEffect(() => {
+    setInsights(DEMO_INSIGHTS);
+    setLoading(false);
+  }, []);
 
   const displayed = activeFilter === 'all'
     ? insights

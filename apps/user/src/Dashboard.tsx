@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTheme } from '../contexts/ThemeContext';
-import { API_URL } from '../lib/api';
+import { getBankAccounts } from '../lib/store';
 import { useLang } from '../contexts/LanguageContext';
 
 const Chart = dynamic(() => import('react-apexcharts').then(mod => mod.default), { ssr: false });
@@ -173,44 +173,26 @@ export default function Dashboard({ user }: { user: { token: string } }) {
   }, [t]);
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [accountsRes, insightsRes] = await Promise.all([
-          fetch(`${API_URL}/accounts`, { headers: { Authorization: `Bearer ${user.token}` } }),
-          fetch(`${API_URL}/insights`,  { headers: { Authorization: `Bearer ${user.token}` } }),
-        ]);
-        const accountsData: any = await accountsRes.json();
-        const insightsData: any = await insightsRes.json();
-        const accounts: any[] = Array.isArray(accountsData.accounts) ? accountsData.accounts : (Array.isArray(accountsData) ? accountsData : []);
-        const insight = insightsData.insights?.[0]?.message ?? insightsData.message ?? 'Your spending is on track this month. Consider increasing your vault contribution by 5% to reach your goal faster.';
-        const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance ?? 0), 0);
-
-        const allTx: any[] = [];
-        accounts.forEach(acc => {
-          (acc.transactions ?? []).forEach((tx: any) => allTx.push({ ...tx, accountType: acc.type }));
-        });
-        allTx.sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
-
-        setData({
-          totalBalance,
-          netWorth: totalBalance + 5550,
-          todayChange: +132.5,
-          monthlyGrowth: +1200,
-          chartData: [17000, 17200, 17500, 18000, 18200, 18400, Math.round(totalBalance)],
-          chartLabels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
-          accounts,
-          recentTx: allTx.slice(0, 6),
-          insight,
-        });
-      } catch {
-        setError('Failed to load dashboard data');
-      }
-      setLoading(false);
-    }
-    fetchData();
-  }, [user.token]);
+    const accounts = getBankAccounts();
+    const totalBalance = accounts.reduce((sum: number, acc: any) => sum + (acc.balance ?? 0), 0);
+    const allTx: any[] = [];
+    accounts.forEach((acc: any) => {
+      (acc.transactions ?? []).forEach((tx: any) => allTx.push({ ...tx, accountType: acc.type }));
+    });
+    allTx.sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
+    setData({
+      totalBalance,
+      netWorth: totalBalance + 5550,
+      todayChange: +132.5,
+      monthlyGrowth: +1200,
+      chartData: [17000, 17200, 17500, 18000, 18200, 18400, Math.round(totalBalance)],
+      chartLabels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
+      accounts,
+      recentTx: allTx.slice(0, 6),
+      insight: 'Your spending is on track this month. Consider increasing your vault contribution by 5% to reach your goal faster.',
+    });
+    setLoading(false);
+  }, []);
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.gold, justifyContent: 'center', marginTop: 120, fontSize: '0.9rem', fontFamily: "'Inter', sans-serif" }}>

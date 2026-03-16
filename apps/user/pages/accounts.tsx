@@ -1,8 +1,8 @@
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
-import { API_URL } from '../lib/api';
+import { getBankAccounts, saveBankAccounts } from '../lib/store';
 
 interface Transaction {
   id: string;
@@ -134,28 +134,14 @@ export default function Accounts({ user }: { user: { token: string } }) {
   const [freezeStatus, setFreezeStatus] = useState<Record<string, boolean>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const fetchAccounts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/accounts`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch accounts');
-      const data = await res.json();
-      const list: Account[] = Array.isArray(data) ? data : (data.accounts ?? []);
-      setAccounts(list);
-      const fs: Record<string, boolean> = {};
-      list.forEach(a => { fs[a.id] = a.frozen ?? false; });
-      setFreezeStatus(fs);
-    } catch (err: any) {
-      setError(err.message ?? 'Error loading accounts');
-    } finally {
-      setLoading(false);
-    }
-  }, [user.token]);
-
-  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+  useEffect(() => {
+    const list: Account[] = getBankAccounts();
+    setAccounts(list);
+    const fs: Record<string, boolean> = {};
+    list.forEach(a => { fs[a.id] = a.frozen ?? false; });
+    setFreezeStatus(fs);
+    setLoading(false);
+  }, []);
 
   const handleCopy = (val: string) => {
     navigator.clipboard.writeText(val).catch(() => {});
@@ -163,17 +149,13 @@ export default function Accounts({ user }: { user: { token: string } }) {
     setTimeout(() => setCopied(null), 2200);
   };
 
-  const handleFreeze = async (id: string) => {
+  const handleFreeze = (id: string) => {
     const isFrozen = freezeStatus[id];
     setFreezeStatus(prev => ({ ...prev, [id]: !isFrozen }));
-    try {
-      await fetch(`${API_URL}/accounts/${id}/${isFrozen ? 'unfreeze' : 'freeze'}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-    } catch {
-      setFreezeStatus(prev => ({ ...prev, [id]: isFrozen }));
-    }
+    const accs = getBankAccounts();
+    const acc = accs.find((a: any) => a.id === id);
+    if (acc) { acc.frozen = !isFrozen; saveBankAccounts(accs); }
+    setAccounts(accs);
   };
 
   const totalBalance = accounts.reduce((sum, a) => sum + (a.balance ?? 0), 0);

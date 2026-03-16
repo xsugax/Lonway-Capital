@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../lib/api';
+import { getCheckbooks, saveCheckbooks } from '../lib/store';
 
 type CheckStatus = 'unused' | 'used' | 'void' | 'bounced';
 type BookStatus = 'pending' | 'approved' | 'rejected' | 'active' | 'exhausted';
@@ -68,54 +68,38 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
 
   useEffect(() => { fetchCheckbooks(); }, []);
 
-  async function fetchCheckbooks() {
+  function fetchCheckbooks() {
     setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/checkbook/user/${userId}`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      if (res.ok) { const d = await res.json(); setCheckbooks(Array.isArray(d) ? d : []); }
-    } catch { /* ignore */ }
+    setCheckbooks(getCheckbooks());
     setLoading(false);
   }
 
-  async function handleRequest(e: React.FormEvent) {
+  function handleRequest(e: React.FormEvent) {
     e.preventDefault();
     setRequesting(true);
     setReqResult(null);
-    try {
-      const res = await fetch(`${API_URL}/checkbook/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-        body: JSON.stringify({ userId, userEmail, userName, accountId: 'acc-demo-001', deliveryAddress: reqForm.address, notes: reqForm.notes }),
-      });
-      if (res.ok) {
-        setReqResult({ ok: true, message: 'Checkbook requested successfully. Pending admin approval.' });
-        setReqForm({ address: '', notes: '' });
-        setShowForm(false);
-        fetchCheckbooks();
-      } else {
-        const d = await res.json();
-        setReqResult({ ok: false, message: d.message || 'Request failed.' });
-      }
-    } catch { setReqResult({ ok: false, message: 'Network error.' }); }
+    const book = { id: 'cb-' + Date.now(), status: 'pending' as BookStatus, requestedAt: new Date().toISOString(), checks: [] as Check[], deliveryAddress: reqForm.address, notes: reqForm.notes };
+    const all = getCheckbooks();
+    all.push(book);
+    saveCheckbooks(all);
+    setReqResult({ ok: true, message: 'Checkbook requested successfully. Pending admin approval.' });
+    setReqForm({ address: '', notes: '' });
+    setShowForm(false);
+    fetchCheckbooks();
     setRequesting(false);
   }
 
-  async function handleUpdateCheck(e: React.FormEvent) {
+  function handleUpdateCheck(e: React.FormEvent) {
     e.preventDefault();
     if (!editCheck) return;
-    try {
-      const res = await fetch(`${API_URL}/checkbook/${editCheck.bookId}/check/${editCheck.check.number}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-        body: JSON.stringify(editData),
-      });
-      if (res.ok) {
-        fetchCheckbooks();
-        setEditCheck(null);
-      }
-    } catch { /* ignore */ }
+    const all = getCheckbooks();
+    const book = all.find((b: any) => b.id === editCheck.bookId);
+    if (book) {
+      const check = book.checks.find((c: Check) => c.number === editCheck.check.number);
+      if (check) { Object.assign(check, editData); saveCheckbooks(all); }
+    }
+    fetchCheckbooks();
+    setEditCheck(null);
   }
 
   const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(196,160,82,0.18)', borderRadius: 10, padding: '10px 14px', color: '#EAE0D0', fontSize: '0.9rem', outline: 'none', fontFamily: 'Inter, sans-serif' };
