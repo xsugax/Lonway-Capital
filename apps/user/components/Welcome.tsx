@@ -328,7 +328,7 @@ function getFeatures(G: string) {
         </svg>
       ),
       title: 'Institutional Security',
-      desc: 'Military-grade AES-256 encryption, biometric authentication, zero-knowledge architecture, and AI fraud monitoring — 1,400+ signals per second.',
+      desc: 'Military-grade AES-256 encryption, biometric authentication, zero-knowledge architecture, and Anti fraud monitoring — 1,400+ signals per second.',
     },
     {
       icon: (
@@ -431,9 +431,9 @@ function getTiers(G: string, PT: string) {
   ];
 }
 
-interface WelcomeProps { onSignIn: () => void; }
+interface WelcomeProps { onSignIn: () => void; onOpenAccount: () => void; }
 
-export default function Welcome({ onSignIn }: WelcomeProps) {
+export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
   const { colors, theme, toggle } = useTheme();
   const isDark = theme === 'dark';
 
@@ -529,7 +529,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
             onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'none'; el.style.borderColor = GBR; }}>
             Client Login
           </button>
-          <button onClick={onSignIn} style={{
+          <button onClick={onOpenAccount} style={{
             background: G, color: isDark ? BG : '#fff', border: 'none',
             padding: '0.45rem 1.4rem', borderRadius: 6, cursor: 'pointer',
             fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.04em',
@@ -587,7 +587,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
           }}>
             Client Login
           </button>
-          <button onClick={() => { onSignIn(); setMenuOpen(false); }} style={{
+          <button onClick={() => { onOpenAccount(); setMenuOpen(false); }} style={{
             background: G, color: isDark ? BG : '#fff', border: 'none',
             padding: '0.85rem', borderRadius: 8, cursor: 'pointer',
             fontSize: '1rem', fontWeight: 700, boxShadow: `0 0 20px ${G}33`,
@@ -656,7 +656,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
           </p>
 
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap', marginBottom: '3rem' }}>
-            <button onClick={onSignIn} style={{
+            <button onClick={onOpenAccount} style={{
               background: G, color: isDark ? BG : '#fff', border: 'none',
               padding: '0.9rem 2.4rem', borderRadius: 8, fontSize: '0.95rem',
               fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
@@ -807,7 +807,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
               {[
                 'Military-grade AES-256 encryption at rest & in transit',
                 'Multi-factor authentication with biometric verification',
-                'Real-time AI fraud detection — 1,400+ signals per second',
+                'Real-time Anti fraud detection — 1,400+ signals per second',
                 'SOC 2 Type II and ISO 27001 certified infrastructure',
                 'FDIC insured up to $250,000 per depositor',
               ].map(item => (
@@ -1020,7 +1020,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
           <p style={{ color: SL, lineHeight: 1.8, maxWidth: 460, margin: '0 auto 2.5rem' }}>
             Join 2.4 million discerning members. Take control of your financial destiny with a bank built for people who refuse to settle.
           </p>
-          <button onClick={onSignIn} style={{
+          <button onClick={onOpenAccount} style={{
             background: G, color: isDark ? BG : '#fff', border: 'none',
             padding: '1rem 3rem', borderRadius: 8, fontSize: '1rem', fontWeight: 700,
             cursor: 'pointer', boxShadow: `0 0 50px ${G}47`, transition: 'all 0.25s', letterSpacing: '0.03em',

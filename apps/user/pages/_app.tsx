@@ -13,6 +13,7 @@ type UserType = { name: string; token: string; role: string };
 export default function MyApp({ Component, pageProps }: AppProps) {
   const [user, setUser] = useState<UserType | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
 
@@ -31,6 +32,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   const handleLogin = (u: UserType) => {
     setUser(u);
     setShowLogin(false);
+    setShowRegister(false);
   };
 
   const handleLogout = () => {
@@ -60,9 +62,14 @@ export default function MyApp({ Component, pageProps }: AppProps) {
           })()
         ) : (
           <>
-            <Welcome onSignIn={() => setShowLogin(true)} />
+            <Welcome onSignIn={() => setShowLogin(true)} onOpenAccount={() => setShowRegister(true)} />
             {showLogin && (
-              <Login onLogin={handleLogin} onClose={() => setShowLogin(false)} modal />
+              <Login onLogin={handleLogin} onClose={() => setShowLogin(false)} modal mode="login"
+                onSwitchMode={(m) => { setShowLogin(m === 'login'); setShowRegister(m === 'register'); }} />
+            )}
+            {showRegister && (
+              <Login onLogin={handleLogin} onClose={() => setShowRegister(false)} modal mode="register"
+                onSwitchMode={(m) => { setShowLogin(m === 'login'); setShowRegister(m === 'register'); }} />
             )}
           </>
         )}
