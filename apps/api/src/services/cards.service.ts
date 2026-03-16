@@ -33,21 +33,7 @@ export class CardsService {
   private cards: PhysicalCard[] = [];
 
   constructor() {
-    const now = new Date();
-    this.cards.push({
-      id: uuidv4(),
-      userId: 'user-001',
-      network: 'mastercard',
-      tier: 'gold',
-      holderName: 'ALEX LONDWAY',
-      deliveryAddress: '100 Finance Plaza, Suite 1000',
-      city: 'New York',
-      country: 'United States',
-      status: 'active',
-      requestedAt: new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000),
-      estimatedDelivery: new Date(now.getTime() - 38 * 24 * 60 * 60 * 1000),
-      maskedNumber: '•••• •••• •••• 4827',
-    });
+    this.cards = [];
   }
 
   getCards(userId?: string): PhysicalCard[] {
@@ -85,6 +71,18 @@ export class CardsService {
       maskedNumber: `•••• •••• •••• ${lastFour}`,
     };
     this.cards.push(card);
+    // Send admin notification for card request
+    try {
+      const notificationService = (global as any).notificationService;
+      if (notificationService) {
+        notificationService.sendNotification(
+          'admin',
+          `New card request by user ${userId} (${country || 'Unknown country'})`,
+          'info',
+          { cardId: card.id, country, network, tier }
+        );
+      }
+    } catch (e) {}
     return card;
   }
 }

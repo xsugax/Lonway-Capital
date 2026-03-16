@@ -36,22 +36,7 @@ export class CheckbookService {
   private checkbooks: Checkbook[] = [];
 
   constructor() {
-    // Seed demo checkbook requests
-    const now = new Date();
-    this.checkbooks = [
-      {
-        id: uuidv4(),
-        userId: 'user-demo-001',
-        userEmail: 'user@londwaycapital.com',
-        userName: 'Jane Doe',
-        accountId: 'acc-demo-001',
-        status: 'pending',
-        requestedAt: new Date(now.getTime() - 24 * 3600000),
-        checks: [],
-        deliveryAddress: '123 Main St, New York, NY 10001',
-        notes: 'First checkbook request',
-      },
-    ];
+    this.checkbooks = [];
   }
 
   requestCheckbook(body: {
@@ -75,6 +60,18 @@ export class CheckbookService {
       notes: body.notes,
     };
     this.checkbooks.push(cb);
+    // Send admin notification for checkbook request
+    try {
+      const notificationService = (global as any).notificationService;
+      if (notificationService) {
+        notificationService.sendNotification(
+          'admin',
+          `New checkbook request by user ${body.userId} (${body.deliveryAddress || 'Unknown address'})`,
+          'info',
+          { checkbookId: cb.id, deliveryAddress: body.deliveryAddress }
+        );
+      }
+    } catch (e) {}
     return cb;
   }
 

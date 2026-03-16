@@ -1,4 +1,9 @@
 ﻿"use client";
+declare global {
+  interface Window {
+    _smartsupp?: any;
+  }
+}
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -158,16 +163,32 @@ const TRUST_BADGES = [
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ user }: { user: { token: string } }) {
+  // Smartsupp live chat widget
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const prev = document.getElementById('smartsupp-script');
+      if (prev) prev.remove();
+      window._smartsupp = window._smartsupp || {};
+      window._smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
+      const script = document.createElement('script');
+      script.id = 'smartsupp-script';
+      script.type = 'text/javascript';
+      script.async = true;
+      script.charset = 'utf-8';
+      script.src = 'https://www.smartsuppchat.com/loader.js?';
+      document.head.appendChild(script);
+    }
+  }, []);
+
   const { colors, theme } = useTheme();
   const { t } = useLang();
+  const [data, setData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [clock, setClock] = React.useState('');
+  const [tzName, setTzName] = React.useState('');
 
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [clock, setClock] = useState('');
-  const [tzName, setTzName] = useState('');
-
-  useEffect(() => {
+  React.useEffect(() => {
     const fmtClock = () => {
       const now = new Date();
       setClock(now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -178,14 +199,14 @@ export default function Dashboard({ user }: { user: { token: string } }) {
     return () => clearInterval(id);
   }, []);
 
-  const greeting = useMemo(() => {
+  const greeting = React.useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return t('goodMorning');
     if (h < 17) return t('goodAfternoon');
     return t('goodEvening');
   }, [t]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const accounts = getBankAccounts();
     const totalBalance = accounts.reduce((sum: number, acc: any) => sum + (acc.balance ?? 0), 0);
     const allTx: any[] = [];
@@ -229,31 +250,17 @@ export default function Dashboard({ user }: { user: { token: string } }) {
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
 
-      {/* ── Hero Section — Premium Wealth Overview ── */}
-      <section style={{
-        position: 'relative', overflow: 'hidden',
-        background: isLight
-          ? `linear-gradient(135deg, ${colors.surface} 0%, ${colors.bg} 70%)`
-          : 'linear-gradient(135deg, #0D1628 0%, #060913 65%)',
-        borderBottom: `1px solid ${colors.border}`,
-        padding: '3rem 2rem 2.8rem',
-      }}>
-        {/* Ambient glow */}
-        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 40% 100% at 3% 50%, ${colors.goldBg} 0%, transparent 65%)`, pointerEvents: 'none' }}/>
-        {/* Secondary glow */}
-        <div style={{ position: 'absolute', top: '-20%', right: '10%', width: 400, height: 400, borderRadius: '50%', background: `radial-gradient(circle, ${colors.gold}06 0%, transparent 70%)`, pointerEvents: 'none', filter: 'blur(40px)' }}/>
-        <GlobeNetwork gold={colors.gold} isDark={isDark}/>
-
+      {/* ── Hero Section ── */}
+      <section style={{ position: 'relative', overflow: 'hidden', padding: '2.5rem 2rem 2rem' }}>
+        <GlobeNetwork gold={colors.gold} isDark={isDark} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto' }}>
-          {/* Badge + Security */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1.2rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.3rem 0.95rem', fontSize: '0.62rem', color: colors.gold, fontWeight: 700, letterSpacing: '0.14em' }}>
-              <ShieldBadge gold={colors.gold}/>
-              LONDWAY CAPITAL
-            </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: '0.9rem' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.58rem', color: colors.success, fontWeight: 600, letterSpacing: '0.08em' }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.success, boxShadow: `0 0 8px ${colors.success}` }}/>
               SECURE SESSION
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.62rem', color: colors.gold, fontWeight: 700, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.3rem 0.9rem', letterSpacing: '0.08em' }}>
+              Assets under management: $2.5T
             </div>
             {clock && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: colors.goldBg, border: `1px solid ${colors.border}`, borderRadius: 100, padding: '0.3rem 0.9rem', fontSize: '0.62rem', color: colors.textMuted, fontWeight: 600, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
@@ -269,7 +276,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
             {t('financialOverview')}
           </p>
 
-          {/* Balance hero strip — redesigned with glass cards */}
+          {/* Balance hero strip */}
           <div className="dash-hero-cards" style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'stretch' }}>
             {/* Total Balance Card */}
             <div style={{
@@ -365,7 +372,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
 
         {/* ── Portfolio Performance + Accounts ── */}
         <div className="dash-perf-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14, marginBottom: '1.8rem' }}>
-          {/* Area Chart — enhanced */}
+          {/* Area Chart */}
           <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, padding: '1.5rem 1.5rem 0.5rem', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: 120, height: 120, borderRadius: '50%', background: `${colors.gold}04`, filter: 'blur(30px)', pointerEvents: 'none' }}/>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -397,7 +404,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
             />
           </div>
 
-          {/* Accounts Panel — enhanced */}
+          {/* Accounts Panel */}
           <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
               <h3 style={{ margin: 0, color: colors.text, fontWeight: 700, fontSize: '1rem' }}>{t('accounts')}</h3>
@@ -419,7 +426,6 @@ export default function Dashboard({ user }: { user: { token: string } }) {
                 <div style={{ fontWeight: 800, fontSize: '0.92rem', color: colors.gold, flexShrink: 0 }}>${acc.balance?.toLocaleString()}</div>
               </div>
             ))}
-            {/* Account summary */}
             <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.68rem', color: colors.textFaint, fontWeight: 600 }}>Total across {data.accounts.length} accounts</span>
               <span style={{ fontSize: '0.9rem', color: colors.gold, fontWeight: 800 }}>${data.totalBalance.toLocaleString()}</span>
@@ -441,7 +447,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
 
         {/* ── Bottom Row: Recent Transactions + AI Insight ── */}
         <div className="dash-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14 }}>
-          {/* Recent Transactions — enhanced */}
+          {/* Recent Transactions */}
           <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
               <div>
@@ -472,14 +478,13 @@ export default function Dashboard({ user }: { user: { token: string } }) {
             )}
           </div>
 
-          {/* AI Insight — enhanced with gradient border effect */}
+          {/* AI Insight */}
           <div style={{
             background: `linear-gradient(145deg, ${colors.surface} 0%, ${colors.surface2} 100%)`,
             borderRadius: 18, border: `1px solid ${colors.borderStrong}`,
             padding: '1.5rem', display: 'flex', flexDirection: 'column',
             position: 'relative', overflow: 'hidden',
           }}>
-            {/* Decorative accent */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${colors.gold}40, transparent)` }}/>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1rem' }}>
               <div style={{ width: 44, height: 44, borderRadius: 13, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.3rem' }}>🤖</div>
@@ -494,6 +499,33 @@ export default function Dashboard({ user }: { user: { token: string } }) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Fixed chat button for customer care */}
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+        <button
+          style={{
+            background: '#FFD700',
+            color: '#181818',
+            border: 'none',
+            borderRadius: '50%',
+            width: 56,
+            height: 56,
+            boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
+            fontSize: '2rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'background 0.2s',
+          }}
+          onClick={() => {
+            if (window._smartsupp && window._smartsupp.api) {
+              window._smartsupp.api.openChat();
+            }
+          }}
+          title="Chat with support"
+        >💬</button>
       </div>
 
       <style>{`

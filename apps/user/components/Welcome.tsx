@@ -473,6 +473,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
   }, []);
 
   return (
+    <>
     <div style={{ background: BG, color: IV, fontFamily: "'Inter', -apple-system, sans-serif", overflowX: 'hidden', lineHeight: 1.6 }}>
 
       {/* ──────────────── NAVBAR ──────────────── */}
@@ -1071,5 +1072,50 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       </footer>
 
     </div>
+
+      {/* Gold floating chat widget — outside main div to avoid overflow clipping */}
+      <div style={{
+        position: 'fixed', bottom: 28, right: 28, zIndex: 99999,
+        pointerEvents: 'auto',
+      }}>
+        <button
+          onClick={() => {
+            if ((window as any)._smartsupp && (window as any)._smartsupp.api) {
+              (window as any)._smartsupp.api.openChat();
+            } else {
+              window.open('mailto:londwayfond@gmail.com?subject=Customer%20Support', '_blank');
+            }
+          }}
+          title="Chat with Customer Care"
+          style={{
+            background: 'linear-gradient(135deg, #FFD700 0%, #E6B800 100%)',
+            color: '#181818',
+            border: '2px solid rgba(255,215,0,0.5)',
+            borderRadius: 28,
+            padding: '14px 28px',
+            boxShadow: '0 4px 24px rgba(255,215,0,0.4), 0 2px 8px rgba(0,0,0,0.2)',
+            fontSize: '1rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            transition: 'transform 0.18s, box-shadow 0.18s',
+            letterSpacing: '0.02em',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.06)';
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 32px rgba(255,215,0,0.55), 0 2px 12px rgba(0,0,0,0.25)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 24px rgba(255,215,0,0.4), 0 2px 8px rgba(0,0,0,0.2)';
+          }}
+        >
+          <span style={{ fontSize: '1.35rem' }}>💬</span>
+          <span>Customer Care</span>
+        </button>
+      </div>
+    </>
   );
 }

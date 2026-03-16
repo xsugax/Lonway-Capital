@@ -116,7 +116,7 @@ export class AuthService {
     if (this.users.find(u => u.email === email)) {
       throw new BadRequestException('Email already registered');
     }
-    const user: User = {
+    const newUser: User = {
       id: uuidv4(),
       name,
       email,
@@ -132,24 +132,11 @@ export class AuthService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.users.push(user);
+    this.users.push(newUser);
     this.logAudit('register', email, 'User registered');
-    return this.sanitizeUser(user);
-  }
-
-  /**
-   * Enable 2FA for a user, returns secret for QR code.
-   */
-  enable2FA(email: string) {
-    const user = this.users.find(u => u.email === email);
-    if (!user) throw new NotFoundException('User not found');
-    if (user.twoFAEnabled) throw new BadRequestException('2FA already enabled');
-    const secret = speakeasy.generateSecret();
-    user.twoFAEnabled = true;
-    user.twoFASecret = secret.base32;
-    user.updatedAt = new Date();
-    this.logAudit('2fa_enabled', email, '2FA enabled');
-    return { otpauth_url: secret.otpauth_url, base32: secret.base32 };
+    const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, 'londway_secret', { expiresIn: '2h' });
+    newUser.sessionTokens.push(token);
+    return { success: true, token, user: this.sanitizeUser(newUser) };
   }
 
   /**

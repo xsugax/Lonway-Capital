@@ -23,34 +23,7 @@ export class AdminService {
   private logger = new Logger('AdminService');
 
   constructor() {
-    this.users = [
-      {
-        id: uuidv4(),
-        name: 'Jane Doe',
-        email: 'user@londwaycapital.com',
-        password: '',
-        role: 'user',
-        frozen: false,
-        kyc: true,
-        balance: 18452.62,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        auditTrail: [],
-      },
-      {
-        id: uuidv4(),
-        name: 'Admin',
-        email: 'admin@londwaycapital.com',
-        password: '',
-        role: 'admin',
-        frozen: false,
-        kyc: true,
-        balance: 1000000,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        auditTrail: [],
-      },
-    ];
+    this.users = [];
   }
 
   getUsers() {

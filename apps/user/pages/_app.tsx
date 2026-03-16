@@ -9,39 +9,37 @@ import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { LangProvider } from '../contexts/LanguageContext';
 
-type UserType = { name: string; token: string; role: string };
-
-export default function MyApp({ Component, pageProps }: AppProps) {
-  const [user, setUser] = useState<UserType | null>(null);
+// Only one export default function allowed
+export default function App({ Component, pageProps }: AppProps) {
+  const [user, setUser] = useState<{ name: string; token: string; role: string } | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem('londway_user');
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
-    }
     setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (user) window.localStorage.setItem('londway_user', JSON.stringify(user));
+    if (
+      user &&
+      user.role === 'admin' &&
+      typeof window !== 'undefined' &&
+      window.location.pathname !== '/admin'
+    ) {
+      window.location.href = '/admin';
+    }
   }, [user]);
 
-  const handleLogin = (u: UserType) => {
+  function handleLogin(u: any) {
     setUser(u);
     setShowLogin(false);
     setShowRegister(false);
-  };
-
-  const handleLogout = () => {
+  }
+  function handleLogout() {
     setUser(null);
-    window.localStorage.removeItem('londway_user');
-  };
-
-  if (!hydrated) return null;
+  }
 
   return (
     <ThemeProvider>
@@ -49,33 +47,54 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         <Head>
           <title>Londway Capital — Premium Private Banking</title>
         </Head>
-        {showLoader ? (
-          <BankLoader onDone={() => setShowLoader(false)} />
-        ) : user ? (
-          (() => {
-            if (user.role === 'admin' && typeof window !== 'undefined' && window.location.pathname !== '/admin') {
-              window.location.href = '/admin';
-              return null;
-            }
-            const PageComponent = Component as React.ComponentType<any>;
-            return (
+        {!hydrated ? null : (
+          showLoader ? (
+            <BankLoader onDone={() => setShowLoader(false)} />
+          ) : user ? (
+            user.role === 'admin' && typeof window !== 'undefined' && window.location.pathname !== '/admin' ? null : (
               <Layout onLogout={handleLogout} userName={user.name}>
-                <PageComponent {...pageProps} user={user} />
+                <Component {...pageProps} user={user} />
+                {/* Fallback chat button for visibility */}
+                <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+                  <button
+                    style={{
+                      background: '#FFD700',
+                      color: '#181818',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 56,
+                      height: 56,
+                      boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
+                      fontSize: '2rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 0.2s',
+                    }}
+                    onClick={() => {
+                      if (window._smartsupp && window._smartsupp.api) {
+                        window._smartsupp.api.openChat();
+                      }
+                    }}
+                    title="Chat with support"
+                  >💬</button>
+                </div>
               </Layout>
-            );
-          })()
-        ) : (
-          <>
-            <Welcome onSignIn={() => setShowLogin(true)} onOpenAccount={() => setShowRegister(true)} />
-            {showLogin && (
-              <Login onLogin={handleLogin} onClose={() => setShowLogin(false)} modal mode="login"
-                onSwitchMode={(m) => { setShowLogin(m === 'login'); setShowRegister(m === 'register'); }} />
-            )}
-            {showRegister && (
-              <Login onLogin={handleLogin} onClose={() => setShowRegister(false)} modal mode="register"
-                onSwitchMode={(m) => { setShowLogin(m === 'login'); setShowRegister(m === 'register'); }} />
-            )}
-          </>
+            )
+          ) : (
+            <>
+              <Welcome onSignIn={() => setShowLogin(true)} onOpenAccount={() => setShowRegister(true)} />
+              {showLogin && (
+                <Login onLogin={handleLogin} onClose={() => setShowLogin(false)} modal mode="login"
+                  onSwitchMode={(m) => { setShowLogin(m === 'login'); setShowRegister(m === 'register'); }} />
+              )}
+              {showRegister && (
+                <Login onLogin={handleLogin} onClose={() => setShowRegister(false)} modal mode="register"
+                  onSwitchMode={(m) => { setShowLogin(m === 'login'); setShowRegister(m === 'register'); }} />
+              )}
+            </>
+          )
         )}
       </LangProvider>
     </ThemeProvider>

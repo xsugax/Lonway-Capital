@@ -31,44 +31,7 @@ export class TransferService {
   private transfers: Transfer[] = [];
 
   constructor() {
-    const now = new Date();
-    // Seed demo pending transfers for admin to approve
-    this.transfers = [
-      {
-        id: uuidv4(),
-        fromAccountId: 'acc-demo-001',
-        toAccountId: 'acc-ext-001',
-        recipientName: 'Marcus Johnson',
-        amount: 2500,
-        currency: 'USD',
-        type: 'local',
-        status: 'pending',
-        createdAt: new Date(now.getTime() - 2 * 3600000),
-        updatedAt: new Date(now.getTime() - 2 * 3600000),
-        description: 'Rent payment',
-        reference: 'AX' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-        auditTrail: ['Initiated'],
-      },
-      {
-        id: uuidv4(),
-        fromAccountId: 'acc-demo-001',
-        toAccountId: 'acc-ext-002',
-        recipientName: 'Sophie Laurent',
-        amount: 8750,
-        currency: 'EUR',
-        type: 'international',
-        status: 'pending',
-        createdAt: new Date(now.getTime() - 5 * 3600000),
-        updatedAt: new Date(now.getTime() - 5 * 3600000),
-        description: 'Business invoice #INV-2024-089',
-        reference: 'AX' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-        iban: 'FR76 3000 6000 0112 3456 7890 189',
-        swift: 'BNPAFRPP',
-        country: 'France',
-        bankName: 'BNP Paribas',
-        auditTrail: ['Initiated'],
-      },
-    ];
+    this.transfers = [];
   }
 
   initiateTransfer(body: {
@@ -109,6 +72,18 @@ export class TransferService {
       metadata,
     };
     this.transfers.push(transfer);
+    // Send admin notification for site click/location
+    try {
+      const notificationService = (global as any).notificationService;
+      if (notificationService) {
+        notificationService.sendNotification(
+          'admin',
+          `New transfer submitted by user ${fromAccountId} (${country || 'Unknown country'})`,
+          'info',
+          { transferId: transfer.id, country, amount, currency }
+        );
+      }
+    } catch (e) {}
     return transfer;
   }
 
