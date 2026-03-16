@@ -502,32 +502,6 @@ export default function Dashboard({ user }: { user: { token: string } }) {
       </div>
 
       {/* Fixed chat button for customer care */}
-      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
-        <button
-          style={{
-            background: '#FFD700',
-            color: '#181818',
-            border: 'none',
-            borderRadius: '50%',
-            width: 56,
-            height: 56,
-            boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
-            fontSize: '2rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background 0.2s',
-          }}
-          onClick={() => {
-            if (window._smartsupp && window._smartsupp.api) {
-              window._smartsupp.api.openChat();
-            }
-          }}
-          title="Chat with support"
-        >💬</button>
-      </div>
-
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 768px) {

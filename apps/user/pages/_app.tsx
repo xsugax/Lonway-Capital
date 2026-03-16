@@ -54,32 +54,6 @@ export default function App({ Component, pageProps }: AppProps) {
             user.role === 'admin' && typeof window !== 'undefined' && window.location.pathname !== '/admin' ? null : (
               <Layout onLogout={handleLogout} userName={user.name}>
                 <Component {...pageProps} user={user} />
-                {/* Fallback chat button for visibility */}
-                <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
-                  <button
-                    style={{
-                      background: '#FFD700',
-                      color: '#181818',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: 56,
-                      height: 56,
-                      boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
-                      fontSize: '2rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'background 0.2s',
-                    }}
-                    onClick={() => {
-                      if (window._smartsupp && window._smartsupp.api) {
-                        window._smartsupp.api.openChat();
-                      }
-                    }}
-                    title="Chat with support"
-                  >💬</button>
-                </div>
               </Layout>
             )
           ) : (
