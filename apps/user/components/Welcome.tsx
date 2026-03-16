@@ -451,6 +451,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
 
   const [scrolled, setScrolled] = useState(false);
   const [tIdx, setTIdx] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const features = getFeatures(G);
   const tiers = getTiers(G, PT);
@@ -477,7 +478,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
       {/* ──────────────── NAVBAR ──────────────── */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
-        height: 64, padding: '0 3rem',
+        height: 64, padding: '0 1.5rem',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: scrolled ? (isDark ? 'rgba(6,9,19,0.96)' : 'rgba(245,240,232,0.96)') : 'transparent',
         backdropFilter: scrolled ? 'blur(20px)' : 'none',
@@ -485,7 +486,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
         transition: 'all 0.35s ease',
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flexShrink: 0 }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           <svg width="30" height="30" viewBox="0 0 36 36" fill="none">
             <circle cx="18" cy="18" r="15.5" stroke={G} strokeWidth="1.3" fill="none"/>
             <path d="M11,27 V15 C11,6.5 25,6.5 25,15 V27" stroke={G} strokeWidth="2" fill={`${G}08`} strokeLinejoin="round"/>
@@ -496,8 +497,8 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
           </span>
         </div>
 
-        {/* Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+        {/* Desktop Links (hidden on mobile via CSS class) */}
+        <div className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
           {[
             { label: 'Private Banking', target: 'private-banking' },
             { label: 'Investments', target: 'investments' },
@@ -505,11 +506,10 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
             { label: 'About', target: 'about' },
           ].map(l => (
             <a key={l.label} href={`#${l.target}`} onClick={e => { e.preventDefault(); scrollTo(l.target); }}
-              style={{ color: SL, fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.02em', transition: 'color 0.2s', cursor: 'pointer' }}
+              style={{ color: SL, fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.02em', transition: 'color 0.2s', cursor: 'pointer', whiteSpace: 'nowrap' }}
               onMouseOver={e => (e.currentTarget.style.color = IV)}
               onMouseOut={e => (e.currentTarget.style.color = SL)}>{l.label}</a>
           ))}
-          {/* Theme toggle */}
           <button onClick={toggle} title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'} style={{
             background: 'none', border: `1px solid ${GBR}`, color: G,
             width: 34, height: 34, borderRadius: '50%', cursor: 'pointer',
@@ -523,7 +523,7 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
           <button onClick={onSignIn} style={{
             background: 'none', border: `1px solid ${GBR}`, color: G,
             padding: '0.4rem 1.2rem', borderRadius: 6, cursor: 'pointer',
-            fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.04em', transition: 'all 0.2s',
+            fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.04em', transition: 'all 0.2s', whiteSpace: 'nowrap',
           }}
             onMouseOver={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = GB; el.style.borderColor = G; }}
             onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'none'; el.style.borderColor = GBR; }}>
@@ -533,14 +533,77 @@ export default function Welcome({ onSignIn }: WelcomeProps) {
             background: G, color: isDark ? BG : '#fff', border: 'none',
             padding: '0.45rem 1.4rem', borderRadius: 6, cursor: 'pointer',
             fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.04em',
-            boxShadow: `0 0 20px ${G}33`, transition: 'all 0.2s',
+            boxShadow: `0 0 20px ${G}33`, transition: 'all 0.2s', whiteSpace: 'nowrap',
           }}
             onMouseOver={e => { const el = e.currentTarget as HTMLButtonElement; el.style.boxShadow = `0 4px 28px ${G}66`; el.style.transform = 'translateY(-1px)'; }}
             onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.boxShadow = `0 0 20px ${G}33`; el.style.transform = 'none'; }}>
             Open Account
           </button>
         </div>
+
+        {/* Mobile hamburger button */}
+        <button className="nav-mobile-btn" onClick={() => setMenuOpen(!menuOpen)} style={{
+          display: 'none', background: 'none', border: `1px solid ${GBR}`, color: G,
+          width: 40, height: 40, borderRadius: 8, cursor: 'pointer',
+          alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', padding: 0,
+        }}>
+          {menuOpen ? '✕' : '☰'}
+        </button>
       </nav>
+
+      {/* Mobile menu overlay */}
+      {menuOpen && (
+        <div style={{
+          position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, zIndex: 199,
+          background: isDark ? 'rgba(6,9,19,0.98)' : 'rgba(245,240,232,0.98)',
+          backdropFilter: 'blur(20px)',
+          display: 'flex', flexDirection: 'column', padding: '2rem',
+          gap: 12, overflowY: 'auto',
+        }}>
+          {[
+            { label: 'Private Banking', target: 'private-banking' },
+            { label: 'Investments', target: 'investments' },
+            { label: 'Security', target: 'security' },
+            { label: 'About', target: 'about' },
+          ].map(l => (
+            <a key={l.label} href={`#${l.target}`} onClick={e => { e.preventDefault(); scrollTo(l.target); setMenuOpen(false); }}
+              style={{ color: IV, fontSize: '1.1rem', fontWeight: 600, textDecoration: 'none', padding: '0.8rem 0', borderBottom: `1px solid ${GBR}`, cursor: 'pointer' }}>
+              {l.label}
+            </a>
+          ))}
+          <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+            <button onClick={toggle} style={{
+              background: 'none', border: `1px solid ${GBR}`, color: G,
+              width: 44, height: 44, borderRadius: '50%', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem',
+            }}>
+              {isDark ? '☀' : '🌙'}
+            </button>
+          </div>
+          <button onClick={() => { onSignIn(); setMenuOpen(false); }} style={{
+            background: 'none', border: `1px solid ${GBR}`, color: G,
+            padding: '0.8rem', borderRadius: 8, cursor: 'pointer',
+            fontSize: '1rem', fontWeight: 600, marginTop: 8,
+          }}>
+            Client Login
+          </button>
+          <button onClick={() => { onSignIn(); setMenuOpen(false); }} style={{
+            background: G, color: isDark ? BG : '#fff', border: 'none',
+            padding: '0.85rem', borderRadius: 8, cursor: 'pointer',
+            fontSize: '1rem', fontWeight: 700, boxShadow: `0 0 20px ${G}33`,
+          }}>
+            Open Account
+          </button>
+        </div>
+      )}
+
+      {/* Mobile responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .nav-desktop { display: none !important; }
+          .nav-mobile-btn { display: flex !important; }
+        }
+      `}</style>
 
       {/* ──────────────── HERO ──────────────── */}
       <section style={{

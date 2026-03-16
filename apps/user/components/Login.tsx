@@ -21,10 +21,18 @@ export default function Login({ onLogin, onClose, modal = false, onOpenAccount }
     return () => clearTimeout(t);
   }, []);
 
+  // Demo credentials that work without a backend
+  const DEMO_ACCOUNTS = [
+    { email: 'user@londwaycapital.com', password: 'password123', name: 'Jane Doe', role: 'user' },
+    { email: 'admin@londwaycapital.com', password: 'admin123', name: 'Admin', role: 'admin' },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Try API first, fall back to demo auth
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
@@ -35,12 +43,20 @@ export default function Login({ onLogin, onClose, modal = false, onOpenAccount }
       setLoading(false);
       if (data.success) {
         onLogin({ name: data.user.name, token: data.token, role: data.user.role });
+        return;
       } else {
         setError(data.message || 'Invalid credentials');
+        return;
       }
     } catch {
+      // API unavailable — use demo credentials
+      const match = DEMO_ACCOUNTS.find(a => a.email === email && a.password === password);
       setLoading(false);
-      setError('Unable to connect. Please try again.');
+      if (match) {
+        onLogin({ name: match.name, token: 'demo-token-' + Date.now(), role: match.role });
+      } else {
+        setError('Invalid email or password.');
+      }
     }
   };
 

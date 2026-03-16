@@ -1,584 +1,694 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  frozen: boolean;
-  kyc: boolean;
-  balance: number;
-  createdAt: string;
+// ── Types ──────────────────────────────────────────────────────
+interface User {
+  id: string; name: string; email: string; role: string;
+  frozen: boolean; kyc: boolean; balance: number;
+  createdAt: string; phone?: string; address?: string; tier?: string;
 }
-interface Transfer {
-  id: string;
-  recipientName: string;
-  fromAccountId: string;
-  toAccountId: string;
-  amount: number;
-  currency: string;
-  type: string;
-  status: string;
-  reference: string;
-  description: string;
-  createdAt: string;
-  country?: string;
+interface Transaction {
+  id: string; userId: string; userName: string;
+  type: 'credit' | 'debit' | 'transfer' | 'wire' | 'fee' | 'interest' | 'reversal';
+  amount: number; currency: string; status: string;
+  description: string; reference: string;
+  createdAt: string; processedAt?: string;
+  recipientName?: string; recipientAccount?: string;
 }
-interface Checkbook {
-  id: string;
-  userEmail: string;
-  userName: string;
-  status: string;
-  requestedAt: string;
-  checkStart?: number;
-  checkEnd?: number;
-  deliveryAddress?: string;
-  checks: { number: string; status: string; payee?: string; amount?: number }[];
-}
-interface Analytics {
-  totalUsers: number;
-  totalBalance: number;
-  frozenAccounts: number;
-  kycVerified: number;
-  admins: number;
-  createdLast30d: number;
+interface AuditEntry {
+  id: string; timestamp: string; action: string;
+  admin: string; target?: string; details?: string;
 }
 
-type Tab = 'overview' | 'transfers' | 'users' | 'checkbooks' | 'audit';
+type Tab = 'overview' | 'users' | 'transactions' | 'funding' | 'audit';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────
 const G = '#C4A052';
 const BG = '#060913';
 const S2 = '#0D1628';
 const SL = '#60707E';
 const IV = '#EAE0D0';
+const STORAGE_KEY = 'londway_admin_data';
 
-// ── Style helpers ─────────────────────────────────────────────────────────────
-const cardStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
-  background: S2,
-  borderRadius: 16,
-  border: '1px solid rgba(196,160,82,0.1)',
-  padding: '1.5rem',
-  ...extra,
-});
-
-const thStyle: React.CSSProperties = {
-  padding: '6px 12px',
-  textAlign: 'left',
-  color: SL,
-  fontSize: '0.7rem',
-  fontWeight: 700,
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase',
-  borderBottom: '1px solid rgba(196,160,82,0.08)',
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  fontSize: '0.88rem',
-  color: IV,
-  borderBottom: '1px solid rgba(196,160,82,0.04)',
-};
-
-const btnPrimary: React.CSSProperties = {
-  background: `linear-gradient(135deg, ${G}, #a8873e)`,
-  border: 'none',
-  color: BG,
-  borderRadius: 7,
-  padding: '5px 12px',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: '0.78rem',
-  fontFamily: 'Inter, sans-serif',
-};
-
-const btnDanger: React.CSSProperties = {
-  background: 'rgba(255,77,79,0.1)',
-  border: '1px solid rgba(255,77,79,0.25)',
-  color: '#ff4d4f',
-  borderRadius: 7,
-  padding: '5px 12px',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: '0.78rem',
-  fontFamily: 'Inter, sans-serif',
-};
-
-const btnGhost: React.CSSProperties = {
-  background: 'rgba(196,160,82,0.07)',
-  border: '1px solid rgba(196,160,82,0.18)',
-  color: G,
-  borderRadius: 7,
-  padding: '5px 12px',
-  cursor: 'pointer',
-  fontWeight: 600,
-  fontSize: '0.78rem',
-  fontFamily: 'Inter, sans-serif',
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  boxSizing: 'border-box',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(196,160,82,0.18)',
-  borderRadius: 10,
-  padding: '10px 14px',
-  color: IV,
-  fontSize: '0.9rem',
-  outline: 'none',
-  fontFamily: 'Inter, sans-serif',
-};
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-function Badge({ status }: { status: string }) {
-  const map: Record<string, [string, string]> = {
-    pending:     ['rgba(196,160,82,0.12)', G],
-    approved:    ['rgba(80,200,120,0.12)', '#50C878'],
-    active:      ['rgba(80,200,120,0.12)', '#50C878'],
-    active_user: ['rgba(80,200,120,0.12)', '#50C878'],
-    completed:   ['rgba(80,200,120,0.12)', '#50C878'],
-    rejected:    ['rgba(255,77,79,0.12)',  '#ff4d4f'],
-    failed:      ['rgba(255,77,79,0.12)',  '#ff4d4f'],
-    frozen:      ['rgba(255,77,79,0.12)',  '#ff4d4f'],
-    reversed:    ['rgba(162,178,191,0.12)', '#A2B2BF'],
-  };
-  const [bg, color] = map[status] ?? ['rgba(162,178,191,0.12)', '#A2B2BF'];
-  return (
-    <span style={{ background: bg, color, borderRadius: 20, padding: '2px 10px', fontSize: '0.73rem', fontWeight: 700 }}>
-      {status}
-    </span>
-  );
+// ── Seed data ──────────────────────────────────────────────────
+function getDefaultData() {
+  const now = new Date().toISOString();
+  const users: User[] = [
+    { id: 'u1', name: 'Jane Doe', email: 'user@londwaycapital.com', role: 'user', frozen: false, kyc: true, balance: 2847563.42, createdAt: '2021-01-15T10:00:00Z', phone: '+1 (555) 234-5678', address: '420 Park Avenue, New York, NY 10022', tier: 'Platinum' },
+    { id: 'u2', name: 'Marcus Chen', email: 'marcus@example.com', role: 'user', frozen: false, kyc: true, balance: 1253800.00, createdAt: '2022-03-22T14:30:00Z', phone: '+1 (555) 876-5432', address: '888 Market St, San Francisco, CA 94103', tier: 'Gold' },
+    { id: 'u3', name: 'Elena Volkov', email: 'elena@example.com', role: 'user', frozen: false, kyc: false, balance: 589200.75, createdAt: '2023-07-10T09:15:00Z', phone: '+44 20 7946 0958', address: '12 Kensington Palace Gardens, London W8 4QU', tier: 'Silver' },
+    { id: 'u4', name: 'Omar Al-Rashid', email: 'omar@example.com', role: 'user', frozen: true, kyc: true, balance: 4120000.00, createdAt: '2020-11-05T16:45:00Z', phone: '+971 4 333 4444', address: 'DIFC Gate Building, Dubai, UAE', tier: 'Platinum' },
+    { id: 'u5', name: 'Sarah Williams', email: 'sarah@example.com', role: 'user', frozen: false, kyc: true, balance: 156430.20, createdAt: '2024-01-18T11:20:00Z', phone: '+1 (555) 111-2222', address: '200 Lakeshore Dr, Chicago, IL 60601', tier: 'Standard' },
+  ];
+  const transactions: Transaction[] = [
+    { id: 't1', userId: 'u1', userName: 'Jane Doe', type: 'credit', amount: 500000, currency: 'USD', status: 'completed', description: 'Wire deposit from JPMorgan Chase', reference: 'WIR-2026-001', createdAt: '2026-03-10T14:22:00Z', processedAt: '2026-03-10T14:25:00Z' },
+    { id: 't2', userId: 'u1', userName: 'Jane Doe', type: 'transfer', amount: 25000, currency: 'USD', status: 'pending', description: 'Transfer to savings vault', reference: 'TRF-2026-002', createdAt: '2026-03-14T09:10:00Z', recipientName: 'Jane Doe - Vault', recipientAccount: 'VAULT-001' },
+    { id: 't3', userId: 'u2', userName: 'Marcus Chen', type: 'wire', amount: 150000, currency: 'USD', status: 'pending', description: 'International wire to Hong Kong', reference: 'INT-2026-003', createdAt: '2026-03-15T16:30:00Z', recipientName: 'Chen Holdings Ltd', recipientAccount: 'HK-8834-2211' },
+    { id: 't4', userId: 'u3', userName: 'Elena Volkov', type: 'debit', amount: 12500, currency: 'USD', status: 'completed', description: 'Card purchase - Harrods London', reference: 'POS-2026-004', createdAt: '2026-03-12T11:45:00Z', processedAt: '2026-03-12T11:45:00Z' },
+    { id: 't5', userId: 'u4', userName: 'Omar Al-Rashid', type: 'credit', amount: 2000000, currency: 'USD', status: 'flagged', description: 'Large incoming wire - compliance review', reference: 'WIR-2026-005', createdAt: '2026-03-13T08:00:00Z' },
+    { id: 't6', userId: 'u5', userName: 'Sarah Williams', type: 'fee', amount: 29.99, currency: 'USD', status: 'completed', description: 'Monthly account fee', reference: 'FEE-2026-006', createdAt: '2026-03-01T00:00:00Z', processedAt: '2026-03-01T00:00:00Z' },
+    { id: 't7', userId: 'u1', userName: 'Jane Doe', type: 'interest', amount: 4523.18, currency: 'USD', status: 'completed', description: 'Monthly interest payment', reference: 'INT-2026-007', createdAt: '2026-03-01T00:00:00Z', processedAt: '2026-03-01T00:00:00Z' },
+  ];
+  const audit: AuditEntry[] = [
+    { id: 'a1', timestamp: now, action: 'system_init', admin: 'System', details: 'Admin panel initialized' },
+  ];
+  return { users, transactions, audit };
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
+// ── Persistence ────────────────────────────────────────────────
+function loadData() {
+  if (typeof window === 'undefined') return getDefaultData();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as ReturnType<typeof getDefaultData>;
+  } catch { /* */ }
+  const d = getDefaultData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+  return d;
+}
+function saveData(data: ReturnType<typeof getDefaultData>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+let idCounter = Date.now();
+function uid() { return 'id_' + (++idCounter).toString(36); }
+function fmtMoney(n: number) { return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(d: string) { return new Date(d).toLocaleString(); }
+
+// ── Styles ─────────────────────────────────────────────────────
+const cardS = (extra?: React.CSSProperties): React.CSSProperties => ({
+  background: S2, borderRadius: 16, border: '1px solid rgba(196,160,82,0.1)', padding: '1.5rem', ...extra,
+});
+const thS: React.CSSProperties = { padding: '8px 12px', textAlign: 'left', color: SL, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid rgba(196,160,82,0.08)', whiteSpace: 'nowrap' };
+const tdS: React.CSSProperties = { padding: '10px 12px', fontSize: '0.85rem', color: IV, borderBottom: '1px solid rgba(196,160,82,0.04)' };
+const btnP: React.CSSProperties = { background: `linear-gradient(135deg,${G},#a8873e)`, border: 'none', color: BG, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', fontFamily: 'Inter,sans-serif' };
+const btnD: React.CSSProperties = { background: 'rgba(255,77,79,0.1)', border: '1px solid rgba(255,77,79,0.25)', color: '#ff4d4f', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', fontFamily: 'Inter,sans-serif' };
+const btnG: React.CSSProperties = { background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.18)', color: G, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'Inter,sans-serif' };
+const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box' as const, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(196,160,82,0.18)', borderRadius: 10, padding: '10px 14px', color: IV, fontSize: '0.9rem', outline: 'none', fontFamily: 'Inter,sans-serif' };
+const sel: React.CSSProperties = { ...inp, cursor: 'pointer' };
+
+function Badge({ status }: { status: string }) {
+  const m: Record<string, [string, string]> = {
+    pending: ['rgba(196,160,82,0.12)', G], completed: ['rgba(80,200,120,0.12)', '#50C878'],
+    approved: ['rgba(80,200,120,0.12)', '#50C878'], active: ['rgba(80,200,120,0.12)', '#50C878'],
+    flagged: ['rgba(255,165,0,0.12)', '#FFA500'], failed: ['rgba(255,77,79,0.12)', '#ff4d4f'],
+    rejected: ['rgba(255,77,79,0.12)', '#ff4d4f'], frozen: ['rgba(255,77,79,0.12)', '#ff4d4f'],
+    reversed: ['rgba(162,178,191,0.12)', '#A2B2BF'], cancelled: ['rgba(162,178,191,0.12)', '#A2B2BF'],
+  };
+  const [bg, c] = m[status] ?? ['rgba(162,178,191,0.12)', '#A2B2BF'];
+  return <span style={{ background: bg, color: c, borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>{status}</span>;
+}
+
+function Stat({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
-    <div style={cardStyle()}>
-      <div style={{ fontSize: '0.72rem', color: SL, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>
-        {label}
-      </div>
-      <div style={{ fontSize: '1.9rem', fontWeight: 800, color: color ?? G, letterSpacing: '-0.02em' }}>
-        {value}
-      </div>
-      {sub && <div style={{ fontSize: '0.78rem', color: SL, marginTop: 4 }}>{sub}</div>}
+    <div style={cardS()}>
+      <div style={{ fontSize: '0.7rem', color: SL, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: '1.7rem', fontWeight: 800, color: color ?? G, letterSpacing: '-0.02em' }}>{value}</div>
+      {sub && <div style={{ fontSize: '0.75rem', color: SL, marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
 
-// ── API helper ────────────────────────────────────────────────────────────────
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-async function apiCall(token: string, path: string, method = 'GET', body?: unknown) {
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,9,19,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: S2, borderRadius: 20, border: '1px solid rgba(196,160,82,0.2)', padding: '2rem', width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h3 style={{ margin: 0, color: G, fontWeight: 700 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.3rem' }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
-export default function AdminHome({ user }: { user: { token: string } }) {
+// ══════════════════════════════════════════════════════════════
+// MAIN ADMIN COMPONENT
+// ══════════════════════════════════════════════════════════════
+export default function AdminDashboard({ onLogout, adminName }: { user: { token: string }; onLogout?: () => void; adminName?: string }) {
+  const [data, setData] = useState(loadData);
   const [tab, setTab] = useState<Tab>('overview');
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [checkbooks, setCheckbooks] = useState<Checkbook[]>([]);
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [auditLogs, setAuditLogs] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [search, setSearch] = useState('');
+
+  const [editUser, setEditUser] = useState<User | null>(null);
   const [fundModal, setFundModal] = useState<{ userId: string; mode: 'credit' | 'debit' } | null>(null);
   const [fundAmt, setFundAmt] = useState('');
-  const [showNewUser, setShowNewUser] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'user', balance: '' });
+  const [fundDesc, setFundDesc] = useState('');
+  const [fundDate, setFundDate] = useState('');
+  const [newUserModal, setNewUserModal] = useState(false);
+  const [newTxModal, setNewTxModal] = useState(false);
+  const [editTxModal, setEditTxModal] = useState<Transaction | null>(null);
 
-  const notify = (ok: boolean, msg: string) => {
-    setToast({ ok, msg });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const [nu, setNu] = useState({ name: '', email: '', password: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
+  const [nt, setNt] = useState({ userId: '', type: 'credit' as Transaction['type'], amount: '', currency: 'USD', description: '', status: 'completed', createdAt: '' });
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [u, t, cb, a] = await Promise.all([
-        apiCall(user.token, '/admin/users'),
-        apiCall(user.token, '/transfer'),
-        apiCall(user.token, '/checkbook'),
-        apiCall(user.token, '/admin/analytics'),
-      ]);
-      setUsers(Array.isArray(u) ? u : []);
-      setTransfers(Array.isArray(t) ? t : []);
-      setCheckbooks(Array.isArray(cb) ? cb : []);
-      setAnalytics(a);
-    } catch {
-      notify(false, 'Failed to load data');
-    }
-    setLoading(false);
-  }, [user.token]);
+  const aName = adminName || 'God Admin';
+  const persist = useCallback((d: typeof data) => { setData(d); saveData(d); }, []);
+  const notify = (ok: boolean, msg: string) => { setToast({ ok, msg }); setTimeout(() => setToast(null), 4000); };
 
-  const fetchAudit = useCallback(async () => {
-    try {
-      const logs = await apiCall(user.token, '/admin/audit-logs');
-      setAuditLogs(Array.isArray(logs) ? logs : []);
-    } catch { /* ignore */ }
-  }, [user.token]);
+  const addAudit = useCallback((action: string, target?: string, details?: string) => {
+    const entry: AuditEntry = { id: uid(), timestamp: new Date().toISOString(), action, admin: aName, target, details };
+    setData(prev => { const next = { ...prev, audit: [...prev.audit, entry] }; saveData(next); return next; });
+  }, [aName]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
-  useEffect(() => { if (tab === 'audit') fetchAudit(); }, [tab, fetchAudit]);
-
-  async function approveTransfer(id: string) {
-    try { await apiCall(user.token, `/transfer/${id}/approve`, 'PATCH'); notify(true, 'Transfer approved'); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
-  }
-  async function rejectTransfer(id: string) {
-    const reason = prompt('Reason for rejection (optional):') ?? '';
-    try { await apiCall(user.token, `/transfer/${id}/reject`, 'PATCH', { reason }); notify(true, 'Transfer rejected'); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
+  // ── User Actions ─────────────────────────────────────────────
+  function createUser(e: React.FormEvent) {
+    e.preventDefault();
+    const user: User = {
+      id: uid(), name: nu.name, email: nu.email, role: nu.role,
+      frozen: false, kyc: false, balance: parseFloat(nu.balance) || 0,
+      createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
+      phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
+    };
+    persist({ ...data, users: [...data.users, user] });
+    addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
+    notify(true, `User ${user.name} created`);
+    setNewUserModal(false);
+    setNu({ name: '', email: '', password: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   }
 
-  async function toggleFreeze(id: string, frozen: boolean) {
-    try { await apiCall(user.token, `/admin/users/${id}/${frozen ? 'unfreeze' : 'freeze'}`, 'PATCH'); notify(true, frozen ? 'Account unfrozen' : 'Account frozen'); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
+  function updateUser(updated: User) {
+    persist({ ...data, users: data.users.map(u => u.id === updated.id ? updated : u) });
+    addAudit('user_updated', updated.email, `Name: ${updated.name}, Tier: ${updated.tier}`);
+    notify(true, `User ${updated.name} updated`);
+    setEditUser(null);
   }
-  async function setKyc(id: string, kyc: boolean) {
-    try { await apiCall(user.token, `/admin/users/${id}/kyc`, 'PATCH', { kyc }); notify(true, `KYC ${kyc ? 'verified' : 'unverified'}`); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
+
+  function toggleFreeze(u: User) {
+    persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, frozen: !x.frozen } : x) });
+    addAudit(u.frozen ? 'account_unfrozen' : 'account_frozen', u.email);
+    notify(true, `${u.name} ${u.frozen ? 'unfrozen' : 'frozen'}`);
   }
-  async function handleFund(e: React.FormEvent) {
+
+  function toggleKyc(u: User) {
+    persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, kyc: !x.kyc } : x) });
+    addAudit('kyc_changed', u.email, `KYC: ${!u.kyc}`);
+    notify(true, `${u.name} KYC ${u.kyc ? 'revoked' : 'verified'}`);
+  }
+
+  function changeRole(u: User, role: string) {
+    persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, role } : x) });
+    addAudit('role_changed', u.email, `New role: ${role}`);
+    notify(true, `${u.name} role → ${role}`);
+  }
+
+  function deleteUser(u: User) {
+    if (!confirm(`Permanently delete "${u.name}"? All their transactions will remain for audit.`)) return;
+    persist({ ...data, users: data.users.filter(x => x.id !== u.id) });
+    addAudit('user_deleted', u.email, `Balance at deletion: ${fmtMoney(u.balance)}`);
+    notify(true, `${u.name} deleted`);
+  }
+
+  // ── Fund / Debit ─────────────────────────────────────────────
+  function handleFund(e: React.FormEvent) {
     e.preventDefault();
     if (!fundModal) return;
     const amount = parseFloat(fundAmt);
     if (!amount || amount <= 0) { notify(false, 'Invalid amount'); return; }
-    try {
-      await apiCall(user.token, `/admin/users/${fundModal.userId}/${fundModal.mode === 'credit' ? 'fund' : 'debit'}`, 'PATCH', { amount });
-      notify(true, `Account ${fundModal.mode === 'credit' ? 'credited' : 'debited'} $${amount.toLocaleString()}`);
-      setFundModal(null); setFundAmt(''); fetchAll();
-    } catch (e: unknown) { notify(false, (e as Error).message); }
+    const user = data.users.find(u => u.id === fundModal.userId);
+    if (!user) return;
+    const isCredit = fundModal.mode === 'credit';
+    const newBalance = isCredit ? user.balance + amount : user.balance - amount;
+    const tx: Transaction = {
+      id: uid(), userId: user.id, userName: user.name,
+      type: isCredit ? 'credit' : 'debit', amount, currency: 'USD', status: 'completed',
+      description: fundDesc || (isCredit ? 'Admin credit' : 'Admin debit'),
+      reference: `ADM-${Date.now().toString(36).toUpperCase()}`,
+      createdAt: fundDate ? new Date(fundDate).toISOString() : new Date().toISOString(),
+      processedAt: new Date().toISOString(),
+    };
+    persist({
+      ...data,
+      users: data.users.map(u => u.id === fundModal.userId ? { ...u, balance: newBalance } : u),
+      transactions: [...data.transactions, tx],
+    });
+    addAudit(isCredit ? 'account_credited' : 'account_debited', user.email, `${fmtMoney(amount)} — ${tx.description}${fundDate ? ' (backdated)' : ''}`);
+    notify(true, `${isCredit ? 'Credited' : 'Debited'} ${fmtMoney(amount)} ${isCredit ? 'to' : 'from'} ${user.name}`);
+    setFundModal(null); setFundAmt(''); setFundDesc(''); setFundDate('');
   }
-  async function changeRole(id: string, role: string) {
-    try { await apiCall(user.token, `/admin/users/${id}/role`, 'PATCH', { role }); notify(true, `Role changed to ${role}`); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
-  }
-  async function deleteUser(id: string, name: string) {
-    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
-    try { await apiCall(user.token, `/admin/users/${id}`, 'DELETE'); notify(true, 'User deleted'); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
-  }
-  async function createUser(e: React.FormEvent) {
+
+  // ── Transaction Actions ──────────────────────────────────────
+  function createTransaction(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await apiCall(user.token, '/admin/users', 'POST', { ...newUser, balance: parseFloat(newUser.balance) || 0 });
-      notify(true, 'User created');
-      setShowNewUser(false);
-      setNewUser({ name: '', email: '', password: '', role: 'user', balance: '' });
-      fetchAll();
-    } catch (e: unknown) { notify(false, (e as Error).message); }
+    const user = data.users.find(u => u.id === nt.userId);
+    if (!user) { notify(false, 'Select a user'); return; }
+    const amount = parseFloat(nt.amount);
+    if (!amount || amount <= 0) { notify(false, 'Invalid amount'); return; }
+    const tx: Transaction = {
+      id: uid(), userId: user.id, userName: user.name,
+      type: nt.type, amount, currency: nt.currency, status: nt.status,
+      description: nt.description || 'Manual transaction',
+      reference: `MAN-${Date.now().toString(36).toUpperCase()}`,
+      createdAt: nt.createdAt ? new Date(nt.createdAt).toISOString() : new Date().toISOString(),
+      processedAt: nt.status === 'completed' ? new Date().toISOString() : undefined,
+    };
+    let users = data.users;
+    if (nt.status === 'completed') {
+      const delta = ['credit', 'interest'].includes(nt.type) ? amount : -amount;
+      users = users.map(u => u.id === user.id ? { ...u, balance: u.balance + delta } : u);
+    }
+    persist({ ...data, users, transactions: [...data.transactions, tx] });
+    addAudit('transaction_created', user.email, `${nt.type} ${fmtMoney(amount)}${nt.createdAt ? ' (backdated)' : ''}`);
+    notify(true, `Transaction created for ${user.name}`);
+    setNewTxModal(false);
+    setNt({ userId: '', type: 'credit', amount: '', currency: 'USD', description: '', status: 'completed', createdAt: '' });
   }
 
-  async function approveCheckbook(id: string) {
-    try { await apiCall(user.token, `/checkbook/${id}/approve`, 'PATCH', {}); notify(true, 'Checkbook approved'); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
-  }
-  async function rejectCheckbook(id: string) {
-    const reason = prompt('Reason (optional):') ?? '';
-    try { await apiCall(user.token, `/checkbook/${id}/reject`, 'PATCH', { reason }); notify(true, 'Checkbook rejected'); fetchAll(); }
-    catch (e: unknown) { notify(false, (e as Error).message); }
+  function changeTransactionStatus(tx: Transaction, newStatus: string) {
+    const oldStatus = tx.status;
+    let users = data.users;
+    const user = users.find(u => u.id === tx.userId);
+    if (user) {
+      const delta = ['credit', 'interest'].includes(tx.type) ? tx.amount : -tx.amount;
+      if (oldStatus !== 'completed' && newStatus === 'completed') {
+        users = users.map(u => u.id === tx.userId ? { ...u, balance: u.balance + delta } : u);
+      } else if (oldStatus === 'completed' && newStatus !== 'completed') {
+        users = users.map(u => u.id === tx.userId ? { ...u, balance: u.balance - delta } : u);
+      }
+    }
+    persist({
+      ...data, users,
+      transactions: data.transactions.map(t => t.id === tx.id ? { ...t, status: newStatus, processedAt: newStatus === 'completed' ? new Date().toISOString() : t.processedAt } : t),
+    });
+    addAudit('tx_status_changed', tx.userName, `${tx.reference}: ${oldStatus} → ${newStatus}`);
+    notify(true, `${tx.reference} → ${newStatus}`);
   }
 
-  const pendingTransfers = transfers.filter(t => t.status === 'pending');
-  const pendingCheckbooks = checkbooks.filter(c => c.status === 'pending');
+  function updateTransaction(updated: Transaction) {
+    persist({ ...data, transactions: data.transactions.map(t => t.id === updated.id ? updated : t) });
+    addAudit('transaction_edited', updated.userName, `${updated.reference} edited`);
+    notify(true, `Transaction ${updated.reference} updated`);
+    setEditTxModal(null);
+  }
 
-  const tabDef: { id: Tab; label: string; badge?: number }[] = [
-    { id: 'overview',   label: '⚡ Overview' },
-    { id: 'transfers',  label: '⇄ Transfers',  badge: pendingTransfers.length },
-    { id: 'users',      label: '👥 Users' },
-    { id: 'checkbooks', label: '📋 Checkbooks', badge: pendingCheckbooks.length },
-    { id: 'audit',      label: '🔍 Audit Log' },
+  function deleteTransaction(tx: Transaction) {
+    if (!confirm(`Delete transaction ${tx.reference}?`)) return;
+    persist({ ...data, transactions: data.transactions.filter(t => t.id !== tx.id) });
+    addAudit('transaction_deleted', tx.userName, `${tx.reference} — ${fmtMoney(tx.amount)}`);
+    notify(true, 'Transaction deleted');
+  }
+
+  // ── Computed ─────────────────────────────────────────────────
+  const q = search.toLowerCase();
+  const filteredUsers = data.users.filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  const filteredTx = data.transactions.filter(t => !q || t.userName.toLowerCase().includes(q) || t.reference.toLowerCase().includes(q) || t.description.toLowerCase().includes(q));
+  const pending = data.transactions.filter(t => t.status === 'pending');
+  const flagged = data.transactions.filter(t => t.status === 'flagged');
+  const totalBalance = data.users.reduce((s, u) => s + u.balance, 0);
+
+  const tabs: { id: Tab; label: string; badge?: number }[] = [
+    { id: 'overview', label: '⚡ Overview' },
+    { id: 'users', label: '👥 Users', badge: data.users.length },
+    { id: 'transactions', label: '⇄ Transactions', badge: pending.length + flagged.length || undefined },
+    { id: 'funding', label: '💰 Fund & Backdate' },
+    { id: 'audit', label: '📋 Audit Log', badge: data.audit.length },
   ];
 
   return (
-    <main style={{ background: BG, minHeight: '100vh', color: IV, fontFamily: 'Inter, sans-serif' }}>
-
+    <main style={{ background: BG, minHeight: '100vh', color: IV, fontFamily: 'Inter, -apple-system, sans-serif' }}>
       {toast && (
-        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, background: toast.ok ? 'rgba(80,200,120,0.12)' : 'rgba(255,77,79,0.12)', border: `1px solid ${toast.ok ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: toast.ok ? '#50C878' : '#ff4d4f', padding: '12px 20px', borderRadius: 12, fontWeight: 600, fontSize: '0.9rem', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
+        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, background: toast.ok ? 'rgba(80,200,120,0.12)' : 'rgba(255,77,79,0.12)', border: `1px solid ${toast.ok ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: toast.ok ? '#50C878' : '#ff4d4f', padding: '12px 20px', borderRadius: 12, fontWeight: 600, fontSize: '0.88rem', boxShadow: '0 4px 20px rgba(0,0,0,0.4)', maxWidth: '90vw' }}>
           {toast.ok ? '✓ ' : '✗ '}{toast.msg}
         </div>
       )}
 
       {/* Header */}
-      <div style={{ background: 'linear-gradient(180deg,#0a1020 0%,#060913 100%)', borderBottom: '1px solid rgba(196,160,82,0.08)', padding: '1.5rem 2rem' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(196,160,82,0.1)', border: '1px solid rgba(196,160,82,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>⚡</div>
-              <h1 style={{ color: G, fontWeight: 800, fontSize: '1.6rem', margin: 0, letterSpacing: '-0.02em' }}>Londway God Mode</h1>
+      <div style={{ background: 'linear-gradient(180deg,#0a1020 0%,#060913 100%)', borderBottom: '1px solid rgba(196,160,82,0.08)', padding: '1.2rem 1.5rem' }}>
+        <div style={{ maxWidth: 1300, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(196,160,82,0.08)', border: '1px solid rgba(196,160,82,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>⚡</div>
+            <div>
+              <h1 style={{ color: G, fontWeight: 800, fontSize: 'clamp(1rem,3vw,1.4rem)', margin: 0 }}>LONDWAY GOD MODE</h1>
+              <p style={{ color: SL, fontSize: '0.72rem', margin: 0 }}>Full control · {aName}</p>
             </div>
-            <p style={{ color: SL, fontSize: '0.8rem', margin: 0 }}>Full administrative control · All operations logged</p>
           </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            {pendingTransfers.length > 0 && (
-              <div style={{ background: 'rgba(196,160,82,0.1)', border: '1px solid rgba(196,160,82,0.2)', borderRadius: 8, padding: '6px 12px', fontSize: '0.78rem', color: G, fontWeight: 700 }}>
-                {pendingTransfers.length} pending transfer{pendingTransfers.length !== 1 ? 's' : ''}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {(pending.length > 0 || flagged.length > 0) && (
+              <div style={{ background: 'rgba(196,160,82,0.1)', border: '1px solid rgba(196,160,82,0.2)', borderRadius: 8, padding: '6px 12px', fontSize: '0.75rem', color: G, fontWeight: 700 }}>
+                {pending.length} pending · {flagged.length} flagged
               </div>
             )}
-            <button onClick={fetchAll} style={{ ...btnGhost, padding: '8px 16px' }}>↻ Refresh</button>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." style={{ ...inp, width: 180, padding: '7px 12px', fontSize: '0.8rem' }} />
+            {onLogout && <button onClick={onLogout} style={{ ...btnD, padding: '7px 14px' }}>Logout</button>}
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 2rem' }}>
-
-        {/* Tab bar */}
+      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '1.2rem 1.5rem' }}>
+        {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: 14, padding: 4, border: '1px solid rgba(196,160,82,0.07)', overflowX: 'auto' }}>
-          {tabDef.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ position: 'relative', flex: '0 0 auto', padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: tab === t.id ? 700 : 500, fontFamily: 'Inter, sans-serif', fontSize: '0.88rem', transition: 'all 0.2s', background: tab === t.id ? `linear-gradient(135deg,${G},#a8873e)` : 'transparent', color: tab === t.id ? BG : SL, whiteSpace: 'nowrap' }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              position: 'relative', flex: '0 0 auto', padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              fontWeight: tab === t.id ? 700 : 500, fontFamily: 'Inter,sans-serif', fontSize: '0.85rem',
+              background: tab === t.id ? `linear-gradient(135deg,${G},#a8873e)` : 'transparent',
+              color: tab === t.id ? BG : SL, whiteSpace: 'nowrap', transition: 'all 0.15s',
+            }}>
               {t.label}
-              {!!t.badge && <span style={{ position: 'absolute', top: 2, right: 4, background: '#ff4d4f', color: '#fff', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800 }}>{t.badge}</span>}
+              {!!t.badge && <span style={{ marginLeft: 6, background: tab === t.id ? 'rgba(0,0,0,0.2)' : 'rgba(196,160,82,0.15)', color: tab === t.id ? '#fff' : G, borderRadius: 12, padding: '1px 7px', fontSize: '0.65rem', fontWeight: 800 }}>{t.badge}</span>}
             </button>
           ))}
         </div>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', color: G, padding: '4rem', fontSize: '1.1rem' }}>Loading...</div>
-        ) : (
+        {/* ═══ OVERVIEW ═══ */}
+        {tab === 'overview' && (
           <>
-            {/* OVERVIEW */}
-            {tab === 'overview' && analytics && (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <StatCard label="Total Users" value={analytics.totalUsers} sub={`${analytics.createdLast30d} new this month`} />
-                  <StatCard label="Assets Under Management" value={`$${analytics.totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
-                  <StatCard label="Pending Actions" value={pendingTransfers.length + pendingCheckbooks.length} sub={`${pendingTransfers.length} transfers · ${pendingCheckbooks.length} checkbooks`} color={pendingTransfers.length > 0 ? G : '#50C878'} />
-                  <StatCard label="Frozen Accounts" value={analytics.frozenAccounts} color={analytics.frozenAccounts > 0 ? '#ff4d4f' : '#50C878'} />
-                  <StatCard label="KYC Verified" value={analytics.kycVerified} sub={`of ${analytics.totalUsers} users`} color="#50C878" />
-                  <StatCard label="Admin Accounts" value={analytics.admins} color="#A2B2BF" />
-                </div>
-
-                {pendingTransfers.length > 0 && (
-                  <div style={cardStyle({ marginBottom: '1.5rem' })}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                      <h3 style={{ margin: 0, color: G, fontWeight: 700, fontSize: '0.95rem' }}>🔔 TRANSFERS AWAITING APPROVAL</h3>
-                      <button style={btnGhost} onClick={() => setTab('transfers')}>View All →</button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <Stat label="Total Clients" value={data.users.length} sub={`${data.users.filter(u => !u.frozen).length} active`} />
+              <Stat label="AUM" value={fmtMoney(totalBalance)} />
+              <Stat label="Pending" value={pending.length + flagged.length} sub={`${pending.length} pending · ${flagged.length} flagged`} color={pending.length > 0 ? G : '#50C878'} />
+              <Stat label="Frozen" value={data.users.filter(u => u.frozen).length} color={data.users.some(u => u.frozen) ? '#ff4d4f' : '#50C878'} />
+              <Stat label="KYC Verified" value={data.users.filter(u => u.kyc).length} sub={`of ${data.users.length}`} color="#50C878" />
+              <Stat label="Transactions" value={data.transactions.length} color="#A2B2BF" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: '1.5rem' }}>
+              {[
+                { label: '+ Create User', action: () => setNewUserModal(true), c: G },
+                { label: '+ New Transaction', action: () => setNewTxModal(true), c: '#50C878' },
+                { label: '👥 Manage Users', action: () => setTab('users'), c: '#A2B2BF' },
+                { label: '💰 Fund Account', action: () => setTab('funding'), c: G },
+              ].map(a => (
+                <button key={a.label} onClick={a.action} style={{
+                  background: `${a.c}10`, border: `1px solid ${a.c}30`, borderRadius: 12,
+                  padding: '1rem', cursor: 'pointer', color: a.c, fontWeight: 700,
+                  fontSize: '0.88rem', fontFamily: 'Inter,sans-serif', transition: 'all 0.15s', textAlign: 'center',
+                }}>{a.label}</button>
+              ))}
+            </div>
+            {pending.length > 0 && (
+              <div style={cardS({ marginBottom: '1.5rem' })}>
+                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.9rem' }}>🔔 PENDING APPROVAL</h3>
+                {pending.slice(0, 5).map(tx => (
+                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <span style={{ color: IV, fontWeight: 600 }}>{tx.userName}</span>
+                      <span style={{ marginLeft: 8, color: SL, fontSize: '0.78rem' }}>{tx.reference} · {tx.type}</span>
+                      <div style={{ color: SL, fontSize: '0.75rem', marginTop: 2 }}>{tx.description}</div>
                     </div>
-                    {pendingTransfers.slice(0, 3).map(tx => (
-                      <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)' }}>
-                        <div>
-                          <span style={{ color: IV, fontWeight: 600 }}>{tx.recipientName || tx.toAccountId}</span>
-                          <span style={{ marginLeft: 10, background: 'rgba(162,178,191,0.1)', color: '#A2B2BF', borderRadius: 4, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span>
-                          <div style={{ color: SL, fontSize: '0.78rem', marginTop: 2 }}>{tx.reference} · {new Date(tx.createdAt).toLocaleDateString()}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <span style={{ color: G, fontWeight: 800 }}>{tx.currency} {tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          <button style={btnPrimary} onClick={() => approveTransfer(tx.id)}>✓ Approve</button>
-                          <button style={btnDanger} onClick={() => rejectTransfer(tx.id)}>✕ Reject</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {pendingCheckbooks.length > 0 && (
-                  <div style={cardStyle()}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                      <h3 style={{ margin: 0, color: G, fontWeight: 700, fontSize: '0.95rem' }}>📋 CHECKBOOKS AWAITING APPROVAL</h3>
-                      <button style={btnGhost} onClick={() => setTab('checkbooks')}>View All →</button>
-                    </div>
-                    {pendingCheckbooks.slice(0, 3).map(cb => (
-                      <div key={cb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)' }}>
-                        <div>
-                          <span style={{ color: IV, fontWeight: 600 }}>{cb.userName}</span>
-                          <div style={{ color: SL, fontSize: '0.78rem', marginTop: 2 }}>{cb.userEmail} · {new Date(cb.requestedAt).toLocaleDateString()}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button style={btnPrimary} onClick={() => approveCheckbook(cb.id)}>✓ Approve</button>
-                          <button style={btnDanger} onClick={() => rejectCheckbook(cb.id)}>✕ Reject</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* TRANSFERS */}
-            {tab === 'transfers' && (
-              <div style={cardStyle()}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                  <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>All Transfers</h2>
-                  <span style={{ background: 'rgba(196,160,82,0.1)', color: G, borderRadius: 8, padding: '4px 12px', fontSize: '0.8rem', fontWeight: 700 }}>{pendingTransfers.length} pending</span>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr>{['Reference','Recipient','Type','Amount','Description','Date','Status','Actions'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {transfers.length === 0 ? (
-                        <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: SL, padding: '2rem' }}>No transfers</td></tr>
-                      ) : transfers.map(tx => (
-                        <tr key={tx.id}>
-                          <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '0.75rem', color: G }}>{tx.reference}</td>
-                          <td style={tdStyle}>
-                            <div style={{ fontWeight: 600 }}>{tx.recipientName || tx.toAccountId}</div>
-                            {tx.country && <div style={{ color: SL, fontSize: '0.75rem' }}>{tx.country}</div>}
-                          </td>
-                          <td style={tdStyle}>
-                            <span style={{ background: tx.type === 'international' ? 'rgba(162,178,191,0.1)' : 'rgba(196,160,82,0.08)', color: tx.type === 'international' ? '#A2B2BF' : G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span>
-                          </td>
-                          <td style={{ ...tdStyle, fontWeight: 700 }}>{tx.currency} {tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td style={{ ...tdStyle, color: SL, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</td>
-                          <td style={{ ...tdStyle, color: SL }}>{new Date(tx.createdAt).toLocaleDateString()}</td>
-                          <td style={tdStyle}><Badge status={tx.status} /></td>
-                          <td style={tdStyle}>
-                            {tx.status === 'pending' && (
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <button style={btnPrimary} onClick={() => approveTransfer(tx.id)}>✓</button>
-                                <button style={btnDanger} onClick={() => rejectTransfer(tx.id)}>✕</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* USERS */}
-            {tab === 'users' && (
-              <div style={cardStyle()}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                  <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>User Management</h2>
-                  <button onClick={() => setShowNewUser(v => !v)} style={{ ...btnPrimary, padding: '8px 16px', fontSize: '0.85rem' }}>{showNewUser ? '✕ Cancel' : '+ Add User'}</button>
-                </div>
-
-                {showNewUser && (
-                  <form onSubmit={createUser} style={{ background: 'rgba(196,160,82,0.04)', border: '1px solid rgba(196,160,82,0.13)', borderRadius: 12, padding: '1.2rem', marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-                    {(['name','email','password'] as const).map(f => (
-                      <input key={f} required style={inputStyle} placeholder={f.charAt(0).toUpperCase()+f.slice(1)} value={newUser[f]} onChange={e => setNewUser(u => ({ ...u, [f]: e.target.value }))} type={f === 'password' ? 'password' : 'text'} />
-                    ))}
-                    <select style={inputStyle} value={newUser.role} onChange={e => setNewUser(u => ({ ...u, role: e.target.value }))}>
-                      {['user','admin','auditor','support'].map(r => <option key={r}>{r}</option>)}
-                    </select>
-                    <input style={inputStyle} type="number" min="0" step="0.01" placeholder="Initial Balance" value={newUser.balance} onChange={e => setNewUser(u => ({ ...u, balance: e.target.value }))} />
-                    <button type="submit" style={{ ...btnPrimary, padding: '10px' }}>Create User</button>
-                  </form>
-                )}
-
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr>{['Name','Email','Role','Balance','KYC','Status','Actions'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {users.map(u => (
-                        <tr key={u.id}>
-                          <td style={{ ...tdStyle, fontWeight: 600 }}>{u.name}</td>
-                          <td style={{ ...tdStyle, color: SL }}>{u.email}</td>
-                          <td style={tdStyle}>
-                            <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} style={{ background: S2, border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 8px', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                              {['user','admin','auditor','support'].map(r => <option key={r}>{r}</option>)}
-                            </select>
-                          </td>
-                          <td style={{ ...tdStyle, color: G, fontWeight: 700 }}>${u.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td style={tdStyle}>
-                            <button onClick={() => setKyc(u.id, !u.kyc)} style={{ background: u.kyc ? 'rgba(80,200,120,0.1)' : 'rgba(255,77,79,0.1)', border: `1px solid ${u.kyc ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: u.kyc ? '#50C878' : '#ff4d4f', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'Inter, sans-serif' }}>
-                              {u.kyc ? '✓ Verified' : '✗ Unverified'}
-                            </button>
-                          </td>
-                          <td style={tdStyle}><Badge status={u.frozen ? 'frozen' : 'active_user'} /></td>
-                          <td style={tdStyle}>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              <button style={btnPrimary} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); }}>+ Credit</button>
-                              <button style={btnGhost} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); }}>− Debit</button>
-                              <button style={{ ...btnGhost, color: u.frozen ? '#50C878' : '#ff4d4f', border: `1px solid ${u.frozen ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, background: u.frozen ? 'rgba(80,200,120,0.07)' : 'rgba(255,77,79,0.07)' }} onClick={() => toggleFreeze(u.id, u.frozen)}>
-                                {u.frozen ? '🔓 Unfreeze' : '🔒 Freeze'}
-                              </button>
-                              <button style={btnDanger} onClick={() => deleteUser(u.id, u.name)}>🗑</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* CHECKBOOKS */}
-            {tab === 'checkbooks' && (
-              <div style={cardStyle()}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                  <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>Checkbook Requests</h2>
-                  <span style={{ background: 'rgba(196,160,82,0.1)', color: G, borderRadius: 8, padding: '4px 12px', fontSize: '0.8rem', fontWeight: 700 }}>{pendingCheckbooks.length} pending</span>
-                </div>
-                {checkbooks.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: SL, padding: '2rem' }}>No checkbook requests</div>
-                ) : checkbooks.map(cb => (
-                  <div key={cb.id} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(196,160,82,0.07)', padding: '1.2rem', marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, color: IV }}>{cb.userName}</div>
-                        <div style={{ color: SL, fontSize: '0.8rem' }}>{cb.userEmail} · Requested {new Date(cb.requestedAt).toLocaleDateString()}</div>
-                        {cb.deliveryAddress && <div style={{ color: SL, fontSize: '0.78rem', marginTop: 3 }}>📮 {cb.deliveryAddress}</div>}
-                        {cb.checkStart && <div style={{ color: G, fontSize: '0.8rem', marginTop: 3, fontWeight: 600 }}>Checks #{cb.checkStart}–{cb.checkEnd} · {cb.checks.filter(c => c.status === 'unused').length} unused</div>}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <Badge status={cb.status} />
-                        {cb.status === 'pending' && (
-                          <>
-                            <button style={btnPrimary} onClick={() => approveCheckbook(cb.id)}>✓ Approve</button>
-                            <button style={btnDanger} onClick={() => rejectCheckbook(cb.id)}>✕ Reject</button>
-                          </>
-                        )}
-                      </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ color: G, fontWeight: 800 }}>{fmtMoney(tx.amount)}</span>
+                      <button style={btnP} onClick={() => changeTransactionStatus(tx, 'completed')}>✓ Approve</button>
+                      <button style={btnD} onClick={() => changeTransactionStatus(tx, 'rejected')}>✕ Reject</button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </>
+        )}
 
-            {/* AUDIT LOG */}
-            {tab === 'audit' && (
-              <div style={cardStyle()}>
-                <h2 style={{ margin: '0 0 18px', color: IV, fontWeight: 700, fontSize: '1rem' }}>Audit Log</h2>
-                {auditLogs.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: SL, padding: '2rem' }}>No audit events yet</div>
-                ) : (
-                  <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                    {[...auditLogs].reverse().map((log, i) => {
-                      const isHigh = log.includes('[account_frozen]') || log.includes('[user_deleted]') || log.includes('[debited]');
-                      return (
-                        <div key={i} style={{ padding: '8px 12px', borderBottom: '1px solid rgba(196,160,82,0.05)', fontFamily: 'monospace', fontSize: '0.78rem', color: isHigh ? '#ff4d4f' : '#A2B2BF' }}>
-                          {log}
+        {/* ═══ USERS ═══ */}
+        {tab === 'users' && (
+          <div style={cardS()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>User Management ({filteredUsers.length})</h2>
+              <button onClick={() => setNewUserModal(true)} style={{ ...btnP, padding: '8px 16px', fontSize: '0.85rem' }}>+ Add User</button>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                <thead><tr>{['Name','Email','Role','Tier','Balance','KYC','Status','Since','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {filteredUsers.map(u => (
+                    <tr key={u.id}>
+                      <td style={{ ...tdS, fontWeight: 600 }}>{u.name}</td>
+                      <td style={{ ...tdS, color: SL, fontSize: '0.8rem' }}>{u.email}</td>
+                      <td style={tdS}>
+                        <select value={u.role} onChange={e => changeRole(u, e.target.value)} style={{ background: S2, border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 8px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                          {['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}
+                        </select>
+                      </td>
+                      <td style={{ ...tdS, color: G, fontSize: '0.8rem', fontWeight: 600 }}>{u.tier || 'Standard'}</td>
+                      <td style={{ ...tdS, color: G, fontWeight: 700 }}>{fmtMoney(u.balance)}</td>
+                      <td style={tdS}>
+                        <button onClick={() => toggleKyc(u)} style={{ background: u.kyc ? 'rgba(80,200,120,0.1)' : 'rgba(255,77,79,0.1)', border: `1px solid ${u.kyc ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: u.kyc ? '#50C878' : '#ff4d4f', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>{u.kyc ? '✓ Verified' : '✗ Unverified'}</button>
+                      </td>
+                      <td style={tdS}><Badge status={u.frozen ? 'frozen' : 'active'} /></td>
+                      <td style={{ ...tdS, color: SL, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                      <td style={tdS}>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          <button style={btnP} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>+ Credit</button>
+                          <button style={btnG} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>− Debit</button>
+                          <button style={btnG} onClick={() => setEditUser(u)}>✏</button>
+                          <button style={{ ...btnG, color: u.frozen ? '#50C878' : '#ff4d4f', borderColor: u.frozen ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)' }} onClick={() => toggleFreeze(u)}>{u.frozen ? '🔓' : '🔒'}</button>
+                          <button style={btnD} onClick={() => deleteUser(u)}>🗑</button>
                         </div>
-                      );
-                    })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TRANSACTIONS ═══ */}
+        {tab === 'transactions' && (
+          <div style={cardS()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>All Transactions ({filteredTx.length})</h2>
+              <button onClick={() => setNewTxModal(true)} style={{ ...btnP, padding: '8px 16px', fontSize: '0.85rem' }}>+ Create Transaction</button>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                <thead><tr>{['Ref','User','Type','Amount','Description','Date','Status','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {filteredTx.length === 0 ? (
+                    <tr><td colSpan={8} style={{ ...tdS, textAlign: 'center', color: SL, padding: '2rem' }}>No transactions</td></tr>
+                  ) : [...filteredTx].reverse().map(tx => (
+                    <tr key={tx.id}>
+                      <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{tx.reference}</td>
+                      <td style={{ ...tdS, fontWeight: 600 }}>{tx.userName}</td>
+                      <td style={tdS}><span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
+                      <td style={{ ...tdS, fontWeight: 700, color: ['credit','interest'].includes(tx.type) ? '#50C878' : '#ff7875' }}>
+                        {['credit','interest'].includes(tx.type) ? '+' : '-'}{fmtMoney(tx.amount)}
+                      </td>
+                      <td style={{ ...tdS, color: SL, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</td>
+                      <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(tx.createdAt)}</td>
+                      <td style={tdS}>
+                        <select value={tx.status} onChange={e => changeTransactionStatus(tx, e.target.value)} style={{ background: S2, border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 8px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                          {['pending','completed','approved','flagged','rejected','failed','reversed','cancelled'].map(s => <option key={s}>{s}</option>)}
+                        </select>
+                      </td>
+                      <td style={tdS}>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button style={btnG} onClick={() => setEditTxModal(tx)}>✏</button>
+                          {tx.status === 'pending' && <button style={btnP} onClick={() => changeTransactionStatus(tx, 'completed')}>✓</button>}
+                          <button style={btnD} onClick={() => deleteTransaction(tx)}>🗑</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ FUNDING ═══ */}
+        {tab === 'funding' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
+            <div style={cardS()}>
+              <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>💰 Quick Fund / Debit</h2>
+              <p style={{ color: SL, fontSize: '0.82rem', lineHeight: 1.7, marginBottom: 20 }}>Credit or debit any account. Backdate optional.</p>
+              <div style={{ display: 'grid', gap: 12 }}>
+                {data.users.map(u => (
+                  <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(196,160,82,0.06)', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.name}</div>
+                      <div style={{ color: SL, fontSize: '0.75rem' }}>{fmtMoney(u.balance)}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button style={btnP} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>+ Credit</button>
+                      <button style={btnG} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>− Debit</button>
+                    </div>
                   </div>
-                )}
+                ))}
+              </div>
+            </div>
+            <div style={cardS()}>
+              <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>🕐 Backdate Account Creation</h2>
+              <p style={{ color: SL, fontSize: '0.82rem', lineHeight: 1.7, marginBottom: 20 }}>Change when an account was created.</p>
+              <div style={{ display: 'grid', gap: 12 }}>
+                {data.users.map(u => (
+                  <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(196,160,82,0.06)', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.name}</div>
+                      <div style={{ color: SL, fontSize: '0.75rem' }}>Created: {fmtDate(u.createdAt)}</div>
+                    </div>
+                    <input type="datetime-local" defaultValue={u.createdAt.slice(0, 16)}
+                      onBlur={e => {
+                        if (!e.target.value) return;
+                        const nd = new Date(e.target.value).toISOString();
+                        if (nd === u.createdAt) return;
+                        persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, createdAt: nd } : x) });
+                        addAudit('account_backdated', u.email, `New date: ${fmtDate(nd)}`);
+                        notify(true, `${u.name} creation date updated`);
+                      }}
+                      style={{ ...inp, width: 200, padding: '6px 10px', fontSize: '0.8rem' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ AUDIT ═══ */}
+        {tab === 'audit' && (
+          <div style={cardS()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>Audit Log ({data.audit.length})</h2>
+              <button onClick={() => { if (confirm('Clear all audit logs?')) persist({ ...data, audit: [] }); }} style={btnD}>Clear</button>
+            </div>
+            {data.audit.length === 0 ? (
+              <div style={{ textAlign: 'center', color: SL, padding: '2rem' }}>No audit events</div>
+            ) : (
+              <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+                {[...data.audit].reverse().map(a => {
+                  const hi = a.action.includes('frozen') || a.action.includes('deleted') || a.action.includes('debit');
+                  return (
+                    <div key={a.id} style={{ padding: '10px 14px', borderBottom: '1px solid rgba(196,160,82,0.05)', display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div style={{ color: SL, fontSize: '0.72rem', whiteSpace: 'nowrap', minWidth: 130, fontFamily: 'monospace' }}>{fmtDate(a.timestamp)}</div>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <span style={{ color: hi ? '#ff7875' : G, fontWeight: 700, fontSize: '0.8rem' }}>[{a.action}]</span>
+                        {a.target && <span style={{ color: IV, fontSize: '0.8rem', marginLeft: 8 }}>{a.target}</span>}
+                        {a.details && <div style={{ color: SL, fontSize: '0.75rem', marginTop: 2 }}>{a.details}</div>}
+                        <div style={{ color: 'rgba(162,178,191,0.5)', fontSize: '0.7rem', marginTop: 2 }}>by {a.admin}</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
-      {/* Fund/Debit Modal */}
-      {fundModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,9,19,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: S2, borderRadius: 20, border: '1px solid rgba(196,160,82,0.2)', padding: '2rem', width: '100%', maxWidth: 360 }}>
-            <h3 style={{ margin: '0 0 16px', color: G, fontWeight: 700 }}>{fundModal.mode === 'credit' ? '+ Credit Account' : '− Debit Account'}</h3>
-            <form onSubmit={handleFund}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', color: '#A2B2BF', fontSize: '0.73rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Amount (USD)</label>
-                <input style={inputStyle} type="number" min="0.01" step="0.01" value={fundAmt} onChange={e => setFundAmt(e.target.value)} placeholder="0.00" required autoFocus />
-              </div>
+      {/* ═══ MODALS ═══ */}
+
+      {fundModal && (() => {
+        const user = data.users.find(u => u.id === fundModal.userId);
+        return (
+          <Modal title={`${fundModal.mode === 'credit' ? '+ Credit' : '− Debit'} ${user?.name ?? ''}`} onClose={() => setFundModal(null)}>
+            <form onSubmit={handleFund} style={{ display: 'grid', gap: 14 }}>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Amount (USD)</label>
+                <input style={inp} type="number" min="0.01" step="0.01" value={fundAmt} onChange={e => setFundAmt(e.target.value)} placeholder="0.00" required autoFocus /></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
+                <input style={inp} value={fundDesc} onChange={e => setFundDesc(e.target.value)} placeholder="Wire deposit, correction..." /></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate (optional)</label>
+                <input style={inp} type="datetime-local" value={fundDate} onChange={e => setFundDate(e.target.value)} />
+                <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Leave empty for now</div></div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button type="button" onClick={() => setFundModal(null)} style={{ flex: 1, background: 'transparent', border: '1px solid rgba(196,160,82,0.2)', color: '#A2B2BF', borderRadius: 10, padding: '10px', cursor: 'pointer', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, background: fundModal.mode === 'credit' ? 'linear-gradient(135deg,#50C878,#3aae60)' : 'linear-gradient(135deg,#ff4d4f,#dd3e3e)', border: 'none', color: '#fff', borderRadius: 10, padding: '10px', cursor: 'pointer', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
-                  {fundModal.mode === 'credit' ? `Credit $${(parseFloat(fundAmt)||0).toLocaleString()}` : `Debit $${(parseFloat(fundAmt)||0).toLocaleString()}`}
+                <button type="button" onClick={() => setFundModal(null)} style={{ ...btnG, flex: 1, padding: '10px' }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, border: 'none', borderRadius: 10, padding: '10px', cursor: 'pointer', fontWeight: 700, fontFamily: 'Inter,sans-serif', background: fundModal.mode === 'credit' ? 'linear-gradient(135deg,#50C878,#3aae60)' : 'linear-gradient(135deg,#ff4d4f,#dd3e3e)', color: '#fff' }}>
+                  {fundModal.mode === 'credit' ? 'Credit' : 'Debit'} Account
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </Modal>
+        );
+      })()}
+
+      {newUserModal && (
+        <Modal title="+ Create New User" onClose={() => setNewUserModal(false)}>
+          <form onSubmit={createUser} style={{ display: 'grid', gap: 12 }}>
+            {[
+              { l: 'Full Name', k: 'name', t: 'text', r: true },
+              { l: 'Email', k: 'email', t: 'email', r: true },
+              { l: 'Password', k: 'password', t: 'password', r: true },
+              { l: 'Phone', k: 'phone', t: 'text' },
+              { l: 'Address', k: 'address', t: 'text' },
+              { l: 'Initial Balance', k: 'balance', t: 'number' },
+            ].map(f => (
+              <div key={f.k}><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>{f.l}</label>
+                <input style={inp} type={f.t} required={f.r} value={(nu as Record<string,string>)[f.k]} onChange={e => setNu(p => ({ ...p, [f.k]: e.target.value }))} /></div>
+            ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Role</label>
+                <select style={sel} value={nu.role} onChange={e => setNu(p => ({ ...p, role: e.target.value }))}>{['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Tier</label>
+                <select style={sel} value={nu.tier} onChange={e => setNu(p => ({ ...p, tier: e.target.value }))}>{['Standard','Silver','Gold','Platinum','Black'].map(t => <option key={t}>{t}</option>)}</select></div>
+            </div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate Creation (optional)</label>
+              <input style={inp} type="datetime-local" value={nu.createdAt} onChange={e => setNu(p => ({ ...p, createdAt: e.target.value }))} /></div>
+            <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Create User</button>
+          </form>
+        </Modal>
+      )}
+
+      {editUser && (
+        <Modal title={`Edit: ${editUser.name}`} onClose={() => setEditUser(null)}>
+          <form onSubmit={e => { e.preventDefault(); updateUser(editUser); }} style={{ display: 'grid', gap: 12 }}>
+            {[
+              { l: 'Name', k: 'name' }, { l: 'Email', k: 'email' }, { l: 'Phone', k: 'phone' },
+              { l: 'Address', k: 'address' }, { l: 'Balance', k: 'balance', t: 'number' },
+            ].map(f => (
+              <div key={f.k}><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>{f.l}</label>
+                <input style={inp} type={f.t || 'text'} value={(editUser as Record<string,any>)[f.k] ?? ''} onChange={e => setEditUser(p => p ? { ...p, [f.k]: f.t === 'number' ? parseFloat(e.target.value) || 0 : e.target.value } : null)} /></div>
+            ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Role</label>
+                <select style={sel} value={editUser.role} onChange={e => setEditUser(p => p ? { ...p, role: e.target.value } : null)}>{['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Tier</label>
+                <select style={sel} value={editUser.tier || 'Standard'} onChange={e => setEditUser(p => p ? { ...p, tier: e.target.value } : null)}>{['Standard','Silver','Gold','Platinum','Black'].map(t => <option key={t}>{t}</option>)}</select></div>
+            </div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Created Date</label>
+              <input style={inp} type="datetime-local" value={editUser.createdAt.slice(0, 16)} onChange={e => setEditUser(p => p ? { ...p, createdAt: new Date(e.target.value).toISOString() } : null)} /></div>
+            <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Save Changes</button>
+          </form>
+        </Modal>
+      )}
+
+      {newTxModal && (
+        <Modal title="+ Create Transaction" onClose={() => setNewTxModal(false)}>
+          <form onSubmit={createTransaction} style={{ display: 'grid', gap: 12 }}>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>User</label>
+              <select style={sel} value={nt.userId} onChange={e => setNt(p => ({ ...p, userId: e.target.value }))} required>
+                <option value="">Select user...</option>
+                {data.users.map(u => <option key={u.id} value={u.id}>{u.name} — {fmtMoney(u.balance)}</option>)}
+              </select></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Type</label>
+                <select style={sel} value={nt.type} onChange={e => setNt(p => ({ ...p, type: e.target.value as Transaction['type'] }))}>{['credit','debit','transfer','wire','fee','interest','reversal'].map(t => <option key={t}>{t}</option>)}</select></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Status</label>
+                <select style={sel} value={nt.status} onChange={e => setNt(p => ({ ...p, status: e.target.value }))}>{['pending','completed','approved','flagged','rejected','failed'].map(s => <option key={s}>{s}</option>)}</select></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Amount</label>
+                <input style={inp} type="number" min="0.01" step="0.01" value={nt.amount} onChange={e => setNt(p => ({ ...p, amount: e.target.value }))} required /></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Currency</label>
+                <select style={sel} value={nt.currency} onChange={e => setNt(p => ({ ...p, currency: e.target.value }))}>{['USD','EUR','GBP','CHF','JPY','AED'].map(c => <option key={c}>{c}</option>)}</select></div>
+            </div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
+              <input style={inp} value={nt.description} onChange={e => setNt(p => ({ ...p, description: e.target.value }))} placeholder="Wire deposit, card purchase..." /></div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate (optional)</label>
+              <input style={inp} type="datetime-local" value={nt.createdAt} onChange={e => setNt(p => ({ ...p, createdAt: e.target.value }))} /></div>
+            <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Create Transaction</button>
+          </form>
+        </Modal>
+      )}
+
+      {editTxModal && (
+        <Modal title={`Edit: ${editTxModal.reference}`} onClose={() => setEditTxModal(null)}>
+          <form onSubmit={e => { e.preventDefault(); updateTransaction(editTxModal); }} style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Type</label>
+                <select style={sel} value={editTxModal.type} onChange={e => setEditTxModal(p => p ? { ...p, type: e.target.value as Transaction['type'] } : null)}>{['credit','debit','transfer','wire','fee','interest','reversal'].map(t => <option key={t}>{t}</option>)}</select></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Status</label>
+                <select style={sel} value={editTxModal.status} onChange={e => setEditTxModal(p => p ? { ...p, status: e.target.value } : null)}>{['pending','completed','approved','flagged','rejected','failed','reversed','cancelled'].map(s => <option key={s}>{s}</option>)}</select></div>
+            </div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Amount</label>
+              <input style={inp} type="number" min="0.01" step="0.01" value={editTxModal.amount} onChange={e => setEditTxModal(p => p ? { ...p, amount: parseFloat(e.target.value) || 0 } : null)} /></div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
+              <input style={inp} value={editTxModal.description} onChange={e => setEditTxModal(p => p ? { ...p, description: e.target.value } : null)} /></div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Date</label>
+              <input style={inp} type="datetime-local" value={editTxModal.createdAt.slice(0, 16)} onChange={e => setEditTxModal(p => p ? { ...p, createdAt: new Date(e.target.value).toISOString() } : null)} /></div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Recipient</label>
+              <input style={inp} value={editTxModal.recipientName || ''} onChange={e => setEditTxModal(p => p ? { ...p, recipientName: e.target.value } : null)} placeholder="Optional" /></div>
+            <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Save Changes</button>
+          </form>
+        </Modal>
       )}
     </main>
   );
