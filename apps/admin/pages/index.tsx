@@ -18,8 +18,14 @@ interface AuditEntry {
   id: string; timestamp: string; action: string;
   admin: string; target?: string; details?: string;
 }
+interface BankSettings {
+  dailyTransferLimit: number; perTxLimit: number; intlWireFee: number;
+  localTransferFee: number; savingsRate: number; overdraftRate: number;
+  supportedCurrencies: string[]; maintenanceMode: boolean;
+  bankName: string; bankTagline: string;
+}
 
-type Tab = 'overview' | 'users' | 'transactions' | 'funding' | 'audit';
+type Tab = 'overview' | 'users' | 'transactions' | 'funding' | 'audit' | 'cards' | 'notifications' | 'settings';
 
 // ── Constants ──────────────────────────────────────────────────
 const G = '#C4A052';
@@ -51,7 +57,13 @@ function getDefaultData() {
   const audit: AuditEntry[] = [
     { id: 'a1', timestamp: now, action: 'system_init', admin: 'System', details: 'Admin panel initialized' },
   ];
-  return { users, transactions, audit };
+  const settings: BankSettings = {
+    dailyTransferLimit: 500000, perTxLimit: 100000, intlWireFee: 35, localTransferFee: 0,
+    savingsRate: 4.25, overdraftRate: 18.5,
+    supportedCurrencies: ['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'AED', 'CAD', 'AUD'],
+    maintenanceMode: false, bankName: 'Londway Capital', bankTagline: 'Premium Private Banking',
+  };
+  return { users, transactions, audit, settings };
 }
 
 // ── Persistence ────────────────────────────────────────────────
@@ -59,7 +71,11 @@ function loadData() {
   if (typeof window === 'undefined') return getDefaultData();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as ReturnType<typeof getDefaultData>;
+    if (raw) {
+      const parsed = JSON.parse(raw) as ReturnType<typeof getDefaultData>;
+      if (!parsed.settings) parsed.settings = getDefaultData().settings;
+      return parsed;
+    }
   } catch { /* */ }
   const d = getDefaultData();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
@@ -143,6 +159,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
   const [nu, setNu] = useState({ name: '', email: '', password: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   const [nt, setNt] = useState({ userId: '', type: 'credit' as Transaction['type'], amount: '', currency: 'USD', description: '', status: 'completed', createdAt: '' });
+
+  // Notifications state
+  const [notifMsg, setNotifMsg] = useState('');
+  const [notifType, setNotifType] = useState<'info' | 'success' | 'warning'>('info');
+  const [notifTarget, setNotifTarget] = useState('all');
+
+  // Settings state
+  const [settingsForm, setSettingsForm] = useState(data.settings);
 
   const aName = adminName || 'God Admin';
   const persist = useCallback((d: typeof data) => { setData(d); saveData(d); }, []);
@@ -298,11 +322,18 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const flagged = data.transactions.filter(t => t.status === 'flagged');
   const totalBalance = data.users.reduce((s, u) => s + u.balance, 0);
 
+  const userCards = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_cards'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
+  const userNotifs = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_notifications'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
+  const pendingCards = userCards.filter((c: any) => c.status === 'pending');
+
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: 'overview', label: '⚡ Overview' },
     { id: 'users', label: '👥 Users', badge: data.users.length },
     { id: 'transactions', label: '⇄ Transactions', badge: pending.length + flagged.length || undefined },
     { id: 'funding', label: '💰 Fund & Backdate' },
+    { id: 'cards', label: '💳 Cards', badge: pendingCards.length || undefined },
+    { id: 'notifications', label: '🔔 Notifications' },
+    { id: 'settings', label: '⚙ Settings' },
     { id: 'audit', label: '📋 Audit Log', badge: data.audit.length },
   ];
 
@@ -561,6 +592,244 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ═══ CARDS ═══ */}
+        {tab === 'cards' && (
+          <div style={cardS()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>Card Requests ({userCards.length})</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Badge status={`${pendingCards.length} pending`} />
+                <Badge status={`${userCards.filter((c: any) => c.status === 'approved').length} approved`} />
+              </div>
+            </div>
+            {userCards.length === 0 ? (
+              <div style={{ textAlign: 'center', color: SL, padding: '3rem' }}>No card requests yet. Users can request cards from their Cards page.</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                  <thead><tr>{['Card ID','Holder','Network','Tier','Status','Requested','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {userCards.map((card: any) => (
+                      <tr key={card.id}>
+                        <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{card.id}</td>
+                        <td style={{ ...tdS, fontWeight: 600 }}>{card.holderName || '—'}</td>
+                        <td style={tdS}>{card.network || '—'}</td>
+                        <td style={{ ...tdS, color: G, fontWeight: 600 }}>{card.tier || '—'}</td>
+                        <td style={tdS}><Badge status={card.status || 'pending'} /></td>
+                        <td style={{ ...tdS, color: SL, fontSize: '0.78rem' }}>{card.requestedAt ? fmtDate(card.requestedAt) : '—'}</td>
+                        <td style={tdS}>
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            {card.status === 'pending' && (
+                              <>
+                                <button style={btnP} onClick={() => {
+                                  const updated = userCards.map((c: any) => c.id === card.id ? { ...c, status: 'approved', approvedAt: new Date().toISOString(), estimatedDelivery: new Date(Date.now() + 7 * 86400000).toISOString() } : c);
+                                  localStorage.setItem('londway_cards', JSON.stringify(updated));
+                                  addAudit('card_approved', card.holderName, `${card.network} ${card.tier}`);
+                                  notify(true, `Card approved for ${card.holderName}`);
+                                  setData({ ...data });
+                                }}>✓ Approve</button>
+                                <button style={btnD} onClick={() => {
+                                  const updated = userCards.map((c: any) => c.id === card.id ? { ...c, status: 'rejected' } : c);
+                                  localStorage.setItem('londway_cards', JSON.stringify(updated));
+                                  addAudit('card_rejected', card.holderName, `${card.network} ${card.tier}`);
+                                  notify(true, `Card rejected for ${card.holderName}`);
+                                  setData({ ...data });
+                                }}>✕ Reject</button>
+                              </>
+                            )}
+                            <button style={btnD} onClick={() => {
+                              if (!confirm(`Delete card ${card.id}?`)) return;
+                              const updated = userCards.filter((c: any) => c.id !== card.id);
+                              localStorage.setItem('londway_cards', JSON.stringify(updated));
+                              addAudit('card_deleted', card.holderName, card.id);
+                              notify(true, 'Card deleted');
+                              setData({ ...data });
+                            }}>🗑</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ NOTIFICATIONS ═══ */}
+        {tab === 'notifications' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
+            <div style={cardS()}>
+              <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>📤 Send Notification</h2>
+              <form onSubmit={e => {
+                e.preventDefault();
+                if (!notifMsg.trim()) { notify(false, 'Enter a message'); return; }
+                const newNotif = {
+                  id: 'n-' + Date.now(),
+                  message: notifMsg.trim(),
+                  type: notifType,
+                  date: new Date().toISOString(),
+                  read: false,
+                  target: notifTarget,
+                };
+                const existing = (() => { try { return JSON.parse(localStorage.getItem('londway_notifications') || '[]'); } catch { return []; } })();
+                localStorage.setItem('londway_notifications', JSON.stringify([newNotif, ...existing]));
+                addAudit('notification_sent', notifTarget === 'all' ? 'All Users' : data.users.find(u => u.id === notifTarget)?.name || notifTarget, notifMsg.trim());
+                notify(true, 'Notification sent');
+                setNotifMsg('');
+              }} style={{ display: 'grid', gap: 14 }}>
+                <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Recipient</label>
+                  <select style={sel} value={notifTarget} onChange={e => setNotifTarget(e.target.value)}>
+                    <option value="all">All Users</option>
+                    {data.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select></div>
+                <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Type</label>
+                  <select style={sel} value={notifType} onChange={e => setNotifType(e.target.value as any)}>
+                    <option value="info">ℹ Info</option>
+                    <option value="success">✓ Success</option>
+                    <option value="warning">⚠ Warning</option>
+                  </select></div>
+                <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Message</label>
+                  <textarea style={{ ...inp, minHeight: 80, resize: 'vertical' }} value={notifMsg} onChange={e => setNotifMsg(e.target.value)} placeholder="Your account has been upgraded..." required /></div>
+                <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Send Notification</button>
+              </form>
+            </div>
+            <div style={cardS()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>📨 Sent Notifications ({userNotifs.length})</h2>
+                <button onClick={() => {
+                  if (!confirm('Clear all user notifications?')) return;
+                  localStorage.setItem('londway_notifications', '[]');
+                  addAudit('notifications_cleared', 'All Users');
+                  notify(true, 'All notifications cleared');
+                  setData({ ...data });
+                }} style={btnD}>Clear All</button>
+              </div>
+              {userNotifs.length === 0 ? (
+                <div style={{ textAlign: 'center', color: SL, padding: '2rem' }}>No notifications</div>
+              ) : (
+                <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+                  {userNotifs.map((n: any) => (
+                    <div key={n.id} style={{ padding: '10px 14px', borderBottom: '1px solid rgba(196,160,82,0.05)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: '0.9rem', flexShrink: 0 }}>{n.type === 'success' ? '✅' : n.type === 'warning' ? '⚠️' : 'ℹ️'}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.84rem', color: IV, wordBreak: 'break-word' }}>{n.message}</div>
+                        <div style={{ fontSize: '0.7rem', color: SL, marginTop: 3 }}>{fmtDate(n.date)}{n.read ? '' : ' · Unread'}</div>
+                      </div>
+                      <button onClick={() => {
+                        const updated = userNotifs.filter((x: any) => x.id !== n.id);
+                        localStorage.setItem('londway_notifications', JSON.stringify(updated));
+                        notify(true, 'Notification removed');
+                        setData({ ...data });
+                      }} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.8rem', flexShrink: 0 }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ SETTINGS ═══ */}
+        {tab === 'settings' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
+            <div style={cardS()}>
+              <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>🏦 Bank Configuration</h2>
+              <form onSubmit={e => {
+                e.preventDefault();
+                persist({ ...data, settings: settingsForm });
+                addAudit('settings_updated', 'System', 'Bank settings updated');
+                notify(true, 'Settings saved');
+              }} style={{ display: 'grid', gap: 14 }}>
+                <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Bank Name</label>
+                  <input style={inp} value={settingsForm.bankName} onChange={e => setSettingsForm(p => ({ ...p, bankName: e.target.value }))} /></div>
+                <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Tagline</label>
+                  <input style={inp} value={settingsForm.bankTagline} onChange={e => setSettingsForm(p => ({ ...p, bankTagline: e.target.value }))} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Daily Transfer Limit ($)</label>
+                    <input style={inp} type="number" value={settingsForm.dailyTransferLimit} onChange={e => setSettingsForm(p => ({ ...p, dailyTransferLimit: parseFloat(e.target.value) || 0 }))} /></div>
+                  <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Per-Transaction Limit ($)</label>
+                    <input style={inp} type="number" value={settingsForm.perTxLimit} onChange={e => setSettingsForm(p => ({ ...p, perTxLimit: parseFloat(e.target.value) || 0 }))} /></div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Local Transfer Fee ($)</label>
+                    <input style={inp} type="number" step="0.01" value={settingsForm.localTransferFee} onChange={e => setSettingsForm(p => ({ ...p, localTransferFee: parseFloat(e.target.value) || 0 }))} /></div>
+                  <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Int'l Wire Fee ($)</label>
+                    <input style={inp} type="number" step="0.01" value={settingsForm.intlWireFee} onChange={e => setSettingsForm(p => ({ ...p, intlWireFee: parseFloat(e.target.value) || 0 }))} /></div>
+                </div>
+                <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Save Settings</button>
+              </form>
+            </div>
+            <div style={{ display: 'grid', gap: '1.5rem', alignContent: 'start' }}>
+              <div style={cardS()}>
+                <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>📈 Interest Rates</h2>
+                <form onSubmit={e => {
+                  e.preventDefault();
+                  persist({ ...data, settings: settingsForm });
+                  addAudit('rates_updated', 'System', `Savings: ${settingsForm.savingsRate}%, Overdraft: ${settingsForm.overdraftRate}%`);
+                  notify(true, 'Rates updated');
+                }} style={{ display: 'grid', gap: 14 }}>
+                  <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Savings APY (%)</label>
+                    <input style={inp} type="number" step="0.01" value={settingsForm.savingsRate} onChange={e => setSettingsForm(p => ({ ...p, savingsRate: parseFloat(e.target.value) || 0 }))} /></div>
+                  <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Overdraft Rate (%)</label>
+                    <input style={inp} type="number" step="0.01" value={settingsForm.overdraftRate} onChange={e => setSettingsForm(p => ({ ...p, overdraftRate: parseFloat(e.target.value) || 0 }))} /></div>
+                  <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Update Rates</button>
+                </form>
+              </div>
+              <div style={cardS()}>
+                <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>🛡 System Controls</h2>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: settingsForm.maintenanceMode ? 'rgba(255,77,79,0.08)' : 'rgba(80,200,120,0.06)', borderRadius: 10, border: `1px solid ${settingsForm.maintenanceMode ? 'rgba(255,77,79,0.2)' : 'rgba(80,200,120,0.15)'}` }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: IV }}>Maintenance Mode</div>
+                      <div style={{ color: SL, fontSize: '0.75rem' }}>{settingsForm.maintenanceMode ? 'Users see maintenance page' : 'Bank is fully operational'}</div>
+                    </div>
+                    <button onClick={() => {
+                      const next = !settingsForm.maintenanceMode;
+                      const s = { ...settingsForm, maintenanceMode: next };
+                      setSettingsForm(s);
+                      persist({ ...data, settings: s });
+                      addAudit(next ? 'maintenance_enabled' : 'maintenance_disabled', 'System');
+                      notify(true, next ? 'Maintenance mode ON' : 'Maintenance mode OFF');
+                    }} style={settingsForm.maintenanceMode ? btnP : btnD}>
+                      {settingsForm.maintenanceMode ? '✓ Go Live' : '⏸ Enable'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(196,160,82,0.06)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: IV }}>Reset All Data</div>
+                      <div style={{ color: SL, fontSize: '0.75rem' }}>Wipe admin + user data to defaults</div>
+                    </div>
+                    <button onClick={() => {
+                      if (!confirm('This will reset ALL data (admin, user accounts, cards, notifications). Proceed?')) return;
+                      localStorage.removeItem(STORAGE_KEY);
+                      localStorage.removeItem('londway_bank_accounts');
+                      localStorage.removeItem('londway_vaults');
+                      localStorage.removeItem('londway_transfers');
+                      localStorage.removeItem('londway_notifications');
+                      localStorage.removeItem('londway_cards');
+                      localStorage.removeItem('londway_checkbooks');
+                      const fresh = getDefaultData();
+                      setData(fresh);
+                      saveData(fresh);
+                      setSettingsForm(fresh.settings);
+                      notify(true, 'All data reset to defaults');
+                    }} style={btnD}>🗑 Reset</button>
+                  </div>
+                  <div style={{ padding: '12px 14px', background: 'rgba(196,160,82,0.04)', borderRadius: 10, border: '1px solid rgba(196,160,82,0.08)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: G, marginBottom: 6 }}>Supported Currencies</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {settingsForm.supportedCurrencies.map(c => (
+                        <span key={c} style={{ background: 'rgba(196,160,82,0.1)', color: G, borderRadius: 6, padding: '3px 10px', fontSize: '0.75rem', fontWeight: 700 }}>{c}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

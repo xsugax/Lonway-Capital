@@ -164,6 +164,19 @@ export default function Dashboard({ user }: { user: { token: string } }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [clock, setClock] = useState('');
+  const [tzName, setTzName] = useState('');
+
+  useEffect(() => {
+    const fmtClock = () => {
+      const now = new Date();
+      setClock(now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setTzName(Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' '));
+    };
+    fmtClock();
+    const id = setInterval(fmtClock, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -242,6 +255,11 @@ export default function Dashboard({ user }: { user: { token: string } }) {
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.success, boxShadow: `0 0 8px ${colors.success}` }}/>
               SECURE SESSION
             </div>
+            {clock && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: colors.goldBg, border: `1px solid ${colors.border}`, borderRadius: 100, padding: '0.3rem 0.9rem', fontSize: '0.62rem', color: colors.textMuted, fontWeight: 600, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+                🕐 {clock} · {tzName}
+              </div>
+            )}
           </div>
 
           <h1 style={{ fontSize: '2.6rem', fontWeight: 800, color: colors.text, margin: '0 0 0.3rem', lineHeight: 1.15, letterSpacing: '-0.025em' }}>

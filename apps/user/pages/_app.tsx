@@ -1,5 +1,6 @@
 import '../styles/globals.css';
 import type { AppProps } from 'next/app';
+import Head from 'next/head';
 import Layout from '../components/Layout';
 import Login from '../components/Login';
 import Welcome from '../components/Welcome';
@@ -45,6 +46,9 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <ThemeProvider>
       <LangProvider>
+        <Head>
+          <title>Londway Capital — Premium Private Banking</title>
+        </Head>
         {showLoader ? (
           <BankLoader onDone={() => setShowLoader(false)} />
         ) : user ? (
