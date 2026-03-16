@@ -1,0 +1,33 @@
+{
+  "name": "londway-capital",
+  "version": "1.0.0",
+  "description": "A modern fintech banking platform combining the trust of traditional banks with the intelligence and design of next-generation finance apps.",
+  "main": "index.js",
+  "scripts": {
+    "dev:user": "cd apps/user && npm run dev",
+    "dev:admin": "cd apps/admin && npm run dev",
+    "dev:api": "cd apps/api && npm run start:dev",
+    "build:user": "cd apps/user && npm run build",
+    "build:admin": "cd apps/admin && npm run build",
+    "build:api": "cd apps/api && npm run build",
+    "build:all": "npm run build:api && npm run build:user && npm run build:admin",
+    "start:user": "cd apps/user && npm start",
+    "start:admin": "cd apps/admin && npm start",
+    "start:api": "cd apps/api && npm start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.6",
+    "eslint": "^10.0.3",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
+}

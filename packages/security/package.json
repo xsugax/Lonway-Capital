@@ -1,0 +1,17 @@
+{
+  "name": "@londway/security",
+  "version": "1.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "src"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "speakeasy": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/speakeasy": "^2.0.10"
+  }
+}

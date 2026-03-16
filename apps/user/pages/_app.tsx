@@ -1,0 +1,72 @@
+import '../styles/globals.css';
+import type { AppProps } from 'next/app';
+import Layout from '../components/Layout';
+import Login from '../components/Login';
+import Welcome from '../components/Welcome';
+import BankLoader from '../components/BankLoader';
+import React, { useState, useEffect } from 'react';
+import { ThemeProvider } from '../contexts/ThemeContext';
+import { LangProvider } from '../contexts/LanguageContext';
+
+type UserType = { name: string; token: string; role: string };
+
+export default function MyApp({ Component, pageProps }: AppProps) {
+  const [user, setUser] = useState<UserType | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('aurix_user');
+    if (stored) {
+      try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (user) window.localStorage.setItem('aurix_user', JSON.stringify(user));
+  }, [user]);
+
+  const handleLogin = (u: UserType) => {
+    setUser(u);
+    setShowLogin(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    window.localStorage.removeItem('aurix_user');
+  };
+
+  if (!hydrated) return null;
+
+  return (
+    <ThemeProvider>
+      <LangProvider>
+        {showLoader ? (
+          <BankLoader onDone={() => setShowLoader(false)} />
+        ) : user ? (
+          (() => {
+            if (user.role === 'admin' && typeof window !== 'undefined' && window.location.pathname !== '/admin') {
+              window.location.href = '/admin';
+              return null;
+            }
+            const PageComponent = Component as React.ComponentType<any>;
+            return (
+              <Layout onLogout={handleLogout} userName={user.name}>
+                <PageComponent {...pageProps} user={user} />
+              </Layout>
+            );
+          })()
+        ) : (
+          <>
+            <Welcome onSignIn={() => setShowLogin(true)} />
+            {showLogin && (
+              <Login onLogin={handleLogin} onClose={() => setShowLogin(false)} modal />
+            )}
+          </>
+        )}
+      </LangProvider>
+    </ThemeProvider>
+  );
+}
