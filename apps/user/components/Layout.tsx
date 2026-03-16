@@ -43,7 +43,16 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
         position: 'sticky', top: 0, zIndex: 100,
         boxShadow: '0 2px 8px rgba(196,160,82,0.07)',
       }}>
-        <span style={{ color: colors.gold, fontWeight: 800, fontSize: '1.2rem', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Mobile hamburger — left side under logo */}
+          <button onClick={() => setMobileNavOpen(o => !o)} style={{
+            display: 'none', background: 'none', border: `1px solid ${colors.border}`,
+            color: colors.gold, width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
+            alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', padding: 0, flexShrink: 0,
+          }} className="layout-mobile-btn">
+            {mobileNavOpen ? '✕' : '☰'}
+          </button>
+          <span style={{ color: colors.gold, fontWeight: 800, fontSize: '1.2rem', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
             <circle cx="18" cy="18" r="15.5" stroke={colors.gold} strokeWidth="1.3" fill="none"/>
             <path d="M11,27 V15 C11,6.5 25,6.5 25,15 V27" stroke={colors.gold} strokeWidth="2" fill={`${colors.gold}08`} strokeLinejoin="round"/>
@@ -51,6 +60,7 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
           </svg>
           LONDWAY
         </span>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {/* Language selector */}
@@ -102,15 +112,6 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
               padding: '0.38rem 0.9rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem',
             }}>{t('signOut')}</button>
           )}
-
-          {/* Mobile hamburger */}
-          <button onClick={() => setMobileNavOpen(o => !o)} style={{
-            display: 'none', background: 'none', border: `1px solid ${colors.border}`,
-            color: colors.gold, width: 38, height: 38, borderRadius: 8, cursor: 'pointer',
-            alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', padding: 0,
-          }} className="layout-mobile-btn">
-            {mobileNavOpen ? '✕' : '☰'}
-          </button>
         </div>
       </div>
 
@@ -163,9 +164,12 @@ export default function Layout({ children, onLogout, userName }: LayoutProps) {
           .layout-nav-row { display: none !important; }
           .layout-mobile-btn { display: flex !important; }
         }
+        @media (max-width: 480px) {
+          .login-card { padding: 1.3rem !important; }
+        }
       `}</style>
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem' }}>{children}</div>
+      <div className="layout-content" style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem' }}>{children}</div>
     </div>
   );
 }

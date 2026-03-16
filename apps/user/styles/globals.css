@@ -7,6 +7,11 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 body {
   background: #060913;
   color: #EAE0D0;
@@ -154,3 +159,20 @@ a {
 .feature-card:nth-child(4) { animation-delay: 0.24s; }
 .feature-card:nth-child(5) { animation-delay: 0.32s; }
 .feature-card:nth-child(6) { animation-delay: 0.40s; }
+
+/* ─── Face Scan Animation ─── */
+@keyframes faceScan {
+  0%, 100% { top: 0; }
+  50% { top: calc(100% - 3px); }
+}
+.face-scan-line {
+  animation: faceScan 1.5s ease-in-out infinite;
+}
+
+/* ─── Mobile Responsive ─── */
+@media (max-width: 768px) {
+  .layout-content { padding: 1.2rem 0.7rem !important; }
+}
+@media (max-width: 480px) {
+  .layout-content { padding: 0.8rem 0.4rem !important; }
+}
