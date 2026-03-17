@@ -523,51 +523,98 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
         {/* ═══ USERS ═══ */}
         {tab === 'users' && (
-          <div style={cardS()}>
+          <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>User Management ({filteredUsers.length})</h2>
-              <button onClick={() => setNewUserModal(true)} style={{ ...btnP, padding: '8px 16px', fontSize: '0.85rem' }}>+ Add User</button>
+              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1.1rem' }}>👥 User Management ({filteredUsers.length})</h2>
+              <button onClick={() => setNewUserModal(true)} style={{ ...btnP, padding: '10px 20px', fontSize: '0.88rem' }}>+ Add User</button>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-                <thead><tr>{['Name','Email','Role','Tier','Balance','KYC','Status','PIN','Since','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
-                <tbody>
-                  {filteredUsers.map(u => (
-                    <tr key={u.id}>
-                      <td style={{ ...tdS, fontWeight: 600 }}>{u.name}</td>
-                      <td style={{ ...tdS, color: SL, fontSize: '0.8rem' }}>{u.email}</td>
-                      <td style={tdS}>
-                        <select value={u.role} onChange={e => changeRole(u, e.target.value)} style={{ background: S2, border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 8px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {filteredUsers.map(u => {
+                const userTxs = data.transactions.filter(t => t.userId === u.id);
+                return (
+                <div key={u.id} style={{ background: S2, borderRadius: 16, border: `1px solid ${u.frozen ? 'rgba(255,77,79,0.25)' : 'rgba(196,160,82,0.12)'}`, padding: '1.2rem 1.4rem', position: 'relative' }}>
+                  {u.frozen && <div style={{ position: 'absolute', top: 12, right: 14, background: 'rgba(255,77,79,0.12)', color: '#ff4d4f', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em' }}>FROZEN</div>}
+                  {/* Row 1: Identity */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: `linear-gradient(135deg,${G},#a8873e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: BG, fontWeight: 800, fontSize: '0.95rem', flexShrink: 0 }}>{u.name.charAt(0)}</div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1rem', color: IV }}>{u.name}</div>
+                          <div style={{ color: SL, fontSize: '0.78rem' }}>{u.email}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                        <select value={u.role} onChange={e => changeRole(u, e.target.value)} style={{ background: 'rgba(196,160,82,0.06)', border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 10px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontWeight: 700 }}>
                           {['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}
                         </select>
-                      </td>
-                      <td style={{ ...tdS, color: G, fontSize: '0.8rem', fontWeight: 600 }}>{u.tier || 'Standard'}</td>
-                      <td style={{ ...tdS, color: G, fontWeight: 700 }}>{fmtMoney(u.balance)}</td>
-                      <td style={tdS}>
-                        <button onClick={() => toggleKyc(u)} style={{ background: u.kyc ? 'rgba(80,200,120,0.1)' : 'rgba(255,77,79,0.1)', border: `1px solid ${u.kyc ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: u.kyc ? '#50C878' : '#ff4d4f', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>{u.kyc ? '✓ Verified' : '✗ Unverified'}</button>
-                      </td>
-                      <td style={tdS}><Badge status={u.frozen ? 'frozen' : 'active'} /></td>
-                      <td style={tdS}>
-                        {u.pin ? (
-                          <button onClick={() => { setPinModal(u); setPinValue(u.pin || ''); }} style={{ background: 'rgba(80,200,120,0.1)', border: '1px solid rgba(80,200,120,0.3)', color: '#50C878', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>••••</button>
-                        ) : (
-                          <button onClick={() => { setPinModal(u); setPinValue(''); }} style={{ background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)', color: '#FFA500', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>Set PIN</button>
-                        )}
-                      </td>
-                      <td style={{ ...tdS, color: SL, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
-                      <td style={tdS}>
-                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                          <button style={btnP} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>+ Credit</button>
-                          <button style={btnG} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>− Debit</button>
-                          <button style={btnG} onClick={() => setEditUser(u)}>✏</button>
-                          <button style={{ ...btnG, color: u.frozen ? '#50C878' : '#ff4d4f', borderColor: u.frozen ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)' }} onClick={() => toggleFreeze(u)}>{u.frozen ? '🔓' : '🔒'}</button>
-                          <button style={btnD} onClick={() => deleteUser(u)}>🗑</button>
+                        <span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', fontWeight: 700 }}>{u.tier || 'Standard'}</span>
+                        <button onClick={() => toggleKyc(u)} style={{ background: u.kyc ? 'rgba(80,200,120,0.1)' : 'rgba(255,77,79,0.1)', border: `1px solid ${u.kyc ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: u.kyc ? '#50C878' : '#ff4d4f', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>{u.kyc ? '✓ KYC' : '✗ KYC'}</button>
+                        <span style={{ color: SL, fontSize: '0.72rem', alignSelf: 'center' }}>Since {new Date(u.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: G, letterSpacing: '-0.02em' }}>{fmtMoney(u.balance)}</div>
+                      <div style={{ color: SL, fontSize: '0.72rem', marginTop: 2 }}>{userTxs.length} transactions</div>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Credentials — PASSWORD & PIN prominently displayed */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14, padding: '12px 14px', background: 'rgba(196,160,82,0.03)', borderRadius: 10, border: '1px solid rgba(196,160,82,0.08)' }}>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', color: SL, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>🔒 Password</div>
+                      {u.password ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: '#50C878', fontWeight: 700, fontSize: '0.88rem', fontFamily: 'monospace' }}>{u.password}</span>
+                          <span style={{ background: 'rgba(80,200,120,0.1)', color: '#50C878', borderRadius: 5, padding: '1px 6px', fontSize: '0.6rem', fontWeight: 700 }}>SET</span>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: '#ff4d4f', fontSize: '0.82rem', fontWeight: 600 }}>Not set</span>
+                          <button onClick={() => setEditUser(u)} style={{ background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)', color: '#FFA500', borderRadius: 5, padding: '2px 8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', fontFamily: 'Inter,sans-serif' }}>Set Now</button>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', color: SL, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>🔑 PIN</div>
+                      {u.pin ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: '#50C878', fontWeight: 800, fontSize: '1rem', letterSpacing: '0.2em', fontFamily: 'monospace' }}>{u.pin}</span>
+                          <span style={{ background: 'rgba(80,200,120,0.1)', color: '#50C878', borderRadius: 5, padding: '1px 6px', fontSize: '0.6rem', fontWeight: 700 }}>SET</span>
+                          <button onClick={() => { setPinModal(u); setPinValue(u.pin || ''); }} style={{ background: 'rgba(196,160,82,0.06)', border: '1px solid rgba(196,160,82,0.15)', color: G, borderRadius: 5, padding: '2px 8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', fontFamily: 'Inter,sans-serif' }}>Change</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: '#ff4d4f', fontSize: '0.82rem', fontWeight: 600 }}>Not set</span>
+                          <button onClick={() => { setPinModal(u); setPinValue(''); }} style={{ background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)', color: '#FFA500', borderRadius: 5, padding: '2px 8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', fontFamily: 'Inter,sans-serif' }}>Set PIN</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 3: Contact info */}
+                  {(u.phone || u.address) && (
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14, fontSize: '0.78rem', color: SL }}>
+                      {u.phone && <span>📞 {u.phone}</span>}
+                      {u.address && <span>📍 {u.address}</span>}
+                    </div>
+                  )}
+
+                  {/* Row 4: Actions — full power */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid rgba(196,160,82,0.06)' }}>
+                    <button style={{ ...btnP, padding: '7px 14px' }} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>+ Credit</button>
+                    <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>− Debit</button>
+                    <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => setEditUser(u)}>✏ Edit</button>
+                    <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => { setPinModal(u); setPinValue(u.pin || ''); }}>🔑 PIN</button>
+                    <button style={{ ...btnG, padding: '7px 14px', color: u.frozen ? '#50C878' : '#ff4d4f', borderColor: u.frozen ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)' }} onClick={() => toggleFreeze(u)}>{u.frozen ? '🔓 Unfreeze' : '🔒 Freeze'}</button>
+                    <button style={{ ...btnD, padding: '7px 14px' }} onClick={() => deleteUser(u)}>🗑 Delete</button>
+                  </div>
+                </div>
+                );
+              })}
+              {filteredUsers.length === 0 && (
+                <div style={{ textAlign: 'center', color: SL, padding: '3rem' }}>No users found. Create one to get started.</div>
+              )}
             </div>
           </div>
         )}
