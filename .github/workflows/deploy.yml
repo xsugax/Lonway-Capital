@@ -37,7 +37,7 @@ jobs:
 
       # ── Build Admin App ──
       - name: Install admin dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
         working-directory: apps/admin
       - name: Build admin app
         run: npm run build
