@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 
 function HeroBg() {
   return (
@@ -50,6 +50,9 @@ export default function Profile({ user }: { user?: { name: string; email: string
   const [activeTab, setActiveTab] = useState('Personal Information');
   const [account, setAccount] = useState<any>(null);
   const [memberSince, setMemberSince] = useState('');
+  const [profilePic, setProfilePic] = useState<string | null>(null);
+  const [avatarHovered, setAvatarHovered] = useState(false);
+  const picInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && user?.email) {
@@ -59,6 +62,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
           const accounts = JSON.parse(raw);
           const found = accounts.find((a: any) => a.email === user.email);
           setAccount(found || null);
+          if (found?.profilePic) setProfilePic(found.profilePic);
         }
       } catch {}
       // Estimate member since from stored date or use current year
@@ -81,6 +85,44 @@ export default function Profile({ user }: { user?: { name: string; email: string
   const hasPin = !!account?.pin;
   const hasFace = !!account?.faceData;
   const lastLogin = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  function handlePicChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Resize to max 256x256 before storing
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 256;
+        const scale = Math.min(MAX / img.width, MAX / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL('image/jpeg', 0.82);
+        setProfilePic(compressed);
+        // Save into the accounts array
+        try {
+          const raw = localStorage.getItem('londway_accounts');
+          if (raw) {
+            const accounts = JSON.parse(raw);
+            const idx = accounts.findIndex((a: any) => a.email === user?.email);
+            if (idx !== -1) {
+              accounts[idx].profilePic = compressed;
+              localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+              setAccount(accounts[idx]);
+            }
+          }
+        } catch {}
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    // Reset so same file can be re-selected
+    e.target.value = '';
+  }
 
   const sectionStyle: React.CSSProperties = { background: '#0D1628', borderRadius: 16, border: '1px solid rgba(196,160,82,0.1)', padding: '1.6rem', marginBottom: '1.4rem' };
   const fieldRow = (label: string, value: React.ReactNode, badge?: boolean) => (
@@ -135,13 +177,33 @@ export default function Profile({ user }: { user?: { name: string; email: string
         <HeroBg />
         <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(196,160,82,0.25), rgba(196,160,82,0.05))', border: `2px solid ${GBD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', flexShrink: 0 }}>
-              {hasFace && account?.faceData ? (
-                <img src={account.faceData} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ color: G }}>👤</span>
-              )}
+          {/* Avatar — clickable for photo upload */}
+          <div
+            onMouseEnter={() => setAvatarHovered(true)}
+            onMouseLeave={() => setAvatarHovered(false)}
+            onClick={() => picInputRef.current?.click()}
+            style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(196,160,82,0.25), rgba(196,160,82,0.05))', border: `2px solid ${GBD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', flexShrink: 0, cursor: 'pointer', overflow: 'hidden' }}>
+            {profilePic ? (
+              <img src={profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : hasFace && account?.faceData ? (
+              <img src={account.faceData} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ color: G }}>👤</span>
+            )}
+            {/* Camera overlay on hover */}
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: avatarHovered ? 1 : 0, transition: 'opacity 0.2s', borderRadius: '50%' }}>
+              <span style={{ fontSize: '1.1rem' }}>📷</span>
+              <span style={{ color: '#EAE0D0', fontSize: '0.45rem', fontWeight: 700, letterSpacing: '0.05em', marginTop: 2 }}>CHANGE</span>
             </div>
+            <input
+              ref={picInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              style={{ display: 'none' }}
+              onChange={handlePicChange}
+            />
+          </div>
             <div>
               <h1 style={{ color: '#EAE0D0', fontWeight: 800, fontSize: '1.7rem', margin: '0 0 4px', letterSpacing: '-0.02em' }}>{name}</h1>
               <p style={{ color: '#60707E', fontSize: '0.85rem', margin: '0 0 8px' }}>{email}</p>

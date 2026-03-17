@@ -4,9 +4,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { getBankAccounts, saveBankAccounts, getCryptoDeposits, saveCryptoDeposits, getNotifications, saveNotifications, getTierLimits } from '../lib/store';
 
 const COINS = [
-  { id: 'bitcoin',     symbol: 'BTC', name: 'Bitcoin',  icon: '₿',  color: '#F7931A', address: '1AKRzPDNKFQFNGE8Gq7TLBgqUrTSjg6VQD' },
-  { id: 'ethereum',    symbol: 'ETH', name: 'Ethereum', icon: 'Ξ',  color: '#627EEA', address: '0x742d35Cc6634C0532925a3b8D4C9F6E7cBe9Ac1' },
-  { id: 'tether',      symbol: 'USDT',name: 'Tether',   icon: '₮',  color: '#26A17B', address: 'TJHs2MFJpHRioRLovnq5P3HuN7GhT4Y3Df' },
+  { id: 'bitcoin',     symbol: 'BTC', name: 'Bitcoin',  icon: '₿',  color: '#F7931A', address: 'bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5' },
+  { id: 'ethereum',    symbol: 'ETH', name: 'Ethereum', icon: 'Ξ',  color: '#627EEA', address: '0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff' },
+  { id: 'tether',      symbol: 'USDT',name: 'Tether',   icon: '₮',  color: '#26A17B', address: '2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD' },
   { id: 'binancecoin', symbol: 'BNB', name: 'BNB',      icon: '⬡',  color: '#F0B90B', address: 'bnb1grpf0955h0ykzq3ar5nmum7y6gdfl6lxfn46h2' },
   { id: 'solana',      symbol: 'SOL', name: 'Solana',   icon: '◎',  color: '#9945FF', address: '8CRVWJQiVQLDp3nBECKPEhCsZ3KZvq3CpbKrHUC6bfno' },
 ];
