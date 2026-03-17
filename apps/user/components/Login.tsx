@@ -27,10 +27,34 @@ interface StoredAccount {
 
 function getAccounts(): StoredAccount[] {
   if (typeof window === 'undefined') return [];
+  let accounts: StoredAccount[] = [];
   try {
     const raw = localStorage.getItem(ACCOUNTS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) accounts = JSON.parse(raw);
   } catch {}
+  // Sync admin-managed users that have a password set into londway_accounts
+  try {
+    const adminRaw = localStorage.getItem('londway_admin_data');
+    if (adminRaw) {
+      const adminData = JSON.parse(adminRaw);
+      let changed = false;
+      for (const u of (adminData.users || [])) {
+        if (!u.password) continue;
+        const existing = accounts.find((a: StoredAccount) => a.email === u.email);
+        if (!existing) {
+          accounts.push({ email: u.email, password: u.password, name: u.name, role: u.role || 'user', idVerified: false });
+          changed = true;
+        } else if (existing.password !== u.password) {
+          existing.password = u.password;
+          existing.name = u.name;
+          existing.role = u.role || existing.role;
+          changed = true;
+        }
+      }
+      if (changed) localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+    }
+  } catch {}
+  if (accounts.length > 0) return accounts;
   const defaults: StoredAccount[] = [
     { email: 'user@londwaycapital.com', password: 'password123', name: 'Jane Doe', role: 'user', idVerified: true },
     { email: 'admin@londwaycapital.com', password: 'admin123', name: 'Admin', role: 'admin', idVerified: true },

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 interface User {
   id: string; name: string; email: string; role: string;
   frozen: boolean; kyc: boolean; balance: number;
-  createdAt: string; phone?: string; address?: string; tier?: string;
+  createdAt: string; phone?: string; address?: string; tier?: string; password?: string;
 }
 interface Transaction {
   id: string; userId: string; userName: string;
@@ -185,6 +185,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       frozen: false, kyc: false, balance: parseFloat(nu.balance) || 0,
       createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
       phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
+      password: nu.password || undefined,
     };
     persist({ ...data, users: [...data.users, user] });
     // Also register in londway_accounts so the user can log in
@@ -212,6 +213,22 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
   function updateUser(updated: User) {
     persist({ ...data, users: data.users.map(u => u.id === updated.id ? updated : u) });
+    // Sync changes to londway_accounts so login stays in sync
+    try {
+      const raw = localStorage.getItem('londway_accounts');
+      const accounts: any[] = raw ? JSON.parse(raw) : [];
+      const idx = accounts.findIndex((a: any) => a.email === updated.email);
+      if (idx !== -1) {
+        accounts[idx].name = updated.name;
+        accounts[idx].role = updated.role;
+        if (updated.tier) accounts[idx].tier = updated.tier;
+        if (updated.password) accounts[idx].password = updated.password;
+        localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+      } else if (updated.password) {
+        accounts.push({ email: updated.email, password: updated.password, name: updated.name, role: updated.role, tier: updated.tier, idVerified: false });
+        localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+      }
+    } catch {}
     addAudit('user_updated', updated.email, `Name: ${updated.name}, Tier: ${updated.tier}`);
     notify(true, `User ${updated.name} updated`);
     setEditUser(null);
@@ -1062,6 +1079,12 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               <div key={f.k}><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>{f.l}</label>
                 <input style={inp} type={f.t || 'text'} value={(editUser as Record<string,any>)[f.k] ?? ''} onChange={e => setEditUser(p => p ? { ...p, [f.k]: f.t === 'number' ? parseFloat(e.target.value) || 0 : e.target.value } : null)} /></div>
             ))}
+            <div>
+              <label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>
+                Password <span style={{ color: '#777', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(leave blank to keep current)</span>
+              </label>
+              <input style={inp} type="password" placeholder="Set new password…" value={editUser.password ?? ''} onChange={e => setEditUser(p => p ? { ...p, password: e.target.value || undefined } : null)} />
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Role</label>
                 <select style={sel} value={editUser.role} onChange={e => setEditUser(p => p ? { ...p, role: e.target.value } : null)}>{['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
