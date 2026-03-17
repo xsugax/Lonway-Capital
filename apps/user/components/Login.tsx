@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { sendVerificationCode, sendWelcomeEmail, generateSecureCode } from '../lib/email';
+import { getNotifications, saveNotifications, getBankAccounts } from '../lib/store';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string; email: string }) => void;
@@ -225,6 +226,13 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       setRegStep(6);
     } else if (regStep === 6) {
       sendWelcomeEmail(rEmail, rName).catch(() => {});
+      // Seed account numbers and write welcome notification for new user
+      getBankAccounts(rEmail); // triggers seed write to localStorage keyed by email
+      const welcomeNotifs = [
+        { id: 'n-welcome-' + Date.now(), message: `Welcome to Londway Capital, ${rName}! Your account is verified and ready to use.`, type: 'success', date: new Date().toISOString(), read: false },
+        { id: 'n-fund-' + Date.now(), message: 'Your account balance is $0.00. Fund your account via Transfer, Crypto deposit, or contact a branch.', type: 'info', date: new Date().toISOString(), read: false },
+      ];
+      saveNotifications(welcomeNotifs, rEmail);
       onLogin({ name: rName, token: 'token-' + Date.now(), role: 'user', email: rEmail });
     }
   };

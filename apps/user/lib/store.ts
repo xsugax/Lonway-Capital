@@ -112,25 +112,17 @@ const ACCT_BASE = 'londway_bank_accounts';
 
 function buildSeedAccounts(email?: string): any[] {
   const suffix = email ? `-${email.replace(/[^a-z0-9]/gi, '').slice(0, 6)}` : '';
+  const acctNum = () => Math.floor(1000_0000 + Math.random() * 9000_0000).toString();
   return [
     {
-      id: `acc-1${suffix}`, type: 'Checking', name: 'Primary Checking', balance: 12_480.50, currency: '$',
-      accountNumber: '4821-XXXX-7734', frozen: false, recentActivity: '+$2,400 this month',
-      transactions: [
-        { id: `tx-1${suffix}`, description: 'Salary Deposit', amount: 5200, type: 'credit', date: '2026-03-15', currency: '$' },
-        { id: `tx-2${suffix}`, description: 'Amazon Purchase', amount: 89.99, type: 'debit', date: '2026-03-14', currency: '$' },
-        { id: `tx-3${suffix}`, description: 'Electric Bill', amount: 142.50, type: 'debit', date: '2026-03-12', currency: '$' },
-        { id: `tx-4${suffix}`, description: 'Freelance Payment', amount: 1200, type: 'credit', date: '2026-03-10', currency: '$' },
-        { id: `tx-5${suffix}`, description: 'Restaurant', amount: 67.30, type: 'debit', date: '2026-03-08', currency: '$' },
-      ],
+      id: `acc-1${suffix}`, type: 'Checking', name: 'Primary Checking', balance: 0, currency: '$',
+      accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity',
+      transactions: [],
     },
     {
-      id: `acc-2${suffix}`, type: 'Savings', name: 'High-Yield Savings', balance: 28_750.00, currency: '$',
-      accountNumber: '4821-XXXX-9912', frozen: false, recentActivity: '+$450 interest',
-      transactions: [
-        { id: `tx-6${suffix}`, description: 'Interest Payment', amount: 450, type: 'credit', date: '2026-03-01', currency: '$' },
-        { id: `tx-7${suffix}`, description: 'Transfer from Checking', amount: 2000, type: 'credit', date: '2026-02-28', currency: '$' },
-      ],
+      id: `acc-2${suffix}`, type: 'Savings', name: 'High-Yield Savings', balance: 0, currency: '$',
+      accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity',
+      transactions: [],
     },
   ];
 }
@@ -148,13 +140,7 @@ export function saveBankAccounts(accounts: any[], email?: string) {
 // ═══════════════════════════════════════════
 const VAULTS_BASE = 'londway_vaults';
 
-const SEED_VAULTS = [
-  { id: 'vault-1', name: 'Emergency Fund', balance: 8500, goal: 15000, currency: '$', createdAt: '2025-06-15' },
-  { id: 'vault-2', name: 'Vacation Fund', balance: 3200, goal: 5000, currency: '$', createdAt: '2025-09-01' },
-  { id: 'vault-3', name: 'New Car', balance: 12000, goal: 35000, currency: '$', createdAt: '2025-01-10' },
-];
-
-export function getVaults(email?: string): any[] { return getOrSeed(userKey(VAULTS_BASE, email), SEED_VAULTS); }
+export function getVaults(email?: string): any[] { return getOrSeed(userKey(VAULTS_BASE, email), []); }
 export function saveVaults(vaults: any[], email?: string) { save(userKey(VAULTS_BASE, email), vaults); }
 
 // ═══════════════════════════════════════════
@@ -162,13 +148,7 @@ export function saveVaults(vaults: any[], email?: string) { save(userKey(VAULTS_
 // ═══════════════════════════════════════════
 const TRANSFERS_BASE = 'londway_transfers';
 
-const SEED_TRANSFERS = [
-  { id: 'tr-1', recipientName: 'John Smith', toAccountId: '098765', amount: 500, currency: 'USD', type: 'local', status: 'completed', reference: 'TRF-2026-001', description: 'Rent Payment', createdAt: '2026-03-10T10:00:00Z' },
-  { id: 'tr-2', recipientName: 'Marie Dupont', toAccountId: 'FR76XXX', amount: 1200, currency: 'EUR', type: 'international', status: 'pending', reference: 'TRF-2026-002', description: 'Business Payment', createdAt: '2026-03-14T15:00:00Z', country: 'France' },
-  { id: 'tr-3', recipientName: 'Alice Wang', toAccountId: '123456', amount: 250, currency: 'USD', type: 'local', status: 'approved', reference: 'TRF-2026-003', description: 'Split dinner', createdAt: '2026-03-15T12:00:00Z' },
-];
-
-export function getTransfers(email?: string): any[] { return getOrSeed(userKey(TRANSFERS_BASE, email), SEED_TRANSFERS); }
+export function getTransfers(email?: string): any[] { return getOrSeed(userKey(TRANSFERS_BASE, email), []); }
 export function saveTransfers(transfers: any[], email?: string) { save(userKey(TRANSFERS_BASE, email), transfers); }
 
 // ═══════════════════════════════════════════
@@ -176,15 +156,7 @@ export function saveTransfers(transfers: any[], email?: string) { save(userKey(T
 // ═══════════════════════════════════════════
 const NOTIF_BASE = 'londway_notifications';
 
-const SEED_NOTIFICATIONS = [
-  { id: 'n-1', message: 'Welcome to Londway Capital! Your account is now active.', type: 'info', date: '2026-03-16T09:00:00Z', read: false },
-  { id: 'n-2', message: 'Your salary of $5,200.00 has been deposited.', type: 'success', date: '2026-03-15T14:30:00Z', read: false },
-  { id: 'n-3', message: 'Card ending in 7734 was used for $89.99 at Amazon.', type: 'info', date: '2026-03-14T11:20:00Z', read: true },
-  { id: 'n-4', message: 'Your vault "Emergency Fund" reached 56% of its goal!', type: 'success', date: '2026-03-12T08:15:00Z', read: true },
-  { id: 'n-5', message: 'Security alert: New login detected from Chrome on Windows.', type: 'warning', date: '2026-03-10T16:45:00Z', read: true },
-];
-
-export function getNotifications(email?: string): any[] { return getOrSeed(userKey(NOTIF_BASE, email), SEED_NOTIFICATIONS); }
+export function getNotifications(email?: string): any[] { return getOrSeed(userKey(NOTIF_BASE, email), []); }
 export function saveNotifications(notifs: any[], email?: string) { save(userKey(NOTIF_BASE, email), notifs); }
 
 // ═══════════════════════════════════════════
