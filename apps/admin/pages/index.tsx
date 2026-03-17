@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 interface User {
   id: string; name: string; email: string; role: string;
   frozen: boolean; kyc: boolean; balance: number;
-  createdAt: string; phone?: string; address?: string; tier?: string; password?: string;
+  createdAt: string; phone?: string; address?: string; tier?: string; pin?: string;
 }
 interface Transaction {
   id: string; userId: string; userName: string;
@@ -157,7 +157,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [newTxModal, setNewTxModal] = useState(false);
   const [editTxModal, setEditTxModal] = useState<Transaction | null>(null);
 
-  const [nu, setNu] = useState({ name: '', email: '', password: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
+  const [nu, setNu] = useState({ name: '', email: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   const [nt, setNt] = useState({ userId: '', type: 'credit' as Transaction['type'], amount: '', currency: 'USD', description: '', status: 'completed', createdAt: '' });
 
   // Notifications state
@@ -185,7 +185,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       frozen: false, kyc: false, balance: parseFloat(nu.balance) || 0,
       createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
       phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
-      password: nu.password || undefined,
+      pin: nu.pin || undefined,
     };
     persist({ ...data, users: [...data.users, user] });
     // Also register in londway_accounts so the user can log in
@@ -195,7 +195,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       if (!accounts.find((a: any) => a.email === nu.email)) {
         accounts.push({
           email: nu.email,
-          password: nu.password,
+          password: nu.pin,
+          pin: nu.pin,
           name: nu.name,
           role: nu.role,
           phone: nu.phone || '',
@@ -208,7 +209,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
     notify(true, `User ${user.name} created`);
     setNewUserModal(false);
-    setNu({ name: '', email: '', password: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
+    setNu({ name: '', email: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   }
 
   function updateUser(updated: User) {
@@ -222,10 +223,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         accounts[idx].name = updated.name;
         accounts[idx].role = updated.role;
         if (updated.tier) accounts[idx].tier = updated.tier;
-        if (updated.password) accounts[idx].password = updated.password;
+        if (updated.pin) {
+          accounts[idx].pin = updated.pin;
+          accounts[idx].password = updated.pin; // keep password in sync with PIN
+        }
         localStorage.setItem('londway_accounts', JSON.stringify(accounts));
-      } else if (updated.password) {
-        accounts.push({ email: updated.email, password: updated.password, name: updated.name, role: updated.role, tier: updated.tier, idVerified: false });
+      } else if (updated.pin) {
+        accounts.push({ email: updated.email, password: updated.pin, pin: updated.pin, name: updated.name, role: updated.role, tier: updated.tier, idVerified: false });
         localStorage.setItem('londway_accounts', JSON.stringify(accounts));
       }
     } catch {}
@@ -1048,7 +1052,6 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             {[
               { l: 'Full Name', k: 'name', t: 'text', r: true },
               { l: 'Email', k: 'email', t: 'email', r: true },
-              { l: 'Password', k: 'password', t: 'password', r: true },
               { l: 'Phone', k: 'phone', t: 'text' },
               { l: 'Address', k: 'address', t: 'text' },
               { l: 'Initial Balance', k: 'balance', t: 'number' },
@@ -1056,6 +1059,10 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               <div key={f.k}><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>{f.l}</label>
                 <input style={inp} type={f.t} required={f.r} value={(nu as Record<string,string>)[f.k]} onChange={e => setNu(p => ({ ...p, [f.k]: e.target.value }))} /></div>
             ))}
+            <div>
+              <label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>4-Digit PIN <span style={{ color: '#777', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(required for login)</span></label>
+              <input style={{ ...inp, letterSpacing: '0.35em', textAlign: 'center', fontSize: '1.15rem' }} type="tel" placeholder="0000" maxLength={4} required value={nu.pin} onChange={e => setNu(p => ({ ...p, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))} />
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Role</label>
                 <select style={sel} value={nu.role} onChange={e => setNu(p => ({ ...p, role: e.target.value }))}>{['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
@@ -1081,9 +1088,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             ))}
             <div>
               <label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>
-                Password <span style={{ color: '#777', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(leave blank to keep current)</span>
+                4-Digit PIN <span style={{ color: '#777', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(leave blank to keep current)</span>
               </label>
-              <input style={inp} type="password" placeholder="Set new password…" value={editUser.password ?? ''} onChange={e => setEditUser(p => p ? { ...p, password: e.target.value || undefined } : null)} />
+              <input style={{ ...inp, letterSpacing: '0.35em', textAlign: 'center', fontSize: '1.15rem' }} type="tel" placeholder="0000" maxLength={4} value={editUser.pin ?? ''} onChange={e => setEditUser(p => p ? { ...p, pin: e.target.value.replace(/\D/g, '').slice(0, 4) || undefined } : null)} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Role</label>

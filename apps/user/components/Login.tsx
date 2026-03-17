@@ -39,13 +39,14 @@ function getAccounts(): StoredAccount[] {
       const adminData = JSON.parse(adminRaw);
       let changed = false;
       for (const u of (adminData.users || [])) {
-        if (!u.password) continue;
+        if (!u.pin) continue;
         const existing = accounts.find((a: StoredAccount) => a.email === u.email);
         if (!existing) {
-          accounts.push({ email: u.email, password: u.password, name: u.name, role: u.role || 'user', idVerified: false });
+          accounts.push({ email: u.email, password: u.pin, pin: u.pin, name: u.name, role: u.role || 'user', idVerified: false });
           changed = true;
-        } else if (existing.password !== u.password) {
-          existing.password = u.password;
+        } else if (existing.pin !== u.pin) {
+          existing.pin = u.pin;
+          existing.password = u.pin;
           existing.name = u.name;
           existing.role = u.role || existing.role;
           changed = true;
@@ -292,9 +293,16 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const loginNext = () => {
     setError(null);
     if (loginStep === 0) {
+      if (!lEmail.includes('@')) { setError('Enter a valid email address'); return; }
+      if (!lPw) { setError('Enter your password'); return; }
+      if (lPin.length !== 4) { setError('Enter your 4-digit PIN'); return; }
       const accts = getAccounts();
-      const m = accts.find(a => a.email === lEmail && a.password === lPw);
-      if (!m) { setError('Invalid email or password'); return; }
+      const m = accts.find(a => a.email === lEmail);
+      if (!m) { setError('No account found for that email'); return; }
+      // Must match password AND PIN
+      const pwOk = m.password === lPw;
+      const pinOk = m.pin === lPin;
+      if (!pwOk || !pinOk) { setError('Incorrect email, password or PIN'); return; }
       setMatched(m);
       const code = generateSecureCode();
       setLGenCode(code);
@@ -309,7 +317,6 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           setLoginCodeFallback(true);
           setCodeSentMsg('');
         }
-        // Persist email recognition
         if (typeof window !== 'undefined') {
           if (rememberMe) {
             localStorage.setItem('londway_remembered_email', lEmail);
@@ -317,38 +324,17 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
             localStorage.removeItem('londway_remembered_email');
           }
         }
-        setLoginStep(1); // always advance — fallback shown in UI if email fails
+        setLoginStep(1);
       });
     } else if (loginStep === 1) {
       if (lCode !== lGenCode) { setError('Incorrect code. Check your email or use the code displayed below.'); return; }
-      if (matched?.pin) {
-        setLoginStep(2); // PIN step
-      } else if (matched?.faceData) {
-        setLoginStep(2); // Face step (no PIN)
+      if (matched?.faceData) {
+        setLoginStep(2);
         setTimeout(() => startCam(), 300);
       } else {
         onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
       }
     } else if (loginStep === 2) {
-      if (matched?.pin) {
-        // PIN verification step
-        if (lPin !== matched.pin) { setError('Incorrect PIN. Please try again.'); return; }
-        if (matched?.faceData) {
-          setLoginStep(3);
-          setTimeout(() => startCam(), 300);
-        } else {
-          onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
-        }
-      } else {
-        // Face step (no PIN)
-        setScanning(true);
-        setTimeout(() => {
-          stopCam();
-          setScanning(false);
-          onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
-        }, 2500);
-      }
-    } else if (loginStep === 3) {
       setScanning(true);
       setTimeout(() => {
         stopCam();
@@ -359,9 +345,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   };
 
   const loginBack = () => {
-    // Stop camera if leaving a face step
-    if (loginStep === 2 && !matched?.pin) stopCam();
-    if (loginStep === 3) stopCam();
+    if (loginStep === 2) stopCam();
     setError(null);
     setLoginStep(Math.max(0, loginStep - 1));
   };
@@ -741,7 +725,11 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           <label style={{ ...lbl, marginBottom: 0 }}>PASSWORD</label>
           <span style={{ fontSize: '0.72rem', color: 'rgba(196,160,82,0.5)', cursor: 'pointer' }} onClick={() => { setForgotMode(true); setForgotStep(0); setError(null); setForgotEmail(lEmail); }}>Forgot?</span>
         </div>
-        <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+        <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="········" autoComplete="current-password" />
+      </div>
+      <div>
+        <label style={{ ...lbl, textAlign: 'center', display: 'block', marginBottom: 12 }}>4-DIGIT PIN</label>
+        <PinPad pin={lPin} setPin={setLPin} />
       </div>
       {/* Remember me */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
@@ -844,8 +832,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Main ───
   const REG_LABELS = ['Details', 'Password', 'ID Check', 'Face Scan', 'Verify', 'Set PIN'];
   const LOGIN_LABELS = (() => {
-    const steps = ['Sign In', 'Code'];
-    if (matched?.pin) steps.push('PIN');
+    const steps = ['PIN Login', 'Code'];
     if (matched?.faceData) steps.push('Face ID');
     return steps;
   })();
