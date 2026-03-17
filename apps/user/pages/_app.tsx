@@ -18,6 +18,14 @@ export default function App({ Component, pageProps }: AppProps) {
   const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
+    // Restore session from localStorage on first load
+    try {
+      const saved = localStorage.getItem('londway_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.token) setUser(parsed);
+      }
+    } catch {}
     setHydrated(true);
   }, []);
 
@@ -34,11 +42,13 @@ export default function App({ Component, pageProps }: AppProps) {
 
   function handleLogin(u: any) {
     setUser(u);
+    try { localStorage.setItem('londway_session', JSON.stringify(u)); } catch {}
     setShowLogin(false);
     setShowRegister(false);
   }
   function handleLogout() {
     setUser(null);
+    try { localStorage.removeItem('londway_session'); } catch {}
   }
 
   return (

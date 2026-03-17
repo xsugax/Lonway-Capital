@@ -10,19 +10,12 @@
     "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.16",
-    "@nestjs/core": "^11.1.16",
     "apexcharts": "^5.10.3",
     "axios": "^1.13.6",
-    "bcrypt": "^6.0.0",
-    "jsonwebtoken": "^9.0.3",
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-apexcharts": "^2.1.0",
-    "react-dom": "^19.2.4",
-    "reflect-metadata": "^0.2.2",
-    "sqlite3": "^5.1.7",
-    "typeorm": "^0.3.28"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "20.11.30",

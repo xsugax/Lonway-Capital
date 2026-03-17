@@ -325,11 +325,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const userCards = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_cards'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
   const userNotifs = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_notifications'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
   const pendingCards = userCards.filter((c: any) => c.status === 'pending');
+  const userTransfers: any[] = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_transfers'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
+  const pendingUserTransfers = userTransfers.filter((t: any) => t.status === 'pending');
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: 'overview', label: '⚡ Overview' },
     { id: 'users', label: '👥 Users', badge: data.users.length },
-    { id: 'transactions', label: '⇄ Transactions', badge: pending.length + flagged.length || undefined },
+    { id: 'transactions', label: '⇄ Transactions', badge: pending.length + flagged.length + pendingUserTransfers.length || undefined },
     { id: 'funding', label: '💰 Fund & Backdate' },
     { id: 'cards', label: '💳 Cards', badge: pendingCards.length || undefined },
     { id: 'notifications', label: '🔔 Notifications' },
@@ -408,9 +410,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 }}>{a.label}</button>
               ))}
             </div>
-            {pending.length > 0 && (
+            {(pending.length > 0 || pendingUserTransfers.length > 0) && (
               <div style={cardS({ marginBottom: '1.5rem' })}>
-                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.9rem' }}>🔔 PENDING APPROVAL</h3>
+                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.9rem' }}>🔔 PENDING APPROVAL ({pending.length + pendingUserTransfers.length})</h3>
                 {pending.slice(0, 5).map(tx => (
                   <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)', flexWrap: 'wrap', gap: 8 }}>
                     <div>
@@ -422,6 +424,32 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                       <span style={{ color: G, fontWeight: 800 }}>{fmtMoney(tx.amount)}</span>
                       <button style={btnP} onClick={() => changeTransactionStatus(tx, 'completed')}>✓ Approve</button>
                       <button style={btnD} onClick={() => changeTransactionStatus(tx, 'rejected')}>✕ Reject</button>
+                    </div>
+                  </div>
+                ))}
+                {pendingUserTransfers.slice(0, 5).map((tx: any) => (
+                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <span style={{ color: IV, fontWeight: 600 }}>{tx.recipientName}</span>
+                      <span style={{ marginLeft: 8, color: SL, fontSize: '0.78rem' }}>{tx.reference} · {tx.type}</span>
+                      <div style={{ color: SL, fontSize: '0.75rem', marginTop: 2 }}>{tx.description || 'User transfer request'}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ color: G, fontWeight: 800 }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <button style={btnP} onClick={() => {
+                        const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'approved' } : t);
+                        localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                        addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
+                        notify(true, `Transfer approved: ${tx.reference}`);
+                        setData({ ...data });
+                      }}>✓ Approve</button>
+                      <button style={btnD} onClick={() => {
+                        const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'rejected' } : t);
+                        localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                        addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
+                        notify(true, `Transfer rejected: ${tx.reference}`);
+                        setData({ ...data });
+                      }}>✕ Reject</button>
                     </div>
                   </div>
                 ))}
@@ -476,7 +504,64 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
         {/* ═══ TRANSACTIONS ═══ */}
         {tab === 'transactions' && (
-          <div style={cardS()}>
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            {/* User Transfer Requests */}
+            <div style={cardS()}>
+              <h2 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '1rem' }}>↗ User Transfer Requests ({userTransfers.length})</h2>
+              {userTransfers.length === 0 ? (
+                <div style={{ textAlign: 'center', color: SL, padding: '2rem' }}>No transfer requests yet</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+                    <thead><tr>{['Ref','Recipient','Type','Amount','Date','Status','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {[...userTransfers].reverse().map((tx: any) => (
+                        <tr key={tx.id}>
+                          <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{tx.reference}</td>
+                          <td style={{ ...tdS, fontWeight: 600 }}>{tx.recipientName}</td>
+                          <td style={tdS}><span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
+                          <td style={{ ...tdS, fontWeight: 700, color: '#ff7875' }}>-{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '—'}</td>
+                          <td style={tdS}><Badge status={tx.status || 'pending'} /></td>
+                          <td style={tdS}>
+                            <div style={{ display: 'flex', gap: 5 }}>
+                              {tx.status === 'pending' && (
+                                <>
+                                  <button style={btnP} onClick={() => {
+                                    const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'approved' } : t);
+                                    localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                                    addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
+                                    notify(true, `Transfer approved: ${tx.reference}`);
+                                    setData({ ...data });
+                                  }}>✓ Approve</button>
+                                  <button style={btnD} onClick={() => {
+                                    const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'rejected' } : t);
+                                    localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                                    addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
+                                    notify(true, `Transfer rejected: ${tx.reference}`);
+                                    setData({ ...data });
+                                  }}>✕ Reject</button>
+                                </>
+                              )}
+                              <button style={btnD} onClick={() => {
+                                if (!confirm(`Delete transfer ${tx.reference}?`)) return;
+                                const updated = userTransfers.filter((t: any) => t.id !== tx.id);
+                                localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                                addAudit('transfer_deleted', tx.recipientName, tx.reference);
+                                notify(true, 'Transfer deleted');
+                                setData({ ...data });
+                              }}>🗑</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            {/* Admin Transactions */}
+            <div style={cardS()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
               <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>All Transactions ({filteredTx.length})</h2>
               <button onClick={() => setNewTxModal(true)} style={{ ...btnP, padding: '8px 16px', fontSize: '0.85rem' }}>+ Create Transaction</button>
@@ -514,6 +599,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 </tbody>
               </table>
             </div>
+          </div>
           </div>
         )}
 
