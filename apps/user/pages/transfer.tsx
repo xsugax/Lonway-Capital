@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { getTransfers, saveTransfers } from '../lib/store';
+import { sendTransferNotification } from '../lib/email';
 
 type TransferType = 'local' | 'international';
 type TransferStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'failed' | 'reversed';
@@ -40,7 +41,7 @@ function StatusBadge({ status }: { status: TransferStatus }) {
   );
 }
 
-export default function Transfer({ user }: { user: { token: string } }) {
+export default function Transfer({ user }: { user: { token: string; email?: string; name?: string } }) {
   const [tab, setTab] = useState<TransferType>('local');
   const [loading, setLoading] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ ok: boolean; message: string; ref?: string } | null>(null);
@@ -61,6 +62,12 @@ export default function Transfer({ user }: { user: { token: string } }) {
   const [intlAmount, setIntlAmount] = useState('');
   const [intlMemo, setIntlMemo] = useState('');
 
+  // PIN gate
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pendingSubmit, setPendingSubmit] = useState<null | (() => void)>(null);
+
   const QUICK = [100, 250, 500, 1000, 2500, 5000];
 
   useEffect(() => { fetchHistory(); }, []);
@@ -73,33 +80,73 @@ export default function Transfer({ user }: { user: { token: string } }) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setSubmitResult(null);
     const isLocal = tab === 'local';
     const amt = parseFloat(isLocal ? localAmount : intlAmount);
-    if (!amt || amt <= 0) { setLoading(false); setSubmitResult({ ok: false, message: 'Please enter a valid amount.' }); return; }
-    const ref = 'TRF-' + Date.now().toString(36).toUpperCase();
-    const newTransfer: any = {
-      id: 'tr-' + Date.now(),
-      recipientName: isLocal ? localRecipient : intlName,
-      toAccountId: isLocal ? localAccount : (intlIban || intlSwift),
-      amount: amt,
-      currency: isLocal ? 'USD' : intlCurrency,
-      type: tab,
-      status: 'pending',
-      reference: ref,
-      description: isLocal ? (localMemo || 'Local Transfer') : (intlMemo || 'International Wire'),
-      createdAt: new Date().toISOString(),
-      ...(tab === 'international' ? { country: intlCountry } : {}),
+    if (!amt || amt <= 0) { setSubmitResult({ ok: false, message: 'Please enter a valid amount.' }); return; }
+
+    // Check if user has a PIN — require PIN gate
+    const ACCOUNTS_KEY = 'londway_accounts';
+    let userPin: string | undefined;
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem(ACCOUNTS_KEY);
+        if (raw) {
+          const accts = JSON.parse(raw);
+          const acct = accts.find((a: any) => a.email === user.email);
+          userPin = acct?.pin;
+        }
+      } catch {}
+    }
+
+    const doTransfer = () => {
+      setLoading(true);
+      const ref = 'TRF-' + Date.now().toString(36).toUpperCase();
+      const newTransfer: any = {
+        id: 'tr-' + Date.now(),
+        recipientName: isLocal ? localRecipient : intlName,
+        toAccountId: isLocal ? localAccount : (intlIban || intlSwift),
+        amount: amt,
+        currency: isLocal ? 'USD' : intlCurrency,
+        type: tab,
+        status: 'pending',
+        reference: ref,
+        description: isLocal ? (localMemo || 'Local Transfer') : (intlMemo || 'International Wire'),
+        createdAt: new Date().toISOString(),
+        ...(tab === 'international' ? { country: intlCountry } : {}),
+      };
+      const all = getTransfers();
+      all.unshift(newTransfer);
+      saveTransfers(all);
+
+      // Send confirmation email
+      if (user?.email) {
+        sendTransferNotification(
+          user.email,
+          user.name || 'Valued Client',
+          ref,
+          amt,
+          isLocal ? 'USD' : intlCurrency,
+          isLocal ? localRecipient : intlName,
+          tab,
+        );
+      }
+
+      setSubmitResult({ ok: true, message: 'Transfer submitted. Pending admin review.', ref });
+      setLocalRecipient(''); setLocalAccount(''); setLocalAmount(''); setLocalMemo('');
+      setIntlName(''); setIntlIban(''); setIntlSwift(''); setIntlBankName(''); setIntlCountry(''); setIntlCurrency('EUR'); setIntlAmount(''); setIntlMemo('');
+      fetchHistory();
+      setLoading(false);
     };
-    const all = getTransfers();
-    all.unshift(newTransfer);
-    saveTransfers(all);
-    setSubmitResult({ ok: true, message: 'Transfer submitted. Pending admin review.', ref });
-    setLocalRecipient(''); setLocalAccount(''); setLocalAmount(''); setLocalMemo('');
-    setIntlName(''); setIntlIban(''); setIntlSwift(''); setIntlBankName(''); setIntlCountry(''); setIntlCurrency('EUR'); setIntlAmount(''); setIntlMemo('');
-    fetchHistory();
-    setLoading(false);
+
+    if (userPin) {
+      setPinInput('');
+      setPinError('');
+      setPendingSubmit(() => doTransfer);
+      setShowPinModal(true);
+    } else {
+      doTransfer();
+    }
   }
 
   const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(196,160,82,0.18)', borderRadius: 10, padding: '11px 14px', color: '#EAE0D0', fontSize: '0.93rem', outline: 'none', fontFamily: 'Inter, sans-serif' };
@@ -107,6 +154,52 @@ export default function Transfer({ user }: { user: { token: string } }) {
 
   return (
     <main style={{ background: '#060913', minHeight: '100vh', color: '#EAE0D0', fontFamily: "'Inter', sans-serif" }}>
+
+      {/* PIN Gate Modal */}
+      {showPinModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,5,10,0.88)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'linear-gradient(160deg, #12172e 0%, #0d1020 100%)', border: '1px solid rgba(196,160,82,0.18)', borderRadius: 20, padding: '2rem', width: '100%', maxWidth: 340, boxShadow: '0 30px 80px rgba(0,0,0,0.8)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
+              <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔐</div>
+              <h3 style={{ color: '#EAE0D0', fontWeight: 700, fontSize: '1.08rem', margin: '0 0 6px' }}>Authorize Transfer</h3>
+              <p style={{ color: '#60707E', fontSize: '0.8rem', margin: 0 }}>Enter your 4-digit PIN to confirm</p>
+            </div>
+            {pinError && (
+              <div style={{ background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#ff7875', fontSize: '0.82rem', marginBottom: 12, textAlign: 'center' }}>⚠ {pinError}</div>
+            )}
+            {/* PIN dots */}
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginBottom: 20 }}>
+              {[0,1,2,3].map(i => (
+                <div key={i} style={{ width: 14, height: 14, borderRadius: '50%', background: i < pinInput.length ? '#C4A052' : 'transparent', border: `2px solid ${i < pinInput.length ? '#C4A052' : 'rgba(196,160,82,0.25)'}`, transition: 'all 0.15s' }} />
+              ))}
+            </div>
+            {/* Numpad */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, maxWidth: 220, margin: '0 auto 20px' }}>
+              {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d, i) => (
+                d === '' ? <div key={i} /> :
+                <button key={i} type="button" onClick={() => {
+                  if (d === '⌫') setPinInput(p => p.slice(0, -1));
+                  else if (pinInput.length < 4) setPinInput(p => p + d);
+                }} style={{ padding: '14px 0', borderRadius: 10, border: '1px solid rgba(196,160,82,0.18)', background: 'rgba(255,255,255,0.03)', color: d === '⌫' ? '#A2B2BF' : '#EAE0D0', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>{d}</button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { setShowPinModal(false); setPendingSubmit(null); }} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid rgba(196,160,82,0.18)', background: 'transparent', color: '#C4A052', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
+              <button onClick={() => {
+                const ACCOUNTS_KEY = 'londway_accounts';
+                let userPin = '';
+                if (typeof window !== 'undefined' && user?.email) {
+                  try { const raw = localStorage.getItem(ACCOUNTS_KEY); if (raw) { const a = JSON.parse(raw).find((x: any) => x.email === user.email); userPin = a?.pin || ''; } } catch {}
+                }
+                if (pinInput !== userPin) { setPinError('Incorrect PIN. Try again.'); setPinInput(''); return; }
+                setShowPinModal(false);
+                setPinError('');
+                if (pendingSubmit) { pendingSubmit(); setPendingSubmit(null); }
+              }} style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #C4A052, #a8873e)', color: '#060913', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Confirm →</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Hero */}
       <div style={{ background: 'linear-gradient(180deg, #0a1020 0%, #060913 100%)', borderBottom: '1px solid rgba(196,160,82,0.07)', padding: '3rem 2rem 2.5rem', position: 'relative', overflow: 'hidden' }}>
         <svg style={{ position: 'absolute', right: '4%', top: '50%', transform: 'translateY(-50%)', opacity: 0.05, pointerEvents: 'none' }} width="320" height="110" viewBox="0 0 320 110">

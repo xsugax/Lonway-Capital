@@ -11,7 +11,7 @@ import { LangProvider } from '../contexts/LanguageContext';
 
 // Only one export default function allowed
 export default function App({ Component, pageProps }: AppProps) {
-  const [user, setUser] = useState<{ name: string; token: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; token: string; role: string; email: string } | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [hydrated, setHydrated] = useState(false);

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { sendVerificationCode, generateSecureCode } from '../lib/email';
 
 interface LoginProps {
-  onLogin: (user: { name: string; token: string; role: string }) => void;
+  onLogin: (user: { name: string; token: string; role: string; email: string }) => void;
   onClose?: () => void;
   modal?: boolean;
   mode?: 'login' | 'register';
@@ -21,6 +21,7 @@ interface StoredAccount {
   dob?: string;
   idVerified?: boolean;
   faceData?: string;
+  pin?: string;
 }
 
 function getAccounts(): StoredAccount[] {
@@ -41,6 +42,18 @@ function saveNewAccount(account: StoredAccount) {
   const accounts = getAccounts();
   accounts.push(account);
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+}
+
+function updateAccountPin(email: string, pin: string) {
+  const accounts = getAccounts();
+  const idx = accounts.findIndex(a => a.email === email);
+  if (idx !== -1) { accounts[idx].pin = pin; localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts)); }
+}
+
+function updateAccountPassword(email: string, newPw: string) {
+  const accounts = getAccounts();
+  const idx = accounts.findIndex(a => a.email === email);
+  if (idx !== -1) { accounts[idx].password = newPw; localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts)); }
 }
 
 const G = '#C4A052';
@@ -78,6 +91,20 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const [sending, setSending] = useState(false);
   const [codeSentMsg, setCodeSentMsg] = useState('');
 
+  // ─── PIN ───
+  const [rPin, setRPin] = useState('');
+  const [rPinC, setRPinC] = useState('');
+  const [lPin, setLPin] = useState('');
+
+  // ─── Forgot Password ───
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotStep, setForgotStep] = useState(0);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotCode, setForgotCode] = useState('');
+  const [forgotGenCode, setForgotGenCode] = useState('');
+  const [forgotPw, setForgotPw] = useState('');
+  const [forgotPwC, setForgotPwC] = useState('');
+
   // ─── Camera ───
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -92,8 +119,11 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     setRPw(''); setRPwC('');
     setIdFront(null); setIdBack(null); setFaceData(null);
     setRCode(''); setRGenCode('');
+    setRPin(''); setRPinC('');
     setLEmail(''); setLPw(''); setLCode(''); setLGenCode('');
+    setLPin('');
     setMatched(null); setScanning(false); setSending(false); setCodeSentMsg('');
+    setForgotMode(false); setForgotStep(0); setForgotEmail(''); setForgotCode(''); setForgotGenCode(''); setForgotPw(''); setForgotPwC('');
     stopCam();
   }, [mode]);
 
@@ -170,9 +200,15 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         email: rEmail, password: rPw, name: rName, role: 'user',
         phone: rPhone, dob: rDob, idVerified: true, faceData: faceData || undefined,
       });
+      setRPin(''); setRPinC('');
       setRegStep(5);
     } else if (regStep === 5) {
-      onLogin({ name: rName, token: 'token-' + Date.now(), role: 'user' });
+      if (rPin.length !== 4) { setError('PIN must be exactly 4 digits'); return; }
+      if (rPin !== rPinC) { setError('PINs do not match'); return; }
+      updateAccountPin(rEmail, rPin);
+      setRegStep(6);
+    } else if (regStep === 6) {
+      onLogin({ name: rName, token: 'token-' + Date.now(), role: 'user', email: rEmail });
     }
   };
 
@@ -226,24 +262,47 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       });
     } else if (loginStep === 1) {
       if (lCode !== lGenCode) { setError('Invalid verification code'); return; }
-      if (matched?.faceData) {
-        setLoginStep(2);
+      if (matched?.pin) {
+        setLoginStep(2); // PIN step
+      } else if (matched?.faceData) {
+        setLoginStep(2); // Face step (no PIN)
         setTimeout(() => startCam(), 300);
       } else {
-        onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role });
+        onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
       }
     } else if (loginStep === 2) {
+      if (matched?.pin) {
+        // PIN verification step
+        if (lPin !== matched.pin) { setError('Incorrect PIN. Please try again.'); return; }
+        if (matched?.faceData) {
+          setLoginStep(3);
+          setTimeout(() => startCam(), 300);
+        } else {
+          onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
+        }
+      } else {
+        // Face step (no PIN)
+        setScanning(true);
+        setTimeout(() => {
+          stopCam();
+          setScanning(false);
+          onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
+        }, 2500);
+      }
+    } else if (loginStep === 3) {
       setScanning(true);
       setTimeout(() => {
         stopCam();
         setScanning(false);
-        onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role });
+        onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
       }, 2500);
     }
   };
 
   const loginBack = () => {
-    if (loginStep === 2) stopCam();
+    // Stop camera if leaving a face step
+    if (loginStep === 2 && !matched?.pin) stopCam();
+    if (loginStep === 3) stopCam();
     setError(null);
     setLoginStep(Math.max(0, loginStep - 1));
   };
@@ -470,6 +529,129 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     </div>
   );
 
+  // ─── PIN Pad ───
+  const PinPad = ({ pin, setPin }: { pin: string; setPin: (v: string) => void }) => {
+    const digits = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+    return (
+      <div>
+        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginBottom: 20 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ width: 14, height: 14, borderRadius: '50%', background: i < pin.length ? G : 'transparent', border: `2px solid ${i < pin.length ? G : GBD}`, transition: 'all 0.15s' }} />
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, maxWidth: 220, margin: '0 auto' }}>
+          {digits.map((d, i) => (
+            d === '' ? <div key={i} /> :
+            <button key={i} type="button" onClick={() => {
+              if (d === '⌫') setPin(pin.slice(0, -1));
+              else if (pin.length < 4) setPin(pin + d);
+            }} style={{ padding: '14px 0', borderRadius: 10, border: `1px solid ${GBD}`, background: 'rgba(255,255,255,0.03)', color: d === '⌫' ? '#A2B2BF' : '#EAE0D0', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Registration: PIN Setup (step 5) ───
+  const regPinSetup = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Set Your 4-Digit PIN</h3>
+      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Choose a PIN for quick login and transfer authorization</p>
+      <Err />
+      <div style={{ marginBottom: 4 }}>
+        <label style={{ ...lbl, textAlign: 'center', display: 'block', marginBottom: 12 }}>ENTER PIN</label>
+        <PinPad pin={rPin} setPin={setRPin} />
+      </div>
+      {rPin.length === 4 && (
+        <div style={{ marginTop: 8 }}>
+          <label style={{ ...lbl, textAlign: 'center', display: 'block', marginBottom: 12 }}>CONFIRM PIN</label>
+          <PinPad pin={rPinC} setPin={setRPinC} />
+        </div>
+      )}
+      <BtnRow onBack={regBack} onNext={regNext} nextLabel="Set PIN & Continue →" />
+    </div>
+  );
+
+  // ─── Login: PIN step ───
+  const loginPinStep = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Enter Your PIN</h3>
+      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Enter your 4-digit PIN to continue</p>
+      <Err />
+      <PinPad pin={lPin} setPin={setLPin} />
+      <div style={{ marginTop: 8 }}>
+        <BtnRow onBack={loginBack} onNext={() => { if (lPin.length === 4) loginNext(); else setError('Enter your 4-digit PIN'); }} nextLabel="Verify PIN →" />
+      </div>
+    </div>
+  );
+
+  // ─── Forgot Password Flow ───
+  const forgotFlow = () => {
+    const sendForgotCode = () => {
+      const acct = getAccounts().find(a => a.email === forgotEmail);
+      if (!acct) { setError('No account found with that email'); return; }
+      const code = generateSecureCode();
+      setForgotGenCode(code);
+      setSending(true); setError(null);
+      sendVerificationCode(forgotEmail, code, acct.name).then(res => {
+        setSending(false);
+        if (res.success) { setCodeSentMsg(`Code sent to ${forgotEmail}`); setForgotStep(1); }
+        else setError('Failed to send code: ' + (res.error || 'Please try again'));
+      });
+    };
+    if (forgotStep === 0) return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Reset Password</h3>
+        <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Enter your registered email address</p>
+        <Err />
+        <div><label style={lbl}>EMAIL ADDRESS</label><input type="email" style={inp} value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="you@example.com" /></div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button style={btnO} onClick={() => setForgotMode(false)}>← Back</button>
+          <button style={{ ...btn, opacity: sending ? 0.6 : 1 }} onClick={sendForgotCode} disabled={sending}>{sending ? 'Sending…' : 'Send Reset Code →'}</button>
+        </div>
+      </div>
+    );
+    if (forgotStep === 1) return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Enter Reset Code</h3>
+        {codeSentMsg && <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>✓ {codeSentMsg}</div>}
+        <Err />
+        <div><label style={lbl}>VERIFICATION CODE</label><input style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }} value={forgotCode} onChange={e => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} /></div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button style={btnO} onClick={() => setForgotStep(0)}>← Back</button>
+          <button style={btn} onClick={() => { if (forgotCode !== forgotGenCode) { setError('Invalid code'); return; } setError(null); setForgotStep(2); }}>Verify Code →</button>
+        </div>
+      </div>
+    );
+    if (forgotStep === 2) return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Set New Password</h3>
+        <Err />
+        <div><label style={lbl}>NEW PASSWORD</label><input type="password" style={inp} value={forgotPw} onChange={e => setForgotPw(e.target.value)} placeholder="Min 6 characters" /></div>
+        <div><label style={lbl}>CONFIRM PASSWORD</label><input type="password" style={inp} value={forgotPwC} onChange={e => setForgotPwC(e.target.value)} placeholder="Re-enter password" /></div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button style={btnO} onClick={() => setForgotStep(1)}>← Back</button>
+          <button style={btn} onClick={() => {
+            if (forgotPw.length < 6) { setError('Password must be at least 6 characters'); return; }
+            if (forgotPw !== forgotPwC) { setError('Passwords do not match'); return; }
+            updateAccountPassword(forgotEmail, forgotPw);
+            setForgotStep(3);
+          }}>Update Password →</button>
+        </div>
+      </div>
+    );
+    return (
+      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(80,200,120,0.1)', border: '2px solid #52c41a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>✓</div>
+        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.15rem', margin: 0 }}>Password Updated!</h3>
+        <p style={{ color: '#889', fontSize: '0.82rem', margin: 0 }}>Your password has been reset. You can now sign in.</p>
+        <button style={btn} onClick={() => { setForgotMode(false); setForgotStep(0); setForgotEmail(''); setForgotCode(''); setForgotPw(''); setForgotPwC(''); setCodeSentMsg(''); }}>Sign In →</button>
+      </div>
+    );
+  };
+
   // ─── Login Steps ───
   const loginCredentials = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
@@ -480,7 +662,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <label style={{ ...lbl, marginBottom: 0 }}>PASSWORD</label>
-          <span style={{ fontSize: '0.72rem', color: 'rgba(196,160,82,0.5)', cursor: 'pointer' }}>Forgot?</span>
+          <span style={{ fontSize: '0.72rem', color: 'rgba(196,160,82,0.5)', cursor: 'pointer' }} onClick={() => { setForgotMode(true); setForgotStep(0); setError(null); setForgotEmail(lEmail); }}>Forgot?</span>
         </div>
         <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="••••••••" />
       </div>
@@ -564,20 +746,27 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   );
 
   // ─── Main ───
-  const REG_LABELS = ['Details', 'Password', 'ID Check', 'Face Scan', 'Verify'];
-  const LOGIN_LABELS = matched?.faceData ? ['Sign In', 'Code', 'Face'] : ['Sign In', 'Code'];
+  const REG_LABELS = ['Details', 'Password', 'ID Check', 'Face Scan', 'Verify', 'Set PIN'];
+  const LOGIN_LABELS = (() => {
+    const steps = ['Sign In', 'Code'];
+    if (matched?.pin) steps.push('PIN');
+    if (matched?.faceData) steps.push('Face ID');
+    return steps;
+  })();
 
   const renderContent = () => {
+    if (!isRegister && forgotMode) return forgotFlow();
     if (isRegister) {
       return (
         <>
-          {regStep < 5 && <StepBar steps={REG_LABELS} cur={regStep} />}
+          {regStep < 6 && <StepBar steps={REG_LABELS} cur={regStep} />}
           {regStep === 0 && regPersonalInfo()}
           {regStep === 1 && regPassword()}
           {regStep === 2 && regIdVerify()}
           {regStep === 3 && regFace()}
           {regStep === 4 && regEmailCode()}
-          {regStep === 5 && regSuccess()}
+          {regStep === 5 && regPinSetup()}
+          {regStep === 6 && regSuccess()}
         </>
       );
     }
@@ -586,7 +775,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         <StepBar steps={LOGIN_LABELS} cur={loginStep} />
         {loginStep === 0 && loginCredentials()}
         {loginStep === 1 && loginCodeStep()}
-        {loginStep === 2 && loginFaceStep()}
+        {loginStep === 2 && (matched?.pin ? loginPinStep() : loginFaceStep())}
+        {loginStep === 3 && loginFaceStep()}
       </>
     );
   };

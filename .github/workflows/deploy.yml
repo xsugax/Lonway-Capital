@@ -33,6 +33,7 @@ jobs:
         working-directory: apps/user
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.londwaycapital.com' }}
+          NEXT_PUBLIC_BREVO_API_KEY: ${{ secrets.NEXT_PUBLIC_BREVO_API_KEY }}
 
       # ── Build Admin App ──
       - name: Install admin dependencies
