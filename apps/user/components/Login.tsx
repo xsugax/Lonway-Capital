@@ -39,17 +39,16 @@ function getAccounts(): StoredAccount[] {
       const adminData = JSON.parse(adminRaw);
       let changed = false;
       for (const u of (adminData.users || [])) {
-        if (!u.pin) continue;
+        if (!u.password && !u.pin) continue;
         const existing = accounts.find((a: StoredAccount) => a.email === u.email);
         if (!existing) {
-          accounts.push({ email: u.email, password: u.pin, pin: u.pin, name: u.name, role: u.role || 'user', idVerified: false });
+          accounts.push({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role || 'user', idVerified: false });
           changed = true;
-        } else if (existing.pin !== u.pin) {
-          existing.pin = u.pin;
-          existing.password = u.pin;
-          existing.name = u.name;
-          existing.role = u.role || existing.role;
-          changed = true;
+        } else {
+          let dirty = false;
+          if (u.password && existing.password !== u.password) { existing.password = u.password; dirty = true; }
+          if (u.pin && existing.pin !== u.pin) { existing.pin = u.pin; dirty = true; }
+          if (dirty) { existing.name = u.name; existing.role = u.role || existing.role; changed = true; }
         }
       }
       if (changed) localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
@@ -299,10 +298,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       const accts = getAccounts();
       const m = accts.find(a => a.email === lEmail);
       if (!m) { setError('No account found for that email'); return; }
-      // Must match password AND PIN
-      const pwOk = m.password === lPw;
-      const pinOk = m.pin === lPin;
-      if (!pwOk || !pinOk) { setError('Incorrect email, password or PIN'); return; }
+      if (m.password !== lPw) { setError('Incorrect password'); return; }
+      if (m.pin !== lPin) { setError('Incorrect PIN'); return; }
       setMatched(m);
       const code = generateSecureCode();
       setLGenCode(code);
