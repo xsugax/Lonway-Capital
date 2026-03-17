@@ -244,6 +244,7 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
                   { icon: '↗', label: t('transfer'), href: '/transfer', color: colors.gold },
                   { icon: '＋', label: t('addAccount'), href: '#', color: colors.success },
                   { icon: '↙', label: t('deposit'), href: '#', color: '#9b8fbf' },
+                  { icon: '₿', label: 'Crypto Fund', href: '/crypto', color: '#F7931A' },
                 ].map(a => (
                   <a
                     key={a.label}

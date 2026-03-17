@@ -106,7 +106,9 @@ export default function Profile({ user }: { user?: { name: string; email: string
         <h3 style={{ color: G, fontWeight: 700, fontSize: '0.88rem', margin: '0 0 16px', letterSpacing: '0.07em', textTransform: 'uppercase' }}>Account Details</h3>
         {fieldRow('Account Holder', name)}
         {fieldRow('Member Since', memberSince || '—')}
-        {fieldRow('Account Tier', 'Londway Premium')}
+        {fieldRow('Account Tier', account?.tier
+          ? <span style={{ fontWeight: 700, fontSize: '0.85rem', color: account.tier === 'Platinum' ? '#E5E4E2' : account.tier === 'Gold' ? '#C4A052' : account.tier === 'Silver' ? '#C0C0C0' : '#A2B2BF' }}>{account.tier}</span>
+          : <span style={{ color: '#A2B2BF', fontSize: '0.85rem' }}>Standard</span>, true)}
         {fieldRow('Default Currency', 'USD')}
         {fieldRow('Account Status', <span style={{ color: '#50C878', fontWeight: 600, fontSize: '0.85rem' }}>● Active</span>, true)}
       </div>

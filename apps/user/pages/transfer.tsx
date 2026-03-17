@@ -344,7 +344,34 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
               ))}
             </div>
             <div style={{ background: '#0D1628', borderRadius: 18, border: '1px solid rgba(196,160,82,0.1)', padding: '1.4rem' }}>
-              <h3 style={{ color: '#C4A052', fontWeight: 700, fontSize: '0.92rem', margin: '0 0 14px' }}>TRANSFER FEES</h3>
+              <h3 style={{ color: '#C4A052', fontWeight: 700, fontSize: '0.92rem', margin: '0 0 14px' }}>YOUR LIMITS</h3>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <span style={{ color: '#A2B2BF', fontSize: '0.8rem' }}>Tier</span>
+                  <span style={{ color: tierLimits.color ?? '#C4A052', fontWeight: 700, fontSize: '0.8rem' }}>{tierLimits.tier}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <span style={{ color: '#A2B2BF', fontSize: '0.8rem' }}>Per Transaction</span>
+                  <span style={{ color: '#EAE0D0', fontWeight: 700, fontSize: '0.8rem' }}>${tierLimits.perTxLimit.toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <span style={{ color: '#A2B2BF', fontSize: '0.8rem' }}>Daily Limit</span>
+                  <span style={{ color: '#EAE0D0', fontWeight: 700, fontSize: '0.8rem' }}>${tierLimits.dailyTransferLimit.toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ color: '#A2B2BF', fontSize: '0.8rem' }}>Used Today</span>
+                  <span style={{ color: dailyUsed > 0 ? '#F59E0B' : '#3D9E7A', fontWeight: 700, fontSize: '0.8rem' }}>${dailyUsed.toLocaleString()}</span>
+                </div>
+                {/* Daily usage progress bar */}
+                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 6, background: dailyUsed >= tierLimits.dailyTransferLimit ? '#E05252' : '#C4A052', width: `${Math.min(100, (dailyUsed / tierLimits.dailyTransferLimit) * 100)}%`, transition: 'width 0.4s ease' }}/>
+                </div>
+                <div style={{ color: '#60707E', fontSize: '0.72rem', marginTop: 5 }}>${Math.max(0, tierLimits.dailyTransferLimit - dailyUsed).toLocaleString()} remaining today</div>
+              </div>
+              {!tierLimits.intlAllowed && (
+                <div style={{ background: 'rgba(240,59,32,0.07)', border: '1px solid rgba(240,59,32,0.2)', borderRadius: 8, padding: '7px 10px', fontSize: '0.75rem', color: '#F59E0B' }}>⚠ International wires require Silver tier or above.</div>
+              )}
+            </div>
               {[['Local ACH / Same-day','Free'],['Local Wire','$15.00'],['International Wire','$35.00'],['SWIFT Priority','$55.00']].map(([l, f]) => (
                 <div key={l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 9 }}>
                   <span style={{ color: '#A2B2BF', fontSize: '0.83rem' }}>{l}</span>
