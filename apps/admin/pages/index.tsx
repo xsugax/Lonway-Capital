@@ -187,6 +187,23 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
     };
     persist({ ...data, users: [...data.users, user] });
+    // Also register in londway_accounts so the user can log in
+    try {
+      const raw = localStorage.getItem('londway_accounts');
+      const accounts: any[] = raw ? JSON.parse(raw) : [];
+      if (!accounts.find((a: any) => a.email === nu.email)) {
+        accounts.push({
+          email: nu.email,
+          password: nu.password,
+          name: nu.name,
+          role: nu.role,
+          phone: nu.phone || '',
+          tier: nu.tier,
+          idVerified: false,
+        });
+        localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+      }
+    } catch {}
     addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
     notify(true, `User ${user.name} created`);
     setNewUserModal(false);
