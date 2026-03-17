@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { sendVerificationCode } from '../lib/email';
+import { sendVerificationCode, generateSecureCode } from '../lib/email';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string }) => void;
@@ -151,7 +151,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     } else if (regStep === 3) {
       if (!faceData) { setError('Capture your face photo'); return; }
       stopCam();
-      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const code = generateSecureCode();
       setRGenCode(code);
       setSending(true);
       setError(null);
@@ -211,7 +211,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       const m = accts.find(a => a.email === lEmail && a.password === lPw);
       if (!m) { setError('Invalid email or password'); return; }
       setMatched(m);
-      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const code = generateSecureCode();
       setLGenCode(code);
       setSending(true);
       setError(null);
@@ -417,7 +417,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   );
 
   const resendRegCode = () => {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = generateSecureCode();
     setRGenCode(code);
     setSending(true);
     setError(null);
@@ -491,7 +491,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   );
 
   const resendLoginCode = () => {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = generateSecureCode();
     setLGenCode(code);
     setSending(true);
     setError(null);

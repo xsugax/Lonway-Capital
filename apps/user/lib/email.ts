@@ -1,45 +1,20 @@
-// Email notification utility for Londway Capital using Brevo (formerly Sendinblue)
-// Sends professional email notifications from londwayfond@gmail.com
+// Email verification utility for Londway Capital
+// Calls Brevo API directly for static-hosted deployment (GitHub Pages)
+// When backend is deployed, switch to server-side email via /email/send-code endpoint
 
 import axios from 'axios';
 
 const BREVO_API_KEY = process.env.NEXT_PUBLIC_BREVO_API_KEY;
-const BANK_EMAIL = 'londwayfond@gmail.com';
-const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
-export interface EmailPayload {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-}
-
-export async function sendBankEmail({ to, subject, html, text }: EmailPayload): Promise<{ success: boolean; error?: string }> {
-  try {
-    const res = await axios.post(
-      BREVO_API_URL,
-      {
-        sender: { name: 'Londway Capital', email: BANK_EMAIL },
-        to: [{ email: to }],
-        subject,
-        htmlContent: html,
-        textContent: text || '',
-      },
-      {
-        headers: {
-          'api-key': BREVO_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error?.response?.data?.message || error.message };
-  }
+/** Generate a cryptographically secure 6-digit code */
+export function generateSecureCode(): string {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return String(100000 + (arr[0] % 900000));
 }
 
 /**
- * Send a 6-digit verification code to the user's email via Brevo.
+ * Send a branded verification code email via Brevo.
  */
 export async function sendVerificationCode(to: string, code: string, userName?: string): Promise<{ success: boolean; error?: string }> {
   const html = `
@@ -60,15 +35,30 @@ export async function sendVerificationCode(to: string, code: string, userName?: 
         <p style="color: #667; font-size: 12px; margin: 0;">If you didn't request this code, please ignore this email or contact support.</p>
       </div>
       <div style="padding: 16px 28px; border-top: 1px solid rgba(196,160,82,0.08); text-align: center;">
-        <div style="font-size: 10px; color: #445; letter-spacing: 0.06em;">🔒 256-bit SSL · FDIC Insured · SOC 2 Type II</div>
-        <div style="font-size: 10px; color: #334; margin-top: 4px;">© 2026 Londway Capital, Inc. All rights reserved.</div>
+        <div style="font-size: 10px; color: #445; letter-spacing: 0.06em;">\uD83D\uDD12 256-bit SSL \u00B7 FDIC Insured \u00B7 SOC 2 Type II</div>
+        <div style="font-size: 10px; color: #334; margin-top: 4px;">\u00A9 2026 Londway Capital, Inc. All rights reserved.</div>
       </div>
-    </div>
-  `;
-  return sendBankEmail({
-    to,
-    subject: `${code} — Your Londway Capital Verification Code`,
-    html,
-    text: `Your Londway Capital verification code is: ${code}. This code expires in 10 minutes.`,
-  });
+    </div>`;
+
+  try {
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: { name: 'Londway Capital', email: 'londwayfond@gmail.com' },
+        to: [{ email: to }],
+        subject: `${code} \u2014 Your Londway Capital Verification Code`,
+        htmlContent: html,
+        textContent: `Your Londway Capital verification code is: ${code}. This code expires in 10 minutes.`,
+      },
+      {
+        headers: {
+          'api-key': BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error?.response?.data?.message || error.message };
+  }
 }
