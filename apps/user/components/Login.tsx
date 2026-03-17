@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { sendVerificationCode } from '../lib/email';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string }) => void;
@@ -74,6 +75,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const [lGenCode, setLGenCode] = useState('');
   const [matched, setMatched] = useState<StoredAccount | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [codeSentMsg, setCodeSentMsg] = useState('');
 
   // ─── Camera ───
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -90,7 +93,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     setIdFront(null); setIdBack(null); setFaceData(null);
     setRCode(''); setRGenCode('');
     setLEmail(''); setLPw(''); setLCode(''); setLGenCode('');
-    setMatched(null); setScanning(false);
+    setMatched(null); setScanning(false); setSending(false); setCodeSentMsg('');
     stopCam();
   }, [mode]);
 
@@ -150,7 +153,17 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       stopCam();
       const code = String(Math.floor(100000 + Math.random() * 900000));
       setRGenCode(code);
-      setRegStep(4);
+      setSending(true);
+      setError(null);
+      sendVerificationCode(rEmail, code, rName).then(res => {
+        setSending(false);
+        if (res.success) {
+          setCodeSentMsg(`Code sent to ${rEmail}`);
+          setRegStep(4);
+        } else {
+          setError('Failed to send code: ' + (res.error || 'Please try again'));
+        }
+      });
     } else if (regStep === 4) {
       if (rCode !== rGenCode) { setError('Invalid verification code'); return; }
       saveNewAccount({
@@ -200,7 +213,17 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       setMatched(m);
       const code = String(Math.floor(100000 + Math.random() * 900000));
       setLGenCode(code);
-      setLoginStep(1);
+      setSending(true);
+      setError(null);
+      sendVerificationCode(lEmail, code, m.name).then(res => {
+        setSending(false);
+        if (res.success) {
+          setCodeSentMsg(`Code sent to ${lEmail}`);
+          setLoginStep(1);
+        } else {
+          setError('Failed to send verification code: ' + (res.error || 'Please try again'));
+        }
+      });
     } else if (loginStep === 1) {
       if (lCode !== lGenCode) { setError('Invalid verification code'); return; }
       if (matched?.faceData) {
@@ -297,7 +320,9 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         <div style={{ flex: 1 }}><label style={lbl}>PHONE NUMBER</label><input type="tel" style={inp} value={rPhone} onChange={e => setRPhone(e.target.value)} placeholder="+1 (555) 123-4567" /></div>
         <div style={{ flex: 1 }}><label style={lbl}>DATE OF BIRTH</label><input type="date" style={{ ...inp, colorScheme: 'dark' }} value={rDob} onChange={e => setRDob(e.target.value)} /></div>
       </div>
-      <button style={btn} onClick={regNext}>Continue →</button>
+      <button style={{ ...btn, opacity: sending ? 0.6 : 1, cursor: sending ? 'wait' : 'pointer' }} onClick={regNext} disabled={sending}>
+        {sending ? 'Sending...' : 'Continue →'}
+      </button>
     </div>
   );
 
@@ -384,24 +409,45 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       )}
       <div style={{ display: 'flex', gap: 10, width: '100%' }}>
         <button style={btnO} onClick={regBack}>← Back</button>
-        <button style={btn} onClick={regNext}>Continue →</button>
+        <button style={{ ...btn, opacity: sending ? 0.6 : 1, cursor: sending ? 'wait' : 'pointer' }} onClick={regNext} disabled={sending}>
+          {sending ? 'Sending code...' : 'Continue →'}
+        </button>
       </div>
     </div>
   );
 
+  const resendRegCode = () => {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    setRGenCode(code);
+    setSending(true);
+    setError(null);
+    setCodeSentMsg('');
+    sendVerificationCode(rEmail, code, rName).then(res => {
+      setSending(false);
+      if (res.success) setCodeSentMsg('New code sent!');
+      else setError('Failed to resend: ' + (res.error || 'Please try again'));
+    });
+  };
+
   const regEmailCode = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Email Verification</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Enter the code sent to your email</p>
-      <div style={{ background: GB, border: `1px solid ${GBD}`, borderRadius: 10, padding: '0.8rem 1rem', textAlign: 'center' }}>
-        <div style={{ fontSize: '0.6rem', color: G, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>DEMO — YOUR CODE IS:</div>
-        <div style={{ fontSize: '1.7rem', fontWeight: 800, color: '#fff', letterSpacing: '0.3em', fontFamily: 'monospace' }}>{rGenCode}</div>
-      </div>
+      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>We sent a 6-digit code to <span style={{ color: G }}>{rEmail}</span></p>
+      {codeSentMsg && (
+        <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>
+          ✓ {codeSentMsg}
+        </div>
+      )}
       <Err />
       <div>
         <label style={lbl}>VERIFICATION CODE</label>
         <input style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }} value={rCode}
           onChange={e => setRCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} />
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <span onClick={resendRegCode} style={{ fontSize: '0.76rem', color: 'rgba(196,160,82,0.6)', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.5 : 1 }}>
+          {sending ? 'Sending...' : 'Didn\'t receive it? Resend code →'}
+        </span>
       </div>
       <BtnRow onBack={regBack} onNext={regNext} nextLabel="Verify & Create →" />
     </div>
@@ -429,19 +475,6 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Welcome Back</h3>
       <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Sign in to your private banking dashboard</p>
-      <div style={{ background: GB, border: `1px solid ${GBD}`, borderRadius: 10, padding: '0.75rem 1rem' }}>
-        <div style={{ fontSize: '0.6rem', color: G, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 5 }}>DEMO ACCESS</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: '0.76rem', color: '#A2B2BF', lineHeight: 1.7 }}>
-            <span style={{ color: '#EAE0D0' }}>Email:</span> user@londwaycapital.com<br/>
-            <span style={{ color: '#EAE0D0' }}>Pass:</span> password123
-          </div>
-          <button onClick={() => { setLEmail('user@londwaycapital.com'); setLPw('password123'); }}
-            style={{ background: 'rgba(196,160,82,0.12)', border: `1px solid rgba(196,160,82,0.22)`, color: G, borderRadius: 7, padding: '0.28rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>
-            Fill →
-          </button>
-        </div>
-      </div>
       <Err />
       <div><label style={lbl}>EMAIL ADDRESS</label><input type="email" style={inp} value={lEmail} onChange={e => setLEmail(e.target.value)} placeholder="you@example.com" /></div>
       <div>
@@ -451,23 +484,44 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         </div>
         <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="••••••••" />
       </div>
-      <button style={btn} onClick={loginNext}>Sign In →</button>
+      <button style={{ ...btn, opacity: sending ? 0.6 : 1, cursor: sending ? 'wait' : 'pointer' }} onClick={loginNext} disabled={sending}>
+        {sending ? 'Sending code...' : 'Sign In →'}
+      </button>
     </div>
   );
+
+  const resendLoginCode = () => {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    setLGenCode(code);
+    setSending(true);
+    setError(null);
+    setCodeSentMsg('');
+    sendVerificationCode(lEmail, code, matched?.name).then(res => {
+      setSending(false);
+      if (res.success) setCodeSentMsg('New code sent!');
+      else setError('Failed to resend: ' + (res.error || 'Please try again'));
+    });
+  };
 
   const loginCodeStep = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Verification Code</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Enter the code sent to your email</p>
-      <div style={{ background: GB, border: `1px solid ${GBD}`, borderRadius: 10, padding: '0.8rem 1rem', textAlign: 'center' }}>
-        <div style={{ fontSize: '0.6rem', color: G, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>DEMO — YOUR CODE:</div>
-        <div style={{ fontSize: '1.7rem', fontWeight: 800, color: '#fff', letterSpacing: '0.3em', fontFamily: 'monospace' }}>{lGenCode}</div>
-      </div>
+      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>We sent a 6-digit code to <span style={{ color: G }}>{lEmail}</span></p>
+      {codeSentMsg && (
+        <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>
+          ✓ {codeSentMsg}
+        </div>
+      )}
       <Err />
       <div>
         <label style={lbl}>ENTER CODE</label>
         <input style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }} value={lCode}
           onChange={e => setLCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} />
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <span onClick={resendLoginCode} style={{ fontSize: '0.76rem', color: 'rgba(196,160,82,0.6)', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.5 : 1 }}>
+          {sending ? 'Sending...' : 'Didn\'t receive it? Resend code →'}
+        </span>
       </div>
       <BtnRow onBack={loginBack} onNext={loginNext} nextLabel={matched?.faceData ? 'Continue →' : 'Sign In →'} />
     </div>
