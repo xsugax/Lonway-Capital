@@ -419,7 +419,7 @@ function ExistingCard({ card, colors }: { card: any; colors: any }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function Cards({ user }: { user: { token: string } }) {
+export default function Cards({ user }: { user: { token: string; email?: string } }) {
   const { colors } = useTheme();
   const { t } = useLang();
 
@@ -438,8 +438,8 @@ export default function Cards({ user }: { user: { token: string } }) {
   const def = cards.find(c => c.tier === selectedTier) ?? cards[0];
 
   const fetchCards = useCallback(() => {
-    setExistingCards(getCards());
-  }, []);
+    setExistingCards(getCards(user?.email));
+  }, [user?.email]);
 
   useEffect(() => { fetchCards(); }, [fetchCards]);
 
@@ -455,9 +455,9 @@ export default function Cards({ user }: { user: { token: string } }) {
     if (!fullName.trim() || !address.trim() || !city.trim() || !country.trim()) return;
     setSubmitting(true);
     const card = { id: 'card-' + Date.now(), network, tier: def.tier, holderName: fullName, deliveryAddress: address, city, country, status: 'pending', requestedAt: new Date().toISOString() };
-    const all = getCards();
+    const all = getCards(user?.email);
     all.push(card);
-    saveCards(all);
+    saveCards(all, user?.email);
     setResult(card);
     setStep('success');
     fetchCards();

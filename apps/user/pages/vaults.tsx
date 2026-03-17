@@ -76,7 +76,7 @@ function Field({ label, value, onChange, type = 'text', placeholder, colors }: a
 const VAULT_COLORS = ['#C4A052', '#9b8fbf', '#3D9E7A', '#E07040', '#4A90D9'];
 const APY = 4.8;
 
-export default function Vaults({ user }: { user: { token: string } }) {
+export default function Vaults({ user }: { user: { token: string; email?: string } }) {
   const { colors } = useTheme();
   const { t } = useLang();
 
@@ -95,19 +95,19 @@ export default function Vaults({ user }: { user: { token: string } }) {
   const [modalLoading, setModalLoading] = useState(false);
 
   const loadVaults = () => {
-    const data = getVaults();
+    const data = getVaults(user?.email);
     setVaults(data);
     setLoading(false);
   };
 
-  useEffect(() => { loadVaults(); }, []);
+  useEffect(() => { loadVaults(); }, [user?.email]);
 
   const handleCreate = () => {
     if (!newName.trim() || !newGoal) return;
     setCreating(true);
     const v = { id: 'vault-' + Date.now(), name: newName, balance: 0, goal: parseFloat(newGoal), currency: newCurrency, createdAt: new Date().toISOString() };
-    const updated = [...getVaults(), v];
-    saveVaults(updated);
+    const updated = [...getVaults(user?.email), v];
+    saveVaults(updated, user?.email);
     setShowCreate(false);
     setNewName(''); setNewGoal('');
     loadVaults();
@@ -118,12 +118,12 @@ export default function Vaults({ user }: { user: { token: string } }) {
     if (!activeModal || !modalAmount) return;
     setModalLoading(true);
     const { type, vault } = activeModal;
-    const all = getVaults();
+    const all = getVaults(user?.email);
     const v = all.find((x: any) => x.id === vault.id);
     if (v) {
       if (type === 'topup') v.balance += parseFloat(modalAmount);
       else v.balance = Math.max(0, v.balance - parseFloat(modalAmount));
-      saveVaults(all);
+      saveVaults(all, user?.email);
     }
     setActiveModal(null);
     setModalAmount('');

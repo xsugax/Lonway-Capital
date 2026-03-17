@@ -6,8 +6,10 @@ import Login from '../components/Login';
 import Welcome from '../components/Welcome';
 import BankLoader from '../components/BankLoader';
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { LangProvider } from '../contexts/LanguageContext';
+import { trackPageVisit } from '../lib/trackVisit';
 
 // Only one export default function allowed
 export default function App({ Component, pageProps }: AppProps) {
@@ -16,6 +18,8 @@ export default function App({ Component, pageProps }: AppProps) {
   const [showRegister, setShowRegister] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
+
+  const router = useRouter();
 
   useEffect(() => {
     // Restore session from localStorage on first load
@@ -27,7 +31,15 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     } catch {}
     setHydrated(true);
+    // Track initial page visit
+    trackPageVisit(window.location.pathname + window.location.search);
   }, []);
+
+  useEffect(() => {
+    const handleRouteChange = (url: string) => trackPageVisit(url);
+    router.events.on('routeChangeComplete', handleRouteChange);
+    return () => router.events.off('routeChangeComplete', handleRouteChange);
+  }, [router.events]);
 
   useEffect(() => {
     if (

@@ -162,7 +162,7 @@ const TRUST_BADGES = [
 ];
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-export default function Dashboard({ user }: { user: { token: string } }) {
+export default function Dashboard({ user }: { user: { token: string; email?: string } }) {
   // Smartsupp live chat widget
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -207,7 +207,7 @@ export default function Dashboard({ user }: { user: { token: string } }) {
   }, [t]);
 
   React.useEffect(() => {
-    const accounts = getBankAccounts();
+    const accounts = getBankAccounts(user?.email);
     const totalBalance = accounts.reduce((sum: number, acc: any) => sum + (acc.balance ?? 0), 0);
     const allTx: any[] = [];
     accounts.forEach((acc: any) => {

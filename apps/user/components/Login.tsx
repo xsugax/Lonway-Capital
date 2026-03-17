@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { sendVerificationCode, generateSecureCode } from '../lib/email';
+import { sendVerificationCode, sendWelcomeEmail, generateSecureCode } from '../lib/email';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string; email: string }) => void;
@@ -90,11 +90,24 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const [scanning, setScanning] = useState(false);
   const [sending, setSending] = useState(false);
   const [codeSentMsg, setCodeSentMsg] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Auto-fill remembered email
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('londway_remembered_email');
+      if (saved) setLEmail(saved);
+    }
+  }, []);
 
   // ─── PIN ───
   const [rPin, setRPin] = useState('');
   const [rPinC, setRPinC] = useState('');
   const [lPin, setLPin] = useState('');
+
+  // ─── Code Fallback (show code in UI if email fails) ───
+  const [regCodeFallback, setRegCodeFallback] = useState(false);
+  const [loginCodeFallback, setLoginCodeFallback] = useState(false);
 
   // ─── Forgot Password ───
   const [forgotMode, setForgotMode] = useState(false);
@@ -122,6 +135,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     setRPin(''); setRPinC('');
     setLEmail(''); setLPw(''); setLCode(''); setLGenCode('');
     setLPin('');
+    setRegCodeFallback(false); setLoginCodeFallback(false);
     setMatched(null); setScanning(false); setSending(false); setCodeSentMsg('');
     setForgotMode(false); setForgotStep(0); setForgotEmail(''); setForgotCode(''); setForgotGenCode(''); setForgotPw(''); setForgotPwC('');
     stopCam();
@@ -189,13 +203,15 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         setSending(false);
         if (res.success) {
           setCodeSentMsg(`Code sent to ${rEmail}`);
-          setRegStep(4);
+          setRegCodeFallback(false);
         } else {
-          setError('Failed to send code: ' + (res.error || 'Please try again'));
+          setRegCodeFallback(true);
+          setCodeSentMsg('');
         }
+        setRegStep(4); // always advance — fallback shown in UI if email fails
       });
     } else if (regStep === 4) {
-      if (rCode !== rGenCode) { setError('Invalid verification code'); return; }
+      if (rCode !== rGenCode) { setError('Incorrect code. Check your email or use the code displayed below.'); return; }
       saveNewAccount({
         email: rEmail, password: rPw, name: rName, role: 'user',
         phone: rPhone, dob: rDob, idVerified: true, faceData: faceData || undefined,
@@ -208,6 +224,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       updateAccountPin(rEmail, rPin);
       setRegStep(6);
     } else if (regStep === 6) {
+      sendWelcomeEmail(rEmail, rName).catch(() => {});
       onLogin({ name: rName, token: 'token-' + Date.now(), role: 'user', email: rEmail });
     }
   };
@@ -255,13 +272,23 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         setSending(false);
         if (res.success) {
           setCodeSentMsg(`Code sent to ${lEmail}`);
-          setLoginStep(1);
+          setLoginCodeFallback(false);
         } else {
-          setError('Failed to send verification code: ' + (res.error || 'Please try again'));
+          setLoginCodeFallback(true);
+          setCodeSentMsg('');
         }
+        // Persist email recognition
+        if (typeof window !== 'undefined') {
+          if (rememberMe) {
+            localStorage.setItem('londway_remembered_email', lEmail);
+          } else {
+            localStorage.removeItem('londway_remembered_email');
+          }
+        }
+        setLoginStep(1); // always advance — fallback shown in UI if email fails
       });
     } else if (loginStep === 1) {
-      if (lCode !== lGenCode) { setError('Invalid verification code'); return; }
+      if (lCode !== lGenCode) { setError('Incorrect code. Check your email or use the code displayed below.'); return; }
       if (matched?.pin) {
         setLoginStep(2); // PIN step
       } else if (matched?.faceData) {
@@ -481,34 +508,52 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     setSending(true);
     setError(null);
     setCodeSentMsg('');
+    setRegCodeFallback(false);
     sendVerificationCode(rEmail, code, rName).then(res => {
       setSending(false);
-      if (res.success) setCodeSentMsg('New code sent!');
-      else setError('Failed to resend: ' + (res.error || 'Please try again'));
+      if (res.success) { setCodeSentMsg('New code sent! Check your inbox.'); setRegCodeFallback(false); }
+      else { setRegCodeFallback(true); }
     });
   };
 
   const regEmailCode = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Email Verification</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>We sent a 6-digit code to <span style={{ color: G }}>{rEmail}</span></p>
+      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>
+        {regCodeFallback
+          ? <>Could not deliver to <span style={{ color: G }}>{rEmail}</span>. Your code is shown below.</>  
+          : <>A 6-digit code was sent to <span style={{ color: G }}>{rEmail}</span>. Check your inbox &amp; spam.</>}
+      </p>
       {codeSentMsg && (
         <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>
           ✓ {codeSentMsg}
         </div>
       )}
+      {regCodeFallback && (
+        <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.25)', borderRadius: 10, padding: '14px 18px', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.65rem', color: 'rgba(196,160,82,0.6)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Your one-time code</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: G, letterSpacing: '0.4em', fontFamily: 'monospace' }}>{rGenCode}</div>
+          <div style={{ fontSize: '0.68rem', color: '#556', marginTop: 6 }}>Enter this code in the field below</div>
+        </div>
+      )}
       <Err />
       <div>
         <label style={lbl}>VERIFICATION CODE</label>
-        <input style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }} value={rCode}
-          onChange={e => setRCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} />
+        <input
+          style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }}
+          value={rCode}
+          onChange={e => setRCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="000000"
+          maxLength={6}
+          autoFocus
+        />
       </div>
       <div style={{ textAlign: 'center' }}>
         <span onClick={resendRegCode} style={{ fontSize: '0.76rem', color: 'rgba(196,160,82,0.6)', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.5 : 1 }}>
-          {sending ? 'Sending...' : 'Didn\'t receive it? Resend code →'}
+          {sending ? 'Sending...' : "Didn't receive it? Resend →"}
         </span>
       </div>
-      <BtnRow onBack={regBack} onNext={regNext} nextLabel="Verify & Create →" />
+      <BtnRow onBack={regBack} onNext={regNext} nextLabel="Verify & Continue →" />
     </div>
   );
 
@@ -658,14 +703,21 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Welcome Back</h3>
       <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Sign in to your private banking dashboard</p>
       <Err />
-      <div><label style={lbl}>EMAIL ADDRESS</label><input type="email" style={inp} value={lEmail} onChange={e => setLEmail(e.target.value)} placeholder="you@example.com" /></div>
+      <div><label style={lbl}>EMAIL ADDRESS</label><input type="email" style={inp} value={lEmail} onChange={e => setLEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" /></div>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <label style={{ ...lbl, marginBottom: 0 }}>PASSWORD</label>
           <span style={{ fontSize: '0.72rem', color: 'rgba(196,160,82,0.5)', cursor: 'pointer' }} onClick={() => { setForgotMode(true); setForgotStep(0); setError(null); setForgotEmail(lEmail); }}>Forgot?</span>
         </div>
-        <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="••••••••" />
+        <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
       </div>
+      {/* Remember me */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+        <div onClick={() => setRememberMe(r => !r)} style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${rememberMe ? G : 'rgba(196,160,82,0.3)'}`, background: rememberMe ? G : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+          {rememberMe && <span style={{ color: '#060913', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
+        </div>
+        <span style={{ fontSize: '0.78rem', color: rememberMe ? G : 'rgba(196,160,82,0.5)', fontWeight: 600 }}>Remember my email</span>
+      </label>
       <button style={{ ...btn, opacity: sending ? 0.6 : 1, cursor: sending ? 'wait' : 'pointer' }} onClick={loginNext} disabled={sending}>
         {sending ? 'Sending code...' : 'Sign In →'}
       </button>
@@ -678,26 +730,38 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     setSending(true);
     setError(null);
     setCodeSentMsg('');
+    setLoginCodeFallback(false);
     sendVerificationCode(lEmail, code, matched?.name).then(res => {
       setSending(false);
-      if (res.success) setCodeSentMsg('New code sent!');
-      else setError('Failed to resend: ' + (res.error || 'Please try again'));
+      if (res.success) { setCodeSentMsg('New code sent! Check your inbox.'); setLoginCodeFallback(false); }
+      else { setLoginCodeFallback(true); }
     });
   };
 
   const loginCodeStep = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Verification Code</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>We sent a 6-digit code to <span style={{ color: G }}>{lEmail}</span></p>
+      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Security Verification</h3>
+      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>
+        {loginCodeFallback
+          ? <>Could not deliver to <span style={{ color: G }}>{lEmail}</span>. Your code is shown below.</>
+          : <>A 6-digit code was sent to <span style={{ color: G }}>{lEmail}</span>. Check your inbox &amp; spam.</>}
+      </p>
       {codeSentMsg && (
         <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>
           ✓ {codeSentMsg}
         </div>
       )}
+      {loginCodeFallback && (
+        <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.25)', borderRadius: 10, padding: '14px 18px', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.65rem', color: 'rgba(196,160,82,0.6)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Your one-time code</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: G, letterSpacing: '0.4em', fontFamily: 'monospace' }}>{lGenCode}</div>
+          <div style={{ fontSize: '0.68rem', color: '#556', marginTop: 6 }}>Enter this code in the field below</div>
+        </div>
+      )}
       <Err />
       <div>
         <label style={lbl}>ENTER CODE</label>
-        <input style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }} value={lCode}
+        <input style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }} value={lCode} autoFocus
           onChange={e => setLCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} />
       </div>
       <div style={{ textAlign: 'center' }}>

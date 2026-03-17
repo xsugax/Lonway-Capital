@@ -25,7 +25,7 @@ interface BankSettings {
   bankName: string; bankTagline: string;
 }
 
-type Tab = 'overview' | 'users' | 'transactions' | 'funding' | 'audit' | 'cards' | 'notifications' | 'settings';
+type Tab = 'overview' | 'users' | 'transactions' | 'funding' | 'audit' | 'cards' | 'notifications' | 'visitors' | 'settings';
 
 // ── Constants ──────────────────────────────────────────────────
 const G = '#C4A052';
@@ -327,6 +327,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const pendingCards = userCards.filter((c: any) => c.status === 'pending');
   const userTransfers: any[] = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_transfers'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
   const pendingUserTransfers = userTransfers.filter((t: any) => t.status === 'pending');
+  const linkClicks: any[] = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_link_clicks'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: 'overview', label: '⚡ Overview' },
@@ -335,6 +336,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     { id: 'funding', label: '💰 Fund & Backdate' },
     { id: 'cards', label: '💳 Cards', badge: pendingCards.length || undefined },
     { id: 'notifications', label: '🔔 Notifications' },
+    { id: 'visitors', label: '🌍 Visitors', badge: linkClicks.length || undefined },
     { id: 'settings', label: '⚙ Settings' },
     { id: 'audit', label: '📋 Audit Log', badge: data.audit.length },
   ];
@@ -650,6 +652,67 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             </div>
           </div>
         )}
+
+        {/* ═══ VISITORS ═══ */}
+        {tab === 'visitors' && (() => {
+          const uniqCountries = [...new Set(linkClicks.map((c: any) => c.country).filter(Boolean))].length;
+          const uniqIps = [...new Set(linkClicks.map((c: any) => c.ip).filter(Boolean))].length;
+          function flagEmoji(code: string) {
+            if (!code || code.length !== 2) return '🌐';
+            return code.toUpperCase().replace(/./g, ch =>
+              String.fromCodePoint(0x1F1E6 - 65 + ch.charCodeAt(0))
+            );
+          }
+          return (
+            <div style={cardS()}>
+              {/* Summary row */}
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
+                {[
+                  { label: 'Total Visits', value: linkClicks.length },
+                  { label: 'Unique IPs', value: uniqIps },
+                  { label: 'Countries', value: uniqCountries },
+                ].map(s => (
+                  <div key={s.label} style={{ background: 'rgba(196,160,82,0.06)', border: '1px solid rgba(196,160,82,0.12)', borderRadius: 10, padding: '12px 20px', minWidth: 100, textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: G }}>{s.value}</div>
+                    <div style={{ fontSize: '0.7rem', color: SL, marginTop: 3, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.label}</div>
+                  </div>
+                ))}
+                <button onClick={() => {
+                  if (!confirm('Clear all visitor logs?')) return;
+                  localStorage.setItem('londway_link_clicks', '[]');
+                  addAudit('visitor_log_cleared', 'System');
+                  notify(true, 'Visitor log cleared');
+                  setData({ ...data });
+                }} style={{ ...btnD, marginLeft: 'auto', alignSelf: 'center' }}>Clear Log</button>
+              </div>
+
+              {linkClicks.length === 0 ? (
+                <div style={{ textAlign: 'center', color: SL, padding: '3rem' }}>No visitor data yet — visits are recorded when users navigate the site.</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                    <thead>
+                      <tr>{['Flag', 'Country', 'State / Region', 'City', 'Page', 'IP', 'Time'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {linkClicks.map((c: any) => (
+                        <tr key={c.id}>
+                          <td style={{ ...tdS, fontSize: '1.3rem', textAlign: 'center' }}>{flagEmoji(c.countryCode || '')}</td>
+                          <td style={{ ...tdS, fontWeight: 600, color: IV }}>{c.country || '—'}</td>
+                          <td style={{ ...tdS, color: G }}>{c.state || '—'}</td>
+                          <td style={{ ...tdS, color: SL }}>{c.city || '—'}</td>
+                          <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.75rem', color: 'rgba(196,160,82,0.7)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.page || '/'}</td>
+                          <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: SL }}>{c.ip || '—'}</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.76rem', whiteSpace: 'nowrap' }}>{c.timestamp ? fmtDate(c.timestamp) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ═══ AUDIT ═══ */}
         {tab === 'audit' && (

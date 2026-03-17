@@ -123,7 +123,7 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
   );
 }
 
-export default function Accounts({ user }: { user: { token: string } }) {
+export default function Accounts({ user }: { user: { token: string; email?: string } }) {
   const { colors } = useTheme();
   const { t } = useLang();
 
@@ -135,13 +135,13 @@ export default function Accounts({ user }: { user: { token: string } }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const list: Account[] = getBankAccounts();
+    const list: Account[] = getBankAccounts(user?.email);
     setAccounts(list);
     const fs: Record<string, boolean> = {};
     list.forEach(a => { fs[a.id] = a.frozen ?? false; });
     setFreezeStatus(fs);
     setLoading(false);
-  }, []);
+  }, [user?.email]);
 
   const handleCopy = (val: string) => {
     navigator.clipboard.writeText(val).catch(() => {});
@@ -152,9 +152,9 @@ export default function Accounts({ user }: { user: { token: string } }) {
   const handleFreeze = (id: string) => {
     const isFrozen = freezeStatus[id];
     setFreezeStatus(prev => ({ ...prev, [id]: !isFrozen }));
-    const accs = getBankAccounts();
+    const accs = getBankAccounts(user?.email);
     const acc = accs.find((a: any) => a.id === id);
-    if (acc) { acc.frozen = !isFrozen; saveBankAccounts(accs); }
+    if (acc) { acc.frozen = !isFrozen; saveBankAccounts(accs, user?.email); }
     setAccounts(accs);
   };
 

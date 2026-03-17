@@ -70,7 +70,7 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
 
   function fetchCheckbooks() {
     setLoading(true);
-    setCheckbooks(getCheckbooks());
+    setCheckbooks(getCheckbooks(user.email));
     setLoading(false);
   }
 
@@ -79,9 +79,9 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
     setRequesting(true);
     setReqResult(null);
     const book = { id: 'cb-' + Date.now(), status: 'pending' as BookStatus, requestedAt: new Date().toISOString(), checks: [] as Check[], deliveryAddress: reqForm.address, notes: reqForm.notes };
-    const all = getCheckbooks();
+    const all = getCheckbooks(user.email);
     all.push(book);
-    saveCheckbooks(all);
+    saveCheckbooks(all, user.email);
     setReqResult({ ok: true, message: 'Checkbook requested successfully. Pending admin approval.' });
     setReqForm({ address: '', notes: '' });
     setShowForm(false);
@@ -92,11 +92,11 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
   function handleUpdateCheck(e: React.FormEvent) {
     e.preventDefault();
     if (!editCheck) return;
-    const all = getCheckbooks();
+    const all = getCheckbooks(user.email);
     const book = all.find((b: any) => b.id === editCheck.bookId);
     if (book) {
       const check = book.checks.find((c: Check) => c.number === editCheck.check.number);
-      if (check) { Object.assign(check, editData); saveCheckbooks(all); }
+      if (check) { Object.assign(check, editData); saveCheckbooks(all, user.email); }
     }
     fetchCheckbooks();
     setEditCheck(null);

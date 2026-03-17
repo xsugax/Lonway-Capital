@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { getTransfers, saveTransfers } from '../lib/store';
+import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage } from '../lib/store';
 import { sendTransferNotification } from '../lib/email';
+import type { TierLimits } from '../lib/store';
 
 type TransferType = 'local' | 'international';
 type TransferStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'failed' | 'reversed';
@@ -47,6 +48,8 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
   const [submitResult, setSubmitResult] = useState<{ ok: boolean; message: string; ref?: string } | null>(null);
   const [history, setHistory] = useState<Transfer[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [tierLimits, setTierLimits] = useState<TierLimits>(getTierLimits('Standard'));
+  const [dailyUsed, setDailyUsed] = useState(0);
   // Local fields
   const [localRecipient, setLocalRecipient] = useState('');
   const [localAccount, setLocalAccount] = useState('');
@@ -70,11 +73,25 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
 
   const QUICK = [100, 250, 500, 1000, 2500, 5000];
 
-  useEffect(() => { fetchHistory(); }, []);
+  useEffect(() => {
+    fetchHistory();
+    // Load user tier
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const accts = JSON.parse(raw);
+          const acct = accts.find((a: any) => a.email === user.email);
+          setTierLimits(getTierLimits(acct?.tier));
+        }
+      } catch {}
+      setDailyUsed(getDailyUsage(user.email));
+    }
+  }, [user?.email]);
 
   function fetchHistory() {
     setHistoryLoading(true);
-    setHistory(getTransfers());
+    setHistory(getTransfers(user?.email));
     setHistoryLoading(false);
   }
 
@@ -84,6 +101,22 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
     const isLocal = tab === 'local';
     const amt = parseFloat(isLocal ? localAmount : intlAmount);
     if (!amt || amt <= 0) { setSubmitResult({ ok: false, message: 'Please enter a valid amount.' }); return; }
+
+    // ─── Tier limit enforcement ───
+    if (amt > tierLimits.perTxLimit) {
+      setSubmitResult({ ok: false, message: `Your ${tierLimits.tier} account allows a maximum of $${tierLimits.perTxLimit.toLocaleString()} per transaction. Upgrade your tier to send more.` });
+      return;
+    }
+    const freshDaily = user?.email ? getDailyUsage(user.email) : dailyUsed;
+    if (freshDaily + amt > tierLimits.dailyTransferLimit) {
+      const remaining = Math.max(0, tierLimits.dailyTransferLimit - freshDaily);
+      setSubmitResult({ ok: false, message: `Daily limit reached. You have $${remaining.toLocaleString()} remaining today (${tierLimits.tier} limit: $${tierLimits.dailyTransferLimit.toLocaleString()}).` });
+      return;
+    }
+    if (!isLocal && !tierLimits.intlAllowed) {
+      setSubmitResult({ ok: false, message: `International wires require a Silver tier or above. Your current tier is ${tierLimits.tier}.` });
+      return;
+    }
 
     // Check if user has a PIN — require PIN gate
     const ACCOUNTS_KEY = 'londway_accounts';
@@ -115,9 +148,14 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         createdAt: new Date().toISOString(),
         ...(tab === 'international' ? { country: intlCountry } : {}),
       };
-      const all = getTransfers();
+      const all = getTransfers(user?.email);
       all.unshift(newTransfer);
-      saveTransfers(all);
+      saveTransfers(all, user?.email);
+      // Track daily usage
+      if (user?.email) {
+        addDailyUsage(user.email, amt);
+        setDailyUsed(d => d + amt);
+      }
 
       // Send confirmation email
       if (user?.email) {

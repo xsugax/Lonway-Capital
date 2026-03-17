@@ -10,16 +10,16 @@ interface Notification {
   read: boolean;
 }
 
-export default function Notifications({ user }: { user: { token: string } }) {
+export default function Notifications({ user }: { user: { token: string; email?: string } }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { colors } = require('../contexts/ThemeContext').useTheme();
 
   useEffect(() => {
-    setNotifications(loadNotifications());
+    setNotifications(loadNotifications(user?.email));
     setLoading(false);
-  }, []);
+  }, [user?.email]);
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: 'Inter, sans-serif' }}>
