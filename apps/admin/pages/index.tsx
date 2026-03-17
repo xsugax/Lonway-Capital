@@ -149,6 +149,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [search, setSearch] = useState('');
 
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [pinModal, setPinModal] = useState<User | null>(null);
+  const [pinValue, setPinValue] = useState('');
   const [fundModal, setFundModal] = useState<{ userId: string; mode: 'credit' | 'debit' } | null>(null);
   const [fundAmt, setFundAmt] = useState('');
   const [fundDesc, setFundDesc] = useState('');
@@ -235,6 +237,28 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('user_updated', updated.email, `Name: ${updated.name}, Tier: ${updated.tier}`);
     notify(true, `User ${updated.name} updated`);
     setEditUser(null);
+  }
+
+  function savePinOnly(u: User, pin: string) {
+    if (!pin || pin.length !== 4) { notify(false, 'PIN must be exactly 4 digits'); return; }
+    const updated = { ...u, pin };
+    persist({ ...data, users: data.users.map(x => x.id === updated.id ? updated : x) });
+    try {
+      const raw = localStorage.getItem('londway_accounts');
+      const accounts: any[] = raw ? JSON.parse(raw) : [];
+      const idx = accounts.findIndex((a: any) => a.email === updated.email);
+      if (idx !== -1) {
+        accounts[idx].pin = pin;
+        localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+      } else {
+        accounts.push({ email: updated.email, password: updated.password || '', pin, name: updated.name, role: updated.role, tier: updated.tier, idVerified: false });
+        localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+      }
+    } catch {}
+    addAudit('pin_updated', updated.email, 'PIN changed by admin');
+    notify(true, `PIN updated for ${updated.name}`);
+    setPinModal(null);
+    setPinValue('');
   }
 
   function toggleFreeze(u: User) {
@@ -506,7 +530,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-                <thead><tr>{['Name','Email','Role','Tier','Balance','KYC','Status','Since','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                <thead><tr>{['Name','Email','Role','Tier','Balance','KYC','Status','PIN','Since','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
                 <tbody>
                   {filteredUsers.map(u => (
                     <tr key={u.id}>
@@ -523,6 +547,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                         <button onClick={() => toggleKyc(u)} style={{ background: u.kyc ? 'rgba(80,200,120,0.1)' : 'rgba(255,77,79,0.1)', border: `1px solid ${u.kyc ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: u.kyc ? '#50C878' : '#ff4d4f', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>{u.kyc ? '✓ Verified' : '✗ Unverified'}</button>
                       </td>
                       <td style={tdS}><Badge status={u.frozen ? 'frozen' : 'active'} /></td>
+                      <td style={tdS}>
+                        {u.pin ? (
+                          <button onClick={() => { setPinModal(u); setPinValue(u.pin || ''); }} style={{ background: 'rgba(80,200,120,0.1)', border: '1px solid rgba(80,200,120,0.3)', color: '#50C878', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>••••</button>
+                        ) : (
+                          <button onClick={() => { setPinModal(u); setPinValue(''); }} style={{ background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)', color: '#FFA500', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>Set PIN</button>
+                        )}
+                      </td>
                       <td style={{ ...tdS, color: SL, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
                       <td style={tdS}>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -1044,6 +1075,36 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
           </Modal>
         );
       })()}
+
+      {pinModal && (
+        <Modal title={`🔑 Set PIN — ${pinModal.name}`} onClose={() => { setPinModal(null); setPinValue(''); }}>
+          <div style={{ display: 'grid', gap: 18 }}>
+            <p style={{ margin: 0, color: SL, fontSize: '0.85rem', lineHeight: 1.6 }}>
+              {pinModal.pin ? `Current PIN is set. Enter a new 4-digit PIN to change it for ${pinModal.name}.` : `No PIN set for ${pinModal.name}. Enter a 4-digit PIN to enable account access.`}
+            </p>
+            <div>
+              <label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>4-Digit PIN</label>
+              <input
+                style={{ ...inp, letterSpacing: '0.5em', textAlign: 'center', fontSize: '1.6rem', padding: '14px' }}
+                type="tel"
+                placeholder="0000"
+                maxLength={4}
+                value={pinValue}
+                autoFocus
+                onChange={e => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              />
+              <div style={{ marginTop: 6, color: SL, fontSize: '0.72rem', textAlign: 'center' }}>{pinValue.length}/4 digits entered</div>
+            </div>
+            <button
+              style={{ ...btnP, padding: '13px', fontSize: '0.9rem', borderRadius: 10, opacity: pinValue.length === 4 ? 1 : 0.5 }}
+              onClick={() => savePinOnly(pinModal, pinValue)}
+              disabled={pinValue.length !== 4}
+            >
+              {pinModal.pin ? '🔑 Update PIN' : '🔑 Save PIN'}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {newUserModal && (
         <Modal title="+ Create New User" onClose={() => setNewUserModal(false)}>
