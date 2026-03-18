@@ -37,6 +37,8 @@ jobs:
           NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP: ${{ secrets.NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP }}
           NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME: ${{ secrets.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME }}
           NEXT_PUBLIC_EMAILJS_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       # ── Build Admin App ──
       - name: Install admin dependencies
@@ -49,6 +51,8 @@ jobs:
         working-directory: apps/admin
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.londwaycapital.com' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       # ── Merge outputs ──
       - name: Merge user + admin into single site

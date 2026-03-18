@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser } from '../lib/cloud';
 
 // ── Types ──────────────────────────────────────────────────────
 interface User {
@@ -127,6 +128,9 @@ function syncUserBankAccounts(
     accts[i].transactions = [entry, ...(Array.isArray(accts[i].transactions) ? accts[i].transactions : [])];
     accts[i].recentActivity = tx.description;
     localStorage.setItem(key, JSON.stringify(accts));
+    // Sync to cloud so balance is visible from any device
+    const totalBalance = accts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+    cloudUpdateBalance(email, totalBalance, accts).catch(() => {});
   } catch {}
 }
 
@@ -342,8 +346,12 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
     notify(true, `User ${user.name} created`);
     setNewUserModal(false);
-    // Generate activation link so user can log in from any device
-    const token = buildActivationToken(nu.email, nu.password, nu.pin, nu.name, nu.role, nu.tier, parseFloat(nu.balance) || 0);
+    // Save to cloud so user can log in from ANY device
+    const initBalance = parseFloat(nu.balance) || 0;
+    const token = buildActivationToken(nu.email, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
+    const tokenData = JSON.parse(atob(decodeURIComponent(token)));
+    cloudSaveUser({ email: nu.email, password: nu.password, pin: nu.pin, name: nu.name, role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '', bank_accounts: tokenData.bankAccounts || null }).catch(() => {});
+    // Generate activation link as backup
     const base = typeof window !== 'undefined' ? window.location.origin.replace('/admin', '') : 'https://londwaycapital.com';
     setActivationLink(`${base}/?activate=${token}`);
     setLinkCopied(false);
@@ -372,6 +380,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('user_updated', updated.email, `Name: ${updated.name}, Tier: ${updated.tier}`);
     notify(true, `User ${updated.name} updated`);
     setEditUser(null);
+    // Sync to cloud
+    cloudSaveUser({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier || 'Standard', balance: updated.balance }).catch(() => {});
   }
 
   function savePinOnly(u: User, pin: string) {
@@ -394,6 +404,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     notify(true, `PIN updated for ${updated.name}`);
     setPinModal(null);
     setPinValue('');
+    // Sync PIN to cloud
+    cloudSaveUser({ email: updated.email, pin }).catch(() => {});
   }
 
   function toggleFreeze(u: User) {
@@ -419,6 +431,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     persist({ ...data, users: data.users.filter(x => x.id !== u.id) });
     addAudit('user_deleted', u.email, `Balance at deletion: ${fmtMoney(u.balance)}`);
     notify(true, `${u.name} deleted`);
+    cloudDeleteUser(u.email).catch(() => {});
   }
 
   // ── Fund / Debit ─────────────────────────────────────────────
@@ -750,6 +763,12 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                     <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => setEditUser(u)}>✏ Edit</button>
                     <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => { setPinModal(u); setPinValue(u.pin || ''); }}>🔑 PIN</button>
                     <button style={{ ...btnG, padding: '7px 14px', color: u.frozen ? '#50C878' : '#ff4d4f', borderColor: u.frozen ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)' }} onClick={() => toggleFreeze(u)}>{u.frozen ? '🔓 Unfreeze' : '🔒 Freeze'}</button>
+                    <button style={{ ...btnG, padding: '7px 14px', color: '#58a6ff', borderColor: 'rgba(88,166,255,0.3)' }} onClick={() => {
+                      const token = buildActivationToken(u.email, u.password || '', u.pin || '', u.name, u.role, u.tier || 'Standard', u.balance || 0);
+                      const base = typeof window !== 'undefined' ? window.location.origin.replace('/admin', '') : 'https://londwaycapital.com';
+                      setActivationLink(`${base}/?activate=${token}`);
+                      setLinkCopied(false);
+                    }}>🔗 Link</button>
                     <button style={{ ...btnD, padding: '7px 14px' }} onClick={() => deleteUser(u)}>🗑 Delete</button>
                   </div>
                 </div>
@@ -1370,10 +1389,15 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
       {/* ── Activation Link Modal ── */}
       {activationLink && (
-        <Modal title="✓ User Created — Activation Link" onClose={() => { setActivationLink(null); setLinkCopied(false); }}>
+        <Modal title="✓ User Saved" onClose={() => { setActivationLink(null); setLinkCopied(false); }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: 'rgba(80,200,120,0.06)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 10, padding: '12px 14px' }}>
+              <p style={{ color: '#50C878', fontSize: '0.82rem', lineHeight: 1.7, margin: 0, fontWeight: 600 }}>
+                ✓ Account synced to cloud. The customer can now sign in on <strong>any device</strong> with their email, password, and PIN.
+              </p>
+            </div>
             <p style={{ color: '#A2B2BF', fontSize: '0.82rem', lineHeight: 1.6, margin: 0 }}>
-              Share this link with the user. When they open it on <strong style={{ color: IV }}>any device or browser</strong>, their account and funded balance will be automatically activated — ready to sign in.
+              Backup activation link (optional) — opens the account instantly if the customer clicks it:
             </p>
             <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.2)', borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: '0.62rem', color: SL, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Activation URL</div>

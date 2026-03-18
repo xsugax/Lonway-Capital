@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sendVerificationCode, sendWelcomeEmail, generateSecureCode } from '../lib/email';
 import { getNotifications, saveNotifications, getBankAccounts, saveBankAccounts, generateFundedAccounts } from '../lib/store';
+import { cloudLookup, cloudSaveUser } from '../lib/cloud';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string; email: string }) => void;
@@ -289,6 +290,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       sendWelcomeEmail(rEmail, rName).catch(() => {});
       // Seed account numbers and write welcome notification for new user
       getBankAccounts(rEmail); // triggers seed write to localStorage keyed by email
+      // Save to cloud for cross-device login
+      cloudSaveUser({ email: rEmail, password: rPw, pin: rPin, name: rName, role: 'user', tier: 'Standard', balance: 0, phone: rPhone }).catch(() => {});
       const welcomeNotifs = [
         { id: 'n-welcome-' + Date.now(), message: `Welcome to Londway Capital, ${rName}! Your account is verified and ready to use.`, type: 'success', date: new Date().toISOString(), read: false },
         { id: 'n-fund-' + Date.now(), message: 'Your account balance is $0.00. Fund your account via Transfer, Crypto deposit, or contact a branch.', type: 'info', date: new Date().toISOString(), read: false },
@@ -326,14 +329,35 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   };
 
   // ─── Login flow ───
-  const loginNext = () => {
+  const loginNext = async () => {
     setError(null);
     if (loginStep === 0) {
       // Step 0: email + password only
       if (!lEmail.includes('@')) { setError('Enter a valid email address'); return; }
       if (!lPw) { setError('Enter your password'); return; }
       const accts = getAccounts();
-      const m = accts.find(a => a.email === lEmail);
+      let m = accts.find(a => a.email === lEmail);
+      // If not found locally, check cloud database (cross-device login)
+      if (!m) {
+        setSending(true);
+        try {
+          const cloud = await cloudLookup(lEmail);
+          if (cloud && cloud.password) {
+            const local: StoredAccount = {
+              email: cloud.email, password: cloud.password, pin: cloud.pin || '',
+              name: cloud.name, role: cloud.role, idVerified: false,
+            };
+            saveNewAccount(local);
+            if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {
+              saveBankAccounts(cloud.bank_accounts, cloud.email);
+            } else if (cloud.balance > 0) {
+              const seeded = generateFundedAccounts(cloud.email, cloud.balance);
+              saveBankAccounts(seeded, cloud.email);
+            }
+            m = local;
+          }
+        } catch {} finally { setSending(false); }
+      }
       if (!m) { setError('No account found for that email'); return; }
       if (m.password !== lPw) { setError('Incorrect password'); return; }
       setMatched(m);

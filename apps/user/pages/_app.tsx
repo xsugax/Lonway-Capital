@@ -17,7 +17,10 @@ export default function App({ Component, pageProps }: AppProps) {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [showLoader, setShowLoader] = useState(true);
+  const [showLoader, setShowLoader] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('activate=')) return false;
+    return true;
+  });
 
   const router = useRouter();
 
@@ -33,6 +36,10 @@ export default function App({ Component, pageProps }: AppProps) {
     setHydrated(true);
     // Track initial page visit
     trackPageVisit(window.location.pathname + window.location.search);
+    // Auto-open login modal when activation link is detected
+    if (typeof window !== 'undefined' && window.location.search.includes('activate=')) {
+      setShowLogin(true);
+    }
   }, []);
 
   useEffect(() => {
