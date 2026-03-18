@@ -37,10 +37,12 @@ jobs:
 
       # ── Build Admin App ──
       - name: Install admin dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          rm -f package-lock.json
+          npm install --no-package-lock
         working-directory: apps/admin
       - name: Build admin app
-        run: npm run build
+        run: npx next build
         working-directory: apps/admin
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.londwaycapital.com' }}
