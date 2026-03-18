@@ -12,8 +12,17 @@ export function isCloudEnabled(): boolean {
   return !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
-const hdrs = (): Record<string, string> => ({
+/** Headers for GET (read) requests — no Content-Type to avoid CORS preflight on Safari */
+const readHdrs = (): Record<string, string> => ({
+  'Accept': 'application/json',
+  'apikey': SUPABASE_ANON_KEY,
+  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+});
+
+/** Headers for POST/PATCH/DELETE (write) requests */
+const writeHdrs = (): Record<string, string> => ({
   'Content-Type': 'application/json',
+  'Accept': 'application/json',
   'apikey': SUPABASE_ANON_KEY,
   'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
 });
@@ -32,16 +41,23 @@ export interface CloudAccount {
 
 /** Look up account by email */
 export async function cloudLookup(email: string): Promise<CloudAccount | null> {
-  if (!isCloudEnabled()) return null;
+  if (!isCloudEnabled()) {
+    console.warn('[cloud] Cloud not enabled — missing SUPABASE_URL or ANON_KEY');
+    return null;
+  }
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}&select=*`,
-      { headers: hdrs() }
-    );
-    if (!res.ok) return null;
+    const url = `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}&select=*`;
+    const res = await fetch(url, { method: 'GET', headers: readHdrs() });
+    if (!res.ok) {
+      console.error('[cloud] Lookup failed:', res.status, await res.text().catch(() => ''));
+      return null;
+    }
     const rows = await res.json();
     return rows?.[0] ?? null;
-  } catch { return null; }
+  } catch (err) {
+    console.error('[cloud] Lookup error:', err);
+    return null;
+  }
 }
 
 /** Create or update account (upsert by email) */
@@ -50,10 +66,10 @@ export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: strin
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
       method: 'POST',
-      headers: { ...hdrs(), 'Prefer': 'resolution=merge-duplicates' },
+      headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({ ...acct, email: acct.email.toLowerCase() }),
     });
-  } catch {}
+  } catch (err) { console.error('[cloud] Save error:', err); }
 }
 
 /** Update balance and optionally bank accounts */
@@ -64,9 +80,9 @@ export async function cloudUpdateBalance(email: string, balance: number, bankAcc
     if (bankAccounts) body.bank_accounts = bankAccounts;
     await fetch(
       `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
-      { method: 'PATCH', headers: hdrs(), body: JSON.stringify(body) }
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify(body) }
     );
-  } catch {}
+  } catch (err) { console.error('[cloud] Update error:', err); }
 }
 
 /** Delete account from cloud */
@@ -75,7 +91,7 @@ export async function cloudDeleteUser(email: string) {
   try {
     await fetch(
       `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
-      { method: 'DELETE', headers: hdrs() }
+      { method: 'DELETE', headers: readHdrs() }
     );
-  } catch {}
+  } catch (err) { console.error('[cloud] Delete error:', err); }
 }

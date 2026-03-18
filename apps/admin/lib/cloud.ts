@@ -10,8 +10,17 @@ export function isCloudEnabled(): boolean {
   return !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
-const hdrs = (): Record<string, string> => ({
+/** Headers for read requests */
+const readHdrs = (): Record<string, string> => ({
+  'Accept': 'application/json',
+  'apikey': SUPABASE_ANON_KEY,
+  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+});
+
+/** Headers for write requests */
+const writeHdrs = (): Record<string, string> => ({
   'Content-Type': 'application/json',
+  'Accept': 'application/json',
   'apikey': SUPABASE_ANON_KEY,
   'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
 });
@@ -33,10 +42,10 @@ export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: strin
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
       method: 'POST',
-      headers: { ...hdrs(), 'Prefer': 'resolution=merge-duplicates' },
+      headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({ ...acct, email: acct.email.toLowerCase() }),
     });
-  } catch {}
+  } catch (err) { console.error('[cloud] Save error:', err); }
 }
 
 export async function cloudUpdateBalance(email: string, balance: number, bankAccounts?: any[]) {
@@ -46,9 +55,9 @@ export async function cloudUpdateBalance(email: string, balance: number, bankAcc
     if (bankAccounts) body.bank_accounts = bankAccounts;
     await fetch(
       `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
-      { method: 'PATCH', headers: hdrs(), body: JSON.stringify(body) }
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify(body) }
     );
-  } catch {}
+  } catch (err) { console.error('[cloud] Update error:', err); }
 }
 
 export async function cloudDeleteUser(email: string) {
@@ -56,7 +65,7 @@ export async function cloudDeleteUser(email: string) {
   try {
     await fetch(
       `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
-      { method: 'DELETE', headers: hdrs() }
+      { method: 'DELETE', headers: readHdrs() }
     );
-  } catch {}
+  } catch (err) { console.error('[cloud] Delete error:', err); }
 }

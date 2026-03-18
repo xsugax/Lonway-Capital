@@ -336,12 +336,13 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       if (!lEmail.includes('@')) { setError('Enter a valid email address'); return; }
       if (!lPw) { setError('Enter your password'); return; }
       const accts = getAccounts();
-      let m = accts.find(a => a.email === lEmail);
+      const emailLower = lEmail.toLowerCase().trim();
+      let m = accts.find(a => a.email.toLowerCase() === emailLower);
       // If not found locally, check cloud database (cross-device login)
       if (!m) {
         setSending(true);
         try {
-          const cloud = await cloudLookup(lEmail);
+          const cloud = await cloudLookup(emailLower);
           if (cloud && cloud.password) {
             const local: StoredAccount = {
               email: cloud.email, password: cloud.password, pin: cloud.pin || '',
@@ -356,9 +357,11 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
             }
             m = local;
           }
-        } catch {} finally { setSending(false); }
+        } catch (err) {
+          console.error('[login] Cloud lookup failed:', err);
+        } finally { setSending(false); }
       }
-      if (!m) { setError('No account found for that email'); return; }
+      if (!m) { setError('No account found for that email. Please contact support.'); return; }
       if (m.password !== lPw) { setError('Incorrect password'); return; }
       setMatched(m);
       if (typeof window !== 'undefined') {
