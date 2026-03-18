@@ -372,6 +372,8 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
                 <div style={{ background: 'rgba(240,59,32,0.07)', border: '1px solid rgba(240,59,32,0.2)', borderRadius: 8, padding: '7px 10px', fontSize: '0.75rem', color: '#F59E0B' }}>⚠ International wires require Silver tier or above.</div>
               )}
             </div>
+            <div style={{ background: '#0D1628', borderRadius: 18, border: '1px solid rgba(196,160,82,0.1)', padding: '1.4rem' }}>
+              <h3 style={{ color: '#C4A052', fontWeight: 700, fontSize: '0.92rem', margin: '0 0 14px' }}>WIRE FEES</h3>
               {[['Local ACH / Same-day','Free'],['Local Wire','$15.00'],['International Wire','$35.00'],['SWIFT Priority','$55.00']].map(([l, f]) => (
                 <div key={l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 9 }}>
                   <span style={{ color: '#A2B2BF', fontSize: '0.83rem' }}>{l}</span>
