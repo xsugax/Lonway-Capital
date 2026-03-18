@@ -7,9 +7,15 @@
   padding: 0;
 }
 
-html, body {
+html, body, #__next {
   overflow-x: hidden;
   max-width: 100vw;
+  width: 100%;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
 }
 
 body {
@@ -171,9 +177,12 @@ a {
 
 /* ─── Mobile Responsive ─── */
 @media (max-width: 768px) {
+  /* === GLOBAL === */
+  * { max-width: 100vw; }
+
+  /* === LAYOUT (logged-in pages) === */
   .layout-content { padding: 0 !important; }
 
-  /* All page hero/content sections — reduce side padding */
   .layout-content main,
   .layout-content > main {
     overflow-x: hidden !important;
@@ -185,21 +194,27 @@ a {
     padding-right: 1rem !important;
   }
 
-  /* Headings — responsive sizing */
   .layout-content h1 {
     font-size: clamp(1.4rem, 5vw, 2.2rem) !important;
     line-height: 1.2 !important;
   }
 
-  /* Hero section padding reduction */
   .layout-content main > section:first-child {
     padding-top: 1.5rem !important;
     padding-bottom: 1.2rem !important;
   }
 
-  /* All grids inside content — single column on mobile */
+  /* All named grids — single column on mobile */
   .dash-perf-grid,
-  .dash-bottom-grid {
+  .dash-bottom-grid,
+  .transfer-main-grid,
+  .transfer-fields-grid,
+  .cards-form-grid,
+  .cards-pick-grid,
+  .crypto-main-grid,
+  .crypto-fields-grid,
+  .invest-alloc-grid,
+  .cb-fields-grid {
     grid-template-columns: 1fr !important;
   }
 
@@ -209,33 +224,55 @@ a {
     flex: 1 1 100% !important;
   }
 
-  /* Transfer page grids */
-  .transfer-main-grid { grid-template-columns: 1fr !important; }
-  .transfer-fields-grid { grid-template-columns: 1fr !important; }
-
-  /* Cards page grids */
-  .cards-form-grid { grid-template-columns: 1fr !important; }
-  .cards-pick-grid { grid-template-columns: 1fr !important; }
-
-  /* Crypto page grid */
-  .crypto-main-grid { grid-template-columns: 1fr !important; }
-  .crypto-fields-grid { grid-template-columns: 1fr !important; }
-
-  /* Invest page grid */
-  .invest-alloc-grid { grid-template-columns: 1fr !important; }
-
-  /* Checkbook grids */
-  .cb-fields-grid { grid-template-columns: 1fr !important; }
-
-  /* Inner content padding */
   .layout-content main > div[style*="max-width"] {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
   }
 
-  /* Cards and surface panels — reduce padding */
-  .layout-content div[style*="borderRadius: 18"] {
-    padding: 1rem !important;
+  /* === WELCOME PAGE (pre-login) === */
+  /* Reduce section padding */
+  section {
+    padding-left: clamp(1rem, 3vw, 3rem) !important;
+    padding-right: clamp(1rem, 3vw, 3rem) !important;
+  }
+
+  /* Security section 1fr 1fr grid → stack */
+  .welcome-security-grid {
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+  }
+
+  /* Welcome dashboard mockup 3-col → 1 col */
+  .welcome-mockup-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Welcome feature grid — reduce minmax */
+  .welcome-feature-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* PhotoSection inner padding */
+  .photo-section-inner {
+    padding-left: 1.2rem !important;
+    padding-right: 1.2rem !important;
+  }
+
+  /* Stat divider lines */
+  .welcome-stat-rule {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+  }
+
+  /* Footer columns */
+  footer > div > div:first-child {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Tables — allow horizontal scroll inside container */
+  table {
+    font-size: 0.72rem !important;
   }
 }
 
@@ -255,5 +292,16 @@ a {
   .layout-content main > div[style*="max-width"] {
     padding-left: 0.6rem !important;
     padding-right: 0.6rem !important;
+  }
+
+  /* Welcome page — tighter */
+  section {
+    padding-left: 0.8rem !important;
+    padding-right: 0.8rem !important;
+  }
+
+  .photo-section-inner {
+    padding-left: 0.8rem !important;
+    padding-right: 0.8rem !important;
   }
 }

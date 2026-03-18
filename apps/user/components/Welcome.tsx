@@ -109,8 +109,10 @@ function PhotoSection({
         position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto',
         height: '100%', display: 'flex', alignItems: 'center',
         justifyContent: isLeft ? 'flex-start' : 'flex-end',
-        padding: '0 3.5rem',
-      }}>
+        padding: '0 clamp(1.2rem, 4vw, 3.5rem)',
+      }}
+        className="photo-section-inner"
+      >
         <div style={{
           maxWidth: 560,
           textAlign: isLeft ? 'left' : 'right',
@@ -622,7 +624,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
         position: 'relative', minHeight: '100vh',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         justifyContent: 'center', textAlign: 'center',
-        padding: '8rem 2rem 0', overflow: 'hidden',
+        padding: 'clamp(4rem, 10vw, 8rem) clamp(1rem, 3vw, 2rem) 0', overflow: 'hidden',
       }}>
         {/* Radial glow */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0,
@@ -723,7 +725,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
               <div style={{ fontSize: '0.7rem', color: SL }}>🔐 Encrypted</div>
             </div>
             {/* Metric cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+            <div className="welcome-mockup-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
               {[
                 { l: 'Total Assets', v: '$1,248,592', c: G, d: '+4.2%' },
                 { l: 'Portfolio Value', v: '$842,118', c: PT, d: '+11.7%' },
@@ -748,8 +750,8 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       </section>
 
       {/* ── STAT RULE ── */}
-      <div style={{ height: 1, background: `linear-gradient(90deg, transparent 0%, ${GBR} 20%, rgba(196,160,82,0.22) 50%, ${GBR} 80%, transparent 100%)`, margin: '0 3rem' }}/>
-      <section style={{ padding: '3.5rem 3rem', maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 24 }}>
+      <div className="welcome-stat-rule" style={{ height: 1, background: `linear-gradient(90deg, transparent 0%, ${GBR} 20%, rgba(196,160,82,0.22) 50%, ${GBR} 80%, transparent 100%)`, margin: '0 clamp(1rem, 4vw, 3rem)' }}/>
+      <section style={{ padding: 'clamp(2rem, 4vw, 3.5rem) clamp(1rem, 4vw, 3rem)', maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 24 }}>
         {stats.map(s => (
           <div key={s.l} style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '2.4rem', fontWeight: 800, color: G, letterSpacing: '-0.03em', lineHeight: 1 }}>{s.n}</div>
@@ -757,7 +759,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
           </div>
         ))}
       </section>
-      <div style={{ height: 1, background: `linear-gradient(90deg, transparent 0%, ${GBR} 20%, rgba(196,160,82,0.22) 50%, ${GBR} 80%, transparent 100%)`, margin: '0 3rem' }}/>
+      <div className="welcome-stat-rule" style={{ height: 1, background: `linear-gradient(90deg, transparent 0%, ${GBR} 20%, rgba(196,160,82,0.22) 50%, ${GBR} 80%, transparent 100%)`, margin: '0 clamp(1rem, 4vw, 3rem)' }}/>
 
       {/* ──────────────── DIGITAL BANKING ──────────────── */}
       <PhotoSection
@@ -771,7 +773,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       />
 
       {/* ──────────────── FEATURES / INVESTMENTS ──────────────── */}
-      <section id="investments" style={{ padding: '7rem 2rem', maxWidth: 1100, margin: '0 auto', scrollMarginTop: 80 }}>
+      <section id="investments" style={{ padding: 'clamp(3rem, 7vw, 7rem) 2rem', maxWidth: 1100, margin: '0 auto', scrollMarginTop: 80 }}>
         <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1rem', textTransform: 'uppercase' }}>CAPABILITIES</div>
           <h2 style={{ fontSize: 'clamp(1.9rem, 4vw, 3rem)', fontWeight: 800, letterSpacing: '-0.02em', color: IV, marginBottom: '0.9rem' }}>
@@ -781,7 +783,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
             Every feature engineered for clients who expect the absolute best in security, performance, and service.
           </p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: 16 }}>
+        <div className="welcome-feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(310px, 100%), 1fr))', gap: 16 }}>
           {features.map((f, i) => (
             <div key={i} className="feature-card" style={{ background: S2, border: `1px solid ${GBR}`, borderRadius: 14, padding: '1.8rem', transition: 'all 0.3s', cursor: 'default' }}
               onMouseOver={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = G; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = isDark ? '0 18px 48px rgba(0,0,0,0.5)' : '0 18px 48px rgba(0,0,0,0.1)'; }}
@@ -798,13 +800,13 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
 
       {/* ──────────────── VAULT / SECURITY SPLIT ──────────────── */}
       <section id="security" style={{
-        padding: '6rem 3rem', scrollMarginTop: 70,
+        padding: 'clamp(3rem, 6vw, 6rem) clamp(1rem, 4vw, 3rem)', scrollMarginTop: 70,
         background: isDark
           ? `linear-gradient(180deg, transparent 0%, rgba(196,160,82,0.018) 50%, transparent 100%)`
           : `linear-gradient(180deg, transparent 0%, rgba(139,105,20,0.03) 50%, transparent 100%)`,
         borderTop: `1px solid ${GBR}`, borderBottom: `1px solid ${GBR}`,
       }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
+        <div className="welcome-security-grid" style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(2rem, 5vw, 5rem)', alignItems: 'center' }}>
           {/* Text */}
           <div>
             <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1.2rem', textTransform: 'uppercase' }}>THE LONDWAY VAULT</div>
@@ -843,7 +845,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       </section>
 
       {/* ──────────────── TESTIMONIALS ──────────────── */}
-      <section style={{ padding: '7rem 2rem', maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
+      <section style={{ padding: 'clamp(3rem, 7vw, 7rem) 2rem', maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
         <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1rem', textTransform: 'uppercase' }}>CLIENT VOICES</div>
         <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', fontWeight: 800, color: IV, letterSpacing: '-0.02em', marginBottom: '3rem' }}>
           Trusted by those who<br/>demand <span style={{ color: G }}>excellence.</span>
@@ -879,7 +881,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       </section>
 
       {/* ──────────────── ACCOUNT TIERS ──────────────── */}
-      <section id="accounts" style={{ padding: '6rem 2rem', borderTop: `1px solid ${GBR}` }}>
+      <section id="accounts" style={{ padding: 'clamp(3rem, 6vw, 6rem) 2rem', borderTop: `1px solid ${GBR}` }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
             <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1rem', textTransform: 'uppercase' }}>MEMBERSHIP TIERS</div>
@@ -925,7 +927,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
 
       {/* ──────────────── ABOUT LONDWAY CAPITAL ──────────────── */}
       <section id="about" style={{
-        padding: '7rem 2rem', scrollMarginTop: 70,
+        padding: 'clamp(3rem, 7vw, 7rem) 2rem', scrollMarginTop: 70,
         background: isDark
           ? `linear-gradient(180deg, transparent 0%, rgba(196,160,82,0.012) 50%, transparent 100%)`
           : `linear-gradient(180deg, transparent 0%, rgba(139,105,20,0.025) 50%, transparent 100%)`,
@@ -1022,7 +1024,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       />
 
       {/* ──────────────── FINAL CTA ──────────────── */}
-      <section style={{ padding: '8rem 2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+      <section style={{ padding: 'clamp(3.5rem, 8vw, 8rem) 2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 50% 50% at 50% 50%, ${G}0A 0%, transparent 70%)` }}/>
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 680, margin: '0 auto' }}>
           <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1.4rem', textTransform: 'uppercase' }}>BEGIN TODAY</div>
@@ -1046,7 +1048,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       </section>
 
       {/* ──────────────── FOOTER ──────────────── */}
-      <footer style={{ borderTop: `1px solid ${GBR}`, padding: '3rem', background: isDark ? S1 : colors.surface2 }}>
+      <footer style={{ borderTop: `1px solid ${GBR}`, padding: 'clamp(1.5rem, 4vw, 3rem)', background: isDark ? S1 : colors.surface2 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 32, marginBottom: '2.5rem' }}>
             <div>
