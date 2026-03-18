@@ -1,8 +1,10 @@
-// Email service for Londway Capital — Brevo transactional API
+// Email service for Londway Capital — EmailJS (browser-compatible)
 import axios from 'axios';
 
-const BREVO_API_KEY = process.env.NEXT_PUBLIC_BREVO_API_KEY;
-const SENDER = { name: 'Londway Capital', email: 'londwayfond@gmail.com' };
+const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_OTP = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP;      // 1-time password template
+const EMAILJS_TEMPLATE_WELCOME = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME; // welcome / notifications template
+const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
 
 /** Generate a cryptographically secure 6-digit code */
 export function generateSecureCode(): string {
@@ -42,6 +44,35 @@ function emailWrapper(headerLabel: string, body: string): string {
 }
 
 /**
+ * Send an email via EmailJS (CORS-friendly, works from browser).
+ */
+async function sendViaEmailJS(
+  to: string, toName: string, subject: string, htmlContent: string, templateId: string | undefined
+): Promise<{ success: boolean; error?: string }> {
+  if (!EMAILJS_SERVICE_ID || !templateId || !EMAILJS_PUBLIC_KEY) {
+    return { success: false, error: 'Email service not configured' };
+  }
+  try {
+    await axios.post('https://api.emailjs.com/api/v1.0/email/send', {
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: templateId,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: {
+        to_email: to,
+        to_name: toName,
+        from_name: 'Londway Capital',
+        subject,
+        html_content: htmlContent,
+        reply_to: 'support@londwaycapital.com',
+      },
+    });
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error?.response?.data || error.message };
+  }
+}
+
+/**
  * Send a verification code email.
  */
 export async function sendVerificationCode(
@@ -62,24 +93,8 @@ export async function sendVerificationCode(
     <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">Didn't request this? <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">Contact our security team</a> immediately.</p>`;
 
   const html = emailWrapper('Security Verification', body);
-
-  try {
-    await axios.post(
-      'https://api.brevo.com/v3/smtp/email',
-      {
-        sender: SENDER,
-        to: [{ email: to, name: userName || '' }],
-        replyTo: { email: 'support@londwaycapital.com', name: 'Londway Capital Support' },
-        subject: `${code} is your Londway Capital verification code`,
-        htmlContent: html,
-        textContent: `Hello ${firstName},\n\nYour Londway Capital verification code is: ${code}\n\nThis code expires in 10 minutes. Do not share it with anyone.\n\n© 2026 Londway Capital, Inc.`,
-      },
-      { headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' } }
-    );
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error?.response?.data?.message || error.message };
-  }
+  const subject = `${code} is your Londway Capital verification code`;
+  return sendViaEmailJS(to, userName || '', subject, html, EMAILJS_TEMPLATE_OTP);
 }
 
 /**
@@ -107,23 +122,8 @@ export async function sendWelcomeEmail(
     <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">If you have any questions, our private banking team is available 24/7 at <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
 
   const html = emailWrapper('Account Confirmed', body);
-  try {
-    await axios.post(
-      'https://api.brevo.com/v3/smtp/email',
-      {
-        sender: SENDER,
-        to: [{ email: to, name: userName }],
-        replyTo: { email: 'support@londwaycapital.com', name: 'Londway Capital Support' },
-        subject: `Welcome to Londway Capital — Your account is ready`,
-        htmlContent: html,
-        textContent: `Welcome to Londway Capital, ${firstName}!\n\nYour account has been verified and is ready to use.\nVisit: https://londwaycapital.com\n\n© 2026 Londway Capital, Inc.`,
-      },
-      { headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' } }
-    );
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error?.response?.data?.message || error.message };
-  }
+  const subject = 'Welcome to Londway Capital — Your account is ready';
+  return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
 /**
@@ -165,21 +165,6 @@ export async function sendTransferNotification(
     <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">If you did not initiate this transfer, contact us immediately at <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a> or call your relationship manager.</p>`;
 
   const html = emailWrapper('Transfer Notice', body);
-  try {
-    await axios.post(
-      'https://api.brevo.com/v3/smtp/email',
-      {
-        sender: SENDER,
-        to: [{ email: to, name: userName }],
-        replyTo: { email: 'support@londwaycapital.com', name: 'Londway Capital Support' },
-        subject: `Transfer ${ref} received — pending review`,
-        htmlContent: html,
-        textContent: `Hello ${firstName},\n\nYour transfer of ${amountFmt} to ${recipient} (Ref: ${ref}) has been submitted and is under review.\n\nExpected processing: 1–2 business hours.\n\n© 2026 Londway Capital, Inc.`,
-      },
-      { headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' } }
-    );
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error?.response?.data?.message || error.message };
-  }
+  const subject = `Transfer ${ref} received — pending review`;
+  return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }

@@ -133,6 +133,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Code Fallback (show code in UI if email fails) ───
   const [regCodeFallback, setRegCodeFallback] = useState(false);
   const [loginCodeFallback, setLoginCodeFallback] = useState(false);
+  const [forgotCodeFallback, setForgotCodeFallback] = useState(false);
 
   // ─── Forgot Password ───
   const [forgotMode, setForgotMode] = useState(false);
@@ -160,7 +161,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     setRPin(''); setRPinC('');
     setLEmail(''); setLPw(''); setLCode(''); setLGenCode('');
     setLPin('');
-    setRegCodeFallback(false); setLoginCodeFallback(false);
+    setRegCodeFallback(false); setLoginCodeFallback(false); setForgotCodeFallback(false);
     setMatched(null); setScanning(false); setSending(false); setCodeSentMsg('');
     setForgotMode(false); setForgotStep(0); setForgotEmail(''); setForgotCode(''); setForgotGenCode(''); setForgotPw(''); setForgotPwC('');
     stopCam();
@@ -655,8 +656,9 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       setSending(true); setError(null);
       sendVerificationCode(forgotEmail, code, acct.name).then(res => {
         setSending(false);
-        if (res.success) { setCodeSentMsg(`Code sent to ${forgotEmail}`); setForgotStep(1); }
-        else setError('Failed to send code: ' + (res.error || 'Please try again'));
+        if (res.success) { setCodeSentMsg(`Code sent to ${forgotEmail}`); setForgotCodeFallback(false); }
+        else { setForgotCodeFallback(true); setCodeSentMsg(''); }
+        setForgotStep(1);
       });
     };
     if (forgotStep === 0) return (
@@ -674,7 +676,19 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     if (forgotStep === 1) return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
         <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Enter Reset Code</h3>
+        <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>
+          {forgotCodeFallback
+            ? <>Could not deliver to <span style={{ color: G }}>{forgotEmail}</span>. Your code is shown below.</>
+            : <>A 6-digit code was sent to <span style={{ color: G }}>{forgotEmail}</span>. Check your inbox &amp; spam.</>}
+        </p>
         {codeSentMsg && <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>✓ {codeSentMsg}</div>}
+        {forgotCodeFallback && (
+          <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.25)', borderRadius: 10, padding: '14px 18px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.65rem', color: 'rgba(196,160,82,0.6)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Your one-time code</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: G, letterSpacing: '0.4em', fontFamily: 'monospace' }}>{forgotGenCode}</div>
+            <div style={{ fontSize: '0.68rem', color: '#556', marginTop: 6 }}>Enter this code in the field below</div>
+          </div>
+        )}
         <Err />
         <div><label style={lbl}>VERIFICATION CODE</label><input style={{ ...inp, textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.15rem' }} value={forgotCode} onChange={e => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} /></div>
         <div style={{ display: 'flex', gap: 10 }}>
