@@ -171,8 +171,89 @@ a {
 
 /* ─── Mobile Responsive ─── */
 @media (max-width: 768px) {
-  .layout-content { padding: 1.2rem 0.7rem !important; }
+  .layout-content { padding: 0 !important; }
+
+  /* All page hero/content sections — reduce side padding */
+  .layout-content main,
+  .layout-content > main {
+    overflow-x: hidden !important;
+  }
+
+  .layout-content main section,
+  .layout-content main > div {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Headings — responsive sizing */
+  .layout-content h1 {
+    font-size: clamp(1.4rem, 5vw, 2.2rem) !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Hero section padding reduction */
+  .layout-content main > section:first-child {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.2rem !important;
+  }
+
+  /* All grids inside content — single column on mobile */
+  .dash-perf-grid,
+  .dash-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hero cards stack vertically */
+  .dash-hero-cards > div {
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* Transfer page grids */
+  .transfer-main-grid { grid-template-columns: 1fr !important; }
+  .transfer-fields-grid { grid-template-columns: 1fr !important; }
+
+  /* Cards page grids */
+  .cards-form-grid { grid-template-columns: 1fr !important; }
+  .cards-pick-grid { grid-template-columns: 1fr !important; }
+
+  /* Crypto page grid */
+  .crypto-main-grid { grid-template-columns: 1fr !important; }
+  .crypto-fields-grid { grid-template-columns: 1fr !important; }
+
+  /* Invest page grid */
+  .invest-alloc-grid { grid-template-columns: 1fr !important; }
+
+  /* Checkbook grids */
+  .cb-fields-grid { grid-template-columns: 1fr !important; }
+
+  /* Inner content padding */
+  .layout-content main > div[style*="max-width"] {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Cards and surface panels — reduce padding */
+  .layout-content div[style*="borderRadius: 18"] {
+    padding: 1rem !important;
+  }
 }
+
 @media (max-width: 480px) {
-  .layout-content { padding: 0.8rem 0.4rem !important; }
+  .layout-content { padding: 0 !important; }
+
+  .layout-content main section,
+  .layout-content main > div {
+    padding-left: 0.6rem !important;
+    padding-right: 0.6rem !important;
+  }
+
+  .layout-content h1 {
+    font-size: clamp(1.2rem, 5vw, 1.6rem) !important;
+  }
+
+  .layout-content main > div[style*="max-width"] {
+    padding-left: 0.6rem !important;
+    padding-right: 0.6rem !important;
+  }
 }

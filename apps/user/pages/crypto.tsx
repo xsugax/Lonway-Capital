@@ -195,7 +195,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
       </div>
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '2rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,380px)', gap: '1.5rem', alignItems: 'start' }}>
+        <div className="crypto-main-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,380px)', gap: '1.5rem', alignItems: 'start' }}>
 
           {/* ── Left: deposit form ── */}
           <div>
@@ -245,7 +245,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
             {/* Amount input */}
             <div style={{ ...surface, padding: '1.5rem', marginBottom: '1.25rem' }}>
               <div style={{ fontSize: '0.7rem', color: colors.textFaint, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Deposit Amount</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="crypto-fields-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.72rem', color: colors.textFaint, marginBottom: 5 }}>{selectedCoin.symbol} Amount</label>
                   <div style={{ position: 'relative' }}>

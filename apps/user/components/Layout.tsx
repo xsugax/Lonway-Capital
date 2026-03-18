@@ -165,7 +165,7 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
         </header>
 
         {/* Page content */}
-        <main style={{ flex: 1, overflow: 'auto' }}>
+        <main className="layout-content" style={{ flex: 1, overflow: 'auto' }}>
           {children}
         </main>
       </div>
@@ -177,6 +177,7 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
           .sidebar-desktop[style*="translateX(0)"] { transform: translateX(0) !important; }
           .mobile-nav-btn { display: flex !important; }
           .main-content { margin-left: 0 !important; }
+          .main-content header { padding: 0.7rem 1rem !important; }
         }
       `}</style>
     </div>

@@ -75,6 +75,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <LangProvider>
         <Head>
           <title>Londway Capital — Premium Private Banking</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
           <meta name="referrer" content="strict-origin-when-cross-origin" />
           <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
           <meta httpEquiv="Pragma" content="no-cache" />
