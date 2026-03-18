@@ -251,7 +251,7 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── Hero Section ── */}
-      <section style={{ position: 'relative', overflow: 'hidden', padding: '2.5rem 2rem 2rem' }}>
+      <section className="dash-hero" style={{ position: 'relative', overflow: 'hidden', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <GlobeNetwork gold={colors.gold} isDark={isDark} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: '0.9rem' }}>
@@ -269,7 +269,7 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
             )}
           </div>
 
-          <h1 style={{ fontSize: '2.6rem', fontWeight: 800, color: colors.text, margin: '0 0 0.3rem', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 5vw, 2.6rem)', fontWeight: 800, color: colors.text, margin: '0 0 0.3rem', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
             {greeting},
           </h1>
           <p style={{ color: colors.textMuted, fontSize: '0.95rem', margin: '0 0 2rem', lineHeight: 1.6 }}>
@@ -277,18 +277,18 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
           </p>
 
           {/* Balance hero strip */}
-          <div className="dash-hero-cards" style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'stretch' }}>
+          <div className="dash-hero-cards" style={{ display: 'flex', gap: 'clamp(8px, 2vw, 18px)', flexWrap: 'wrap', alignItems: 'stretch' }}>
             {/* Total Balance Card */}
             <div style={{
               background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
               backdropFilter: 'blur(12px)',
               border: `1px solid ${colors.borderStrong}`,
-              borderRadius: 18, padding: '1.5rem 2rem',
-              minWidth: 240, position: 'relative', overflow: 'hidden',
+              borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 2rem)',
+              minWidth: 0, flex: '1 1 auto', position: 'relative', overflow: 'hidden',
             }}>
               <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${colors.gold}08` }}/>
               <div style={{ color: colors.textFaint, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>{t('totalBalance')}</div>
-              <div style={{ color: colors.gold, fontSize: '2.8rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
+              <div className="dash-balance" style={{ color: colors.gold, fontSize: 'clamp(1.6rem, 6vw, 2.8rem)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
                 ${data.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ marginTop: 8 }}>
@@ -301,10 +301,10 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
               backdropFilter: 'blur(12px)',
               border: `1px solid ${colors.border}`,
-              borderRadius: 18, padding: '1.5rem 1.8rem', minWidth: 160,
+              borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.8rem)', minWidth: 0, flex: '1 1 auto',
             }}>
               <div style={{ color: colors.textFaint, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>{t('todayChange')}</div>
-              <div style={{ color: colors.success, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>+${data.todayChange.toLocaleString()}</div>
+              <div className="dash-sub-value" style={{ color: colors.success, fontSize: 'clamp(1.2rem, 4vw, 1.8rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>+${data.todayChange.toLocaleString()}</div>
               <div style={{ fontSize: '0.68rem', color: colors.success, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span>▲</span> 0.72% today
               </div>
@@ -315,10 +315,10 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
               backdropFilter: 'blur(12px)',
               border: `1px solid ${colors.border}`,
-              borderRadius: 18, padding: '1.5rem 1.8rem', minWidth: 160,
+              borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.8rem)', minWidth: 0, flex: '1 1 auto',
             }}>
               <div style={{ color: colors.textFaint, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>{t('netWorth')}</div>
-              <div style={{ color: colors.text, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>${data.netWorth.toLocaleString()}</div>
+              <div className="dash-sub-value" style={{ color: colors.text, fontSize: 'clamp(1.2rem, 4vw, 1.8rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>${data.netWorth.toLocaleString()}</div>
               <div style={{ fontSize: '0.68rem', color: colors.textMuted, marginTop: 4 }}>All assets included</div>
             </div>
 
@@ -327,10 +327,10 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
               backdropFilter: 'blur(12px)',
               border: `1px solid ${colors.border}`,
-              borderRadius: 18, padding: '1.5rem 1.8rem', minWidth: 160,
+              borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.8rem)', minWidth: 0, flex: '1 1 auto',
             }}>
               <div style={{ color: colors.textFaint, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>{t('monthlyGrowth')}</div>
-              <div style={{ color: data.monthlyGrowth >= 0 ? colors.gold : colors.danger, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{data.monthlyGrowth >= 0 ? '+' : ''}${data.monthlyGrowth.toLocaleString()}</div>
+              <div className="dash-sub-value" style={{ color: data.monthlyGrowth >= 0 ? colors.gold : colors.danger, fontSize: 'clamp(1.2rem, 4vw, 1.8rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>{data.monthlyGrowth >= 0 ? '+' : ''}${data.monthlyGrowth.toLocaleString()}</div>
               <div style={{ fontSize: '0.68rem', color: data.monthlyGrowth > 0 ? colors.success : colors.textFaint, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                 {data.monthlyGrowth > 0 ? <><span>▲</span> Growing</> : 'No change yet'}
               </div>
@@ -343,7 +343,7 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
       <div style={{
         background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.015)',
         borderBottom: `1px solid ${colors.border}`,
-        padding: '0.7rem 2rem',
+        padding: '0.7rem clamp(1rem, 3vw, 2rem)',
       }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'center', gap: 28, flexWrap: 'wrap' }}>
           {TRUST_BADGES.map((b, i) => (
@@ -355,16 +355,16 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(1rem, 3vw, 2rem)' }}>
 
         {/* ── Quick Actions ── */}
         <div style={{ marginBottom: '1.8rem' }}>
           <div style={{ fontSize: '0.6rem', color: colors.textFaint, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.9rem' }}>{t('quickActions')}</div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div className="dash-quick-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {QUICK_ACTIONS.map((a, i) => (
-              <Link key={i} href={a.href} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '0.9rem 1.2rem', background: `${a.color}0D`, border: `1px solid ${a.color}25`, borderRadius: 14, cursor: 'pointer', textDecoration: 'none', minWidth: 80, transition: 'all 0.18s' }}>
-                <span style={{ width: 38, height: 38, borderRadius: 11, background: `${a.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>{a.icon}</span>
-                <span style={{ color: colors.textMuted, fontSize: '0.7rem', fontWeight: 600 }}>{a.label}</span>
+              <Link key={i} href={a.href} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '0.8rem 1rem', background: `${a.color}0D`, border: `1px solid ${a.color}25`, borderRadius: 14, cursor: 'pointer', textDecoration: 'none', minWidth: 0, flex: '1 1 auto', transition: 'all 0.18s' }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: `${a.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>{a.icon}</span>
+                <span style={{ color: colors.textMuted, fontSize: '0.68rem', fontWeight: 600 }}>{a.label}</span>
               </Link>
             ))}
           </div>
@@ -507,7 +507,13 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
         @media (max-width: 768px) {
           .dash-perf-grid { grid-template-columns: 1fr !important; }
           .dash-bottom-grid { grid-template-columns: 1fr !important; }
+          .dash-hero-cards { flex-direction: column !important; }
           .dash-hero-cards > div { min-width: 0 !important; flex: 1 1 100% !important; }
+          .dash-hero { padding: 1rem !important; }
+        }
+        @media (max-width: 480px) {
+          .dash-hero { padding: 0.8rem 0.6rem !important; }
+          .dash-hero-cards > div { padding: 0.8rem !important; }
         }
       `}</style>
     </main>

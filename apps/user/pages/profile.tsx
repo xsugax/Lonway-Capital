@@ -175,7 +175,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       {/* Hero */}
-      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: '3rem 2rem 2.5rem', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)', position: 'relative', overflow: 'hidden' }}>
         <HeroBg />
         <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
@@ -215,7 +215,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
         </div>
       </div>
 
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '2.5rem 1.5rem' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(0.8rem, 2vw, 1.5rem)' }}>
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, marginBottom: '1.8rem', background: colors.inputBg, borderRadius: 12, padding: 4, border: `1px solid ${colors.border}` }}>
           {TABS.map(tab => (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser } from '../lib/cloud';
+import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled } from '../lib/cloud';
 
 // ── Types ──────────────────────────────────────────────────────
 interface User {
@@ -344,17 +344,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       }
     } catch {}
     addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
-    notify(true, `User ${user.name} created`);
     setNewUserModal(false);
     // Save to cloud so user can log in from ANY device
     const initBalance = parseFloat(nu.balance) || 0;
     const token = buildActivationToken(nu.email, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
     const tokenData = JSON.parse(atob(decodeURIComponent(token)));
-    cloudSaveUser({ email: nu.email, password: nu.password, pin: nu.pin, name: nu.name, role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '', bank_accounts: tokenData.bankAccounts || null }).catch(() => {});
-    // Generate activation link as backup
-    const base = typeof window !== 'undefined' ? window.location.origin.replace('/admin', '') : 'https://londwaycapital.com';
-    setActivationLink(`${base}/?activate=${token}`);
-    setLinkCopied(false);
+    cloudSaveUser({ email: nu.email, password: nu.password, pin: nu.pin, name: nu.name, role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '', bank_accounts: tokenData.bankAccounts || null })
+      .then(() => notify(true, `${user.name} created` + (isCloudEnabled() ? ' — synced to cloud ✓' : ' (local only — Supabase not configured)')))
+      .catch(() => notify(true, `${user.name} created (cloud sync failed — local only)`));
     setNu({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   }
 

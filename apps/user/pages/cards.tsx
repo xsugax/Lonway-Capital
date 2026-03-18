@@ -468,7 +468,7 @@ export default function Cards({ user }: { user: { token: string; email?: string 
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── Hero ── */}
-      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: '2.5rem 2rem 2rem' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 50% 120% at 5% 50%, ${colors.goldBg} 0%, transparent 65%)`, pointerEvents: 'none' }}/>
         {/* Decorative card silhouette */}
         <svg style={{ position: 'absolute', right: 48, top: 16, opacity: 0.045, pointerEvents: 'none' }} width="280" height="176" viewBox="0 0 280 176">
@@ -483,12 +483,12 @@ export default function Cards({ user }: { user: { token: string; email?: string 
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }}/>
             {t('cardCenter').toUpperCase()}
           </div>
-          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: '2.2rem', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>{t('yourCards')}</h1>
+          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>{t('yourCards')}</h1>
           <p style={{ color: colors.textFaint, fontSize: '0.88rem', margin: 0 }}>Premium cards curated for every lifestyle — from everyday to elite.</p>
         </div>
       </div>
 
-      <section style={{ maxWidth: 1080, margin: '0 auto', padding: '2.5rem 2rem' }}>
+      <section style={{ maxWidth: 1080, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem)' }}>
 
         {/* ── Existing Cards ── */}
         {existingCards.length > 0 && (

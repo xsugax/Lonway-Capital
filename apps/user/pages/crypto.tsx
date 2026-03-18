@@ -179,14 +179,14 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
 
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: '2.5rem 2rem 2rem' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 40% 80% at 5% 50%, ${colors.goldBg} 0%, transparent 70%)`, pointerEvents: 'none' }}/>
         <div style={{ position: 'relative', maxWidth: 960, margin: '0 auto' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.28rem 0.9rem', marginBottom: '1rem', fontSize: '0.62rem', color: colors.gold, fontWeight: 700, letterSpacing: '0.12em' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }}/>
             CRYPTO FUNDING · {userTier.toUpperCase()}
           </div>
-          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: '2.2rem', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>Fund with Cryptocurrency</h1>
+          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>Fund with Cryptocurrency</h1>
           <p style={{ color: colors.textFaint, fontSize: '0.9rem', maxWidth: 540 }}>
             Deposit Bitcoin, Ethereum, USDT, BNB, or Solana. Funds are instantly converted and credited to your Primary Checking account.
           </p>
@@ -194,7 +194,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
         </div>
       </div>
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '2rem' }}>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(1rem, 3vw, 2rem)' }}>
         <div className="crypto-main-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,380px)', gap: '1.5rem', alignItems: 'start' }}>
 
           {/* ── Left: deposit form ── */}

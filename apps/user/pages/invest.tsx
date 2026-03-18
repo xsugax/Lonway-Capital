@@ -421,7 +421,7 @@ export default function Invest({ user }: { user: { token: string; email?: string
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: '3rem 2rem 2.5rem' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)' }}>
         <svg style={{ position: 'absolute', right: '4%', bottom: 0, opacity: 0.045, pointerEvents: 'none' }}
           width="260" height="150" viewBox="0 0 260 150">
           {[
@@ -448,12 +448,12 @@ export default function Invest({ user }: { user: { token: string; email?: string
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }} />
             {t('investmentCenter').toUpperCase()}
           </div>
-          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: '2.2rem', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>{t('investments')}</h1>
+          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>{t('investments')}</h1>
           <p style={{ color: colors.textFaint, fontSize: '0.88rem', margin: 0, lineHeight: 1.6 }}>Diversified portfolio management · AI-driven insights</p>
         </div>
       </div>
 
-      <section style={{ maxWidth: 960, margin: '0 auto', padding: '2.5rem 2rem' }}>
+      <section style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem)' }}>
         {/* Price status bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

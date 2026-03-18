@@ -160,7 +160,7 @@ export default function Insights({ user }: { user: { token: string } }) {
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       {/* Hero */}
-      <section style={{ position: 'relative', overflow: 'hidden', background: `linear-gradient(135deg, ${colors.surface} 0%, ${colors.bg} 65%)`, borderBottom: `1px solid ${colors.border}`, padding: '2.5rem 2rem 2rem' }}>
+      <section style={{ position: 'relative', overflow: 'hidden', background: `linear-gradient(135deg, ${colors.surface} 0%, ${colors.bg} 65%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <NeuralBg gold={colors.gold} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 960, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
@@ -168,7 +168,7 @@ export default function Insights({ user }: { user: { token: string } }) {
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }}/>
               AI POWERED · UPDATED DAILY
             </div>
-            <h1 style={{ color: colors.text, fontWeight: 800, fontSize: '2.2rem', margin: '0 0 0.3rem', letterSpacing: '-0.025em' }}>{t('insights')}</h1>
+            <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', margin: '0 0 0.3rem', letterSpacing: '-0.025em' }}>{t('insights')}</h1>
             <p style={{ margin: 0, color: colors.textFaint, fontSize: '0.88rem', lineHeight: 1.6 }}>Personalised financial analysis · Londway AI</p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -186,7 +186,7 @@ export default function Insights({ user }: { user: { token: string } }) {
         </div>
       </section>
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 2rem' }}>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(1rem, 3vw, 2rem)' }}>
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.gold, justifyContent: 'center', marginTop: 80, fontSize: '0.9rem' }}>
             <svg width="20" height="20" viewBox="0 0 20 20" style={{ animation: 'spin 0.9s linear infinite' }}>

@@ -242,7 +242,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         </div>
       )}
       {/* Hero */}
-      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: '3rem 2rem 2.5rem', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)', position: 'relative', overflow: 'hidden' }}>
         <svg style={{ position: 'absolute', right: '4%', top: '50%', transform: 'translateY(-50%)', opacity: 0.05, pointerEvents: 'none' }} width="320" height="110" viewBox="0 0 320 110">
           <circle cx="50" cy="55" r="35" fill="none" stroke="#C4A052" strokeWidth="1.2"/><circle cx="50" cy="55" r="20" fill="none" stroke="#C4A052" strokeWidth="0.7"/>
           <line x1="88" y1="55" x2="232" y2="55" stroke="#C4A052" strokeWidth="1" strokeDasharray="6 4"/>
@@ -253,12 +253,12 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.28rem 0.9rem', marginBottom: '1rem', fontSize: '0.62rem', color: colors.gold, fontWeight: 700, letterSpacing: '0.12em' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }}/>SECURE TRANSFERS
           </div>
-          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: '2.2rem', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>Transfer Funds</h1>
+          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>Transfer Funds</h1>
           <p style={{ color: colors.textFaint, fontSize: '0.88rem' }}>Local &amp; international wire transfers · Compliance reviewed before release</p>
         </div>
       </div>
 
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '2.5rem 1.5rem' }}>
+      <div style={{ maxWidth: 980, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(0.8rem, 2vw, 1.5rem)' }}>
         <div className="transfer-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: '2rem', alignItems: 'start' }}>
 
           {/* Form */}

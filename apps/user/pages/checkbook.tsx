@@ -113,7 +113,7 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       {/* Hero */}
-      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: '3rem 2rem 2.5rem', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: '5%', top: '50%', transform: 'translateY(-50%)', opacity: 0.05, pointerEvents: 'none' }}>
           <svg width="200" height="130" viewBox="0 0 200 130">
             <rect x="10" y="20" width="180" height="90" rx="12" fill="none" stroke="#C4A052" strokeWidth="1.5"/>
@@ -125,12 +125,12 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.28rem 0.9rem', marginBottom: '1rem', fontSize: '0.62rem', color: colors.gold, fontWeight: 700, letterSpacing: '0.12em' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }}/>SECURE CHECKBOOKS
           </div>
-          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: '2.2rem', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>Checkbook Management</h1>
+          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>Checkbook Management</h1>
           <p style={{ color: colors.textFaint, fontSize: '0.88rem' }}>Request, track, and manage your physical checkbooks securely</p>
         </div>
       </div>
 
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '2.5rem 1.5rem' }}>
+      <div style={{ maxWidth: 980, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(0.8rem, 2vw, 1.5rem)' }}>
         {/* Request new checkbook */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ margin: 0, color: colors.text, fontWeight: 700, fontSize: '1.1rem' }}>My Checkbooks</h2>
