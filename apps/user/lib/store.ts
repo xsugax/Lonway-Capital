@@ -127,6 +127,97 @@ function buildSeedAccounts(email?: string): any[] {
   ];
 }
 
+/** Generate realistic transactions that mathematically sum to a target balance. */
+function makeFundedTransactions(targetBalance: number, accountId: string): any[] {
+  if (targetBalance <= 0) return [];
+  const creditLabels = [
+    'Initial Deposit', 'Direct Deposit – Payroll', 'Wire Transfer Received',
+    'ACH Transfer In', 'Account Funding', 'Interest Credit', 'Dividend Payment',
+    'Bonus Credit', 'Incoming Wire', 'Settlement Credit',
+  ];
+  const debitLabels = [
+    'ATM Withdrawal', 'Card Purchase', 'Wire Fee', 'Service Fee',
+    'Bill Payment', 'Online Transfer Out',
+  ];
+  const now = Date.now();
+  const DAY = 86_400_000;
+
+  // Decide on a few small debits (0–3), then back-calculate the credits needed
+  const numDebits = targetBalance < 1000 ? 0 : Math.floor(Math.random() * 3);
+  const debits: any[] = [];
+  let totalDebits = 0;
+  for (let i = 0; i < numDebits; i++) {
+    const amt = Math.round((targetBalance * (0.005 + Math.random() * 0.02)) * 100) / 100;
+    totalDebits += amt;
+    debits.push({
+      id: `${accountId}-d${i}`,
+      type: 'debit',
+      description: debitLabels[Math.floor(Math.random() * debitLabels.length)],
+      amount: amt,
+      date: new Date(now - (i + 1) * 7 * DAY).toISOString(),
+      status: 'completed',
+    });
+  }
+
+  // Credits must sum to exactly targetBalance + totalDebits
+  const totalCredits = targetBalance + totalDebits;
+  const numCredits = Math.floor(Math.random() * 4) + 5; // 5–8 credits
+  const credits: any[] = [];
+  let allocated = 0;
+  for (let i = 0; i < numCredits - 1; i++) {
+    const remaining = totalCredits - allocated;
+    const portion = Math.random() * 0.35 + 0.08; // 8–43% of remaining each time
+    const amt = Math.round(Math.min(remaining * portion, remaining - 1) * 100) / 100;
+    allocated += amt;
+    credits.push({
+      id: `${accountId}-c${i}`,
+      type: 'credit',
+      description: creditLabels[Math.floor(Math.random() * creditLabels.length)],
+      amount: amt,
+      date: new Date(now - (numCredits - i) * 18 * DAY).toISOString(),
+      status: 'completed',
+    });
+  }
+  // Final credit closes the gap exactly
+  const finalAmt = Math.round((totalCredits - allocated) * 100) / 100;
+  credits.push({
+    id: `${accountId}-c${numCredits - 1}`,
+    type: 'credit',
+    description: 'Account Opening Deposit',
+    amount: finalAmt,
+    date: new Date(now - numCredits * 18 * DAY).toISOString(),
+    status: 'completed',
+  });
+
+  return [...credits, ...debits].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+}
+
+/** Build seed accounts pre-funded with a given total balance and matching transaction history. */
+export function generateFundedAccounts(email: string, totalBalance: number): any[] {
+  const suffix = `-${email.replace(/[^a-z0-9]/gi, '').slice(0, 6)}`;
+  const acctNum = () => Math.floor(1000_0000 + Math.random() * 9000_0000).toString();
+  const checkBal = Math.round(totalBalance * 0.65 * 100) / 100;
+  const saveBal = Math.round((totalBalance - checkBal) * 100) / 100;
+  const checkId = `acc-1${suffix}`;
+  const saveId = `acc-2${suffix}`;
+  return [
+    {
+      id: checkId, type: 'Checking', name: 'Primary Checking',
+      balance: checkBal, currency: '$',
+      accountNumber: acctNum(), frozen: false, recentActivity: 'Direct Deposit',
+      transactions: makeFundedTransactions(checkBal, checkId),
+    },
+    {
+      id: saveId, type: 'Savings', name: 'High-Yield Savings',
+      balance: saveBal, currency: '$',
+      accountNumber: acctNum(), frozen: false, recentActivity: 'Interest Credit',
+      transactions: makeFundedTransactions(saveBal, saveId),
+    },
+  ];
+}
+
 export function getBankAccounts(email?: string): any[] {
   const key = userKey(ACCT_BASE, email);
   return getOrSeed(key, buildSeedAccounts(email));

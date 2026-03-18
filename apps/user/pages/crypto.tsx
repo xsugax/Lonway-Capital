@@ -12,7 +12,7 @@ const COINS = [
 ];
 
 export default function CryptoFunding({ user }: { user: { token: string; email?: string; name?: string } }) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [priceLoading, setPriceLoading] = useState(true);
   const [priceError, setPriceError] = useState(false);
@@ -284,7 +284,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
             <button
               disabled={!cryptoAmount || parseFloat(cryptoAmount) <= 0 || priceLoading}
               onClick={handleSubmitDeposit}
-              style={{ width: '100%', padding: '1rem', background: (!cryptoAmount || parseFloat(cryptoAmount) <= 0) ? colors.surface : colors.gold, border: 'none', borderRadius: 12, color: (!cryptoAmount || parseFloat(cryptoAmount) <= 0) ? colors.textFaint : '#060913', fontWeight: 800, fontSize: '1rem', cursor: (!cryptoAmount || parseFloat(cryptoAmount) <= 0) ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+              style={{ width: '100%', padding: '1rem', background: (!cryptoAmount || parseFloat(cryptoAmount) <= 0) ? colors.surface : colors.gold, border: 'none', borderRadius: 12, color: (!cryptoAmount || parseFloat(cryptoAmount) <= 0) ? colors.textFaint : (theme === 'dark' ? '#060913' : '#fff'), fontWeight: 800, fontSize: '1rem', cursor: (!cryptoAmount || parseFloat(cryptoAmount) <= 0) ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
             >
               Confirm Deposit →
             </button>
@@ -359,7 +359,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
               <button onClick={() => { setPinStep(false); setPinError(''); }} style={{ flex: 1, padding: '0.75rem', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.text, fontWeight: 600, cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={handleConfirmPin} disabled={submitting} style={{ flex: 1, padding: '0.75rem', background: colors.gold, border: 'none', borderRadius: 10, color: '#060913', fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+              <button onClick={handleConfirmPin} disabled={submitting} style={{ flex: 1, padding: '0.75rem', background: colors.gold, border: 'none', borderRadius: 10, color: theme === 'dark' ? '#060913' : '#fff', fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Processing…' : 'Confirm'}
               </button>
             </div>

@@ -131,7 +131,7 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
       )}
 
       {/* ── Main content area ── */}
-      <div style={{ flex: 1, marginLeft: 240, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div className="main-content" style={{ flex: 1, marginLeft: 240, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         {/* Top bar */}
         <header style={{
@@ -176,7 +176,7 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
           .sidebar-desktop { transform: translateX(-100%) !important; }
           .sidebar-desktop[style*="translateX(0)"] { transform: translateX(0) !important; }
           .mobile-nav-btn { display: flex !important; }
-          div[style*="marginLeft: 240"] { margin-left: 0 !important; }
+          .main-content { margin-left: 0 !important; }
         }
       `}</style>
     </div>

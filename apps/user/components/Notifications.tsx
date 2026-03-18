@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { getNotifications as loadNotifications } from '../lib/store';
 
 interface Notification {
@@ -11,10 +12,10 @@ interface Notification {
 }
 
 export default function Notifications({ user }: { user: { token: string; email?: string } }) {
+  const { colors } = useTheme();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { colors } = require('../contexts/ThemeContext').useTheme();
 
   useEffect(() => {
     setNotifications(loadNotifications(user?.email));

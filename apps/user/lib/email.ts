@@ -50,6 +50,17 @@ async function sendViaEmailJS(
   to: string, toName: string, subject: string, htmlContent: string, templateId: string | undefined
 ): Promise<{ success: boolean; error?: string }> {
   if (!EMAILJS_SERVICE_ID || !templateId || !EMAILJS_PUBLIC_KEY) {
+    // This means the GitHub Secrets (NEXT_PUBLIC_EMAILJS_*) are not set in the repository.
+    // The in-app code fallback will be shown to the user automatically.
+    console.warn(
+      '[Londway Email] EmailJS not configured.\n' +
+      'Add these four secrets to your GitHub repository → Settings → Secrets → Actions:\n' +
+      '  NEXT_PUBLIC_EMAILJS_SERVICE_ID\n' +
+      '  NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP\n' +
+      '  NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME\n' +
+      '  NEXT_PUBLIC_EMAILJS_PUBLIC_KEY\n' +
+      'Then re-run the deploy workflow to bake them into the build.',
+    );
     return { success: false, error: 'Email service not configured' };
   }
   try {

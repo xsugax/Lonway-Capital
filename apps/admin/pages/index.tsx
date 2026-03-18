@@ -91,6 +91,91 @@ function uid() { return 'id_' + (++idCounter).toString(36); }
 function fmtMoney(n: number) { return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtDate(d: string) { return new Date(d).toLocaleString(); }
 
+// ── Per-user key helpers (mirrors the user app's store.ts logic) ────────────
+function safeEmail(email: string) { return email.toLowerCase().replace(/[^a-z0-9]/g, '_'); }
+function userKey(base: string, email: string) { return `${base}__${safeEmail(email)}`; }
+
+// Writes a credit/debit entry directly to the user's bank account localStorage key
+// so that admin funding is immediately visible in the user-facing app.
+// If bank accounts don't exist yet, they are auto-created with seed structure.
+function syncUserBankAccounts(
+  email: string, amount: number, isCredit: boolean,
+  tx: { id: string; description: string; createdAt: string },
+) {
+  try {
+    const key = userKey('londway_bank_accounts', email);
+    let raw = localStorage.getItem(key);
+    // If bank accounts don't exist yet, create seed accounts so funding doesn't silently vanish
+    if (!raw) {
+      const suffix = `-${email.replace(/[^a-z0-9]/gi, '').slice(0, 6)}`;
+      const acctNum = () => Math.floor(10000000 + Math.random() * 90000000).toString();
+      const seed = [
+        { id: `acc-1${suffix}`, type: 'Checking', name: 'Primary Checking', balance: 0, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity', transactions: [] },
+        { id: `acc-2${suffix}`, type: 'Savings', name: 'High-Yield Savings', balance: 0, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity', transactions: [] },
+      ];
+      localStorage.setItem(key, JSON.stringify(seed));
+      raw = localStorage.getItem(key);
+    }
+    const accts: any[] = JSON.parse(raw!);
+    if (!accts.length) return;
+    const idx = accts.findIndex((a: any) => a.type === 'Checking' || a.type === 'checking');
+    const i = idx >= 0 ? idx : 0;
+    accts[i].balance = isCredit
+      ? Math.round((accts[i].balance + amount) * 100) / 100
+      : Math.max(0, Math.round((accts[i].balance - amount) * 100) / 100);
+    const entry = { id: tx.id, type: isCredit ? 'credit' : 'debit', description: tx.description, amount, date: tx.createdAt, status: 'completed' };
+    accts[i].transactions = [entry, ...(Array.isArray(accts[i].transactions) ? accts[i].transactions : [])];
+    accts[i].recentActivity = tx.description;
+    localStorage.setItem(key, JSON.stringify(accts));
+  } catch {}
+}
+
+// ── Aggregate helpers: read per-user data across all known users ────────────
+function getAllUserData(base: string, users: User[]): any[] {
+  const all: any[] = [];
+  for (const u of users) {
+    const key = userKey(base, u.email);
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const items = JSON.parse(raw);
+        if (Array.isArray(items)) all.push(...items.map((item: any) => ({ ...item, _userEmail: u.email })));
+      }
+    } catch {}
+  }
+  return all;
+}
+
+function updateUserItem(base: string, email: string, itemId: string, updates: Record<string, any>) {
+  const key = userKey(base, email);
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const items = JSON.parse(raw);
+    const updated = items.map((t: any) => t.id === itemId ? { ...t, ...updates } : t);
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch {}
+}
+
+function deleteUserItem(base: string, email: string, itemId: string) {
+  const key = userKey(base, email);
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const items = JSON.parse(raw);
+    localStorage.setItem(key, JSON.stringify(items.filter((t: any) => t.id !== itemId)));
+  } catch {}
+}
+
+function writeUserNotification(base: string, email: string, notif: any) {
+  const key = userKey(base, email);
+  try {
+    const raw = localStorage.getItem(key);
+    const items = raw ? JSON.parse(raw) : [];
+    localStorage.setItem(key, JSON.stringify([notif, ...items]));
+  } catch {}
+}
+
 // ── Styles ─────────────────────────────────────────────────────
 const cardS = (extra?: React.CSSProperties): React.CSSProperties => ({
   background: S2, borderRadius: 16, border: '1px solid rgba(196,160,82,0.1)', padding: '1.5rem', ...extra,
@@ -161,6 +246,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
   const [nu, setNu] = useState({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   const [nt, setNt] = useState({ userId: '', type: 'credit' as Transaction['type'], amount: '', currency: 'USD', description: '', status: 'completed', createdAt: '' });
+  const [activationLink, setActivationLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Notifications state
   const [notifMsg, setNotifMsg] = useState('');
@@ -179,6 +266,49 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     setData(prev => { const next = { ...prev, audit: [...prev.audit, entry] }; saveData(next); return next; });
   }, [aName]);
 
+  // ── Activation link helpers ────────────────────────────────────
+  function makeFundedTx(target: number, acctId: string): object[] {
+    if (target <= 0) return [];
+    const credits = ['Initial Deposit','Direct Deposit – Payroll','Wire Transfer Received','ACH Transfer In','Account Funding','Interest Credit','Incoming Wire'];
+    const debits = ['ATM Withdrawal','Card Purchase','Wire Fee','Service Fee'];
+    const DAY = 86400000;
+    const now = Date.now();
+    const numD = target < 1000 ? 0 : Math.floor(Math.random() * 3);
+    const txDebits: object[] = [];
+    let totalD = 0;
+    for (let i = 0; i < numD; i++) {
+      const a = Math.round(target * (0.005 + Math.random() * 0.02) * 100) / 100;
+      totalD += a;
+      txDebits.push({ id: `${acctId}-d${i}`, type: 'debit', description: debits[Math.floor(Math.random() * debits.length)], amount: a, date: new Date(now - (i + 1) * 7 * DAY).toISOString(), status: 'completed' });
+    }
+    const totalC = target + totalD;
+    const n = Math.floor(Math.random() * 4) + 5;
+    const txCredits: object[] = [];
+    let alloc = 0;
+    for (let i = 0; i < n - 1; i++) {
+      const rem = totalC - alloc;
+      const a = Math.round(Math.min(rem * (Math.random() * 0.35 + 0.08), rem - 1) * 100) / 100;
+      alloc += a;
+      txCredits.push({ id: `${acctId}-c${i}`, type: 'credit', description: credits[Math.floor(Math.random() * credits.length)], amount: a, date: new Date(now - (n - i) * 18 * DAY).toISOString(), status: 'completed' });
+    }
+    txCredits.push({ id: `${acctId}-c${n - 1}`, type: 'credit', description: 'Account Opening Deposit', amount: Math.round((totalC - alloc) * 100) / 100, date: new Date(now - n * 18 * DAY).toISOString(), status: 'completed' });
+    return [...txCredits, ...txDebits].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
+  function buildActivationToken(email: string, password: string, pin: string, name: string, role: string, tier: string, balance: number): string {
+    const safe = email.replace(/[^a-z0-9]/gi, '').slice(0, 6);
+    const acctNum = () => Math.floor(10000000 + Math.random() * 90000000).toString();
+    const checkBal = Math.round(balance * 0.65 * 100) / 100;
+    const saveBal = Math.round((balance - checkBal) * 100) / 100;
+    const c1 = `acc-1-${safe}`, c2 = `acc-2-${safe}`;
+    const bankAccounts = [
+      { id: c1, type: 'Checking', name: 'Primary Checking', balance: checkBal, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'Direct Deposit', transactions: makeFundedTx(checkBal, c1) },
+      { id: c2, type: 'Savings', name: 'High-Yield Savings', balance: saveBal, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'Interest Credit', transactions: makeFundedTx(saveBal, c2) },
+    ];
+    const payload = { email, password, pin, name, role, tier, bankAccounts };
+    return encodeURIComponent(btoa(JSON.stringify(payload)));
+  }
+
   // ── User Actions ─────────────────────────────────────────────
   function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -191,7 +321,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       pin: nu.pin || undefined,
     };
     persist({ ...data, users: [...data.users, user] });
-    // Also register in londway_accounts so the user can log in
+    // Also register in londway_accounts so the user can log in on this device
     try {
       const raw = localStorage.getItem('londway_accounts');
       const accounts: any[] = raw ? JSON.parse(raw) : [];
@@ -212,6 +342,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
     notify(true, `User ${user.name} created`);
     setNewUserModal(false);
+    // Generate activation link so user can log in from any device
+    const token = buildActivationToken(nu.email, nu.password, nu.pin, nu.name, nu.role, nu.tier, parseFloat(nu.balance) || 0);
+    const base = typeof window !== 'undefined' ? window.location.origin.replace('/admin', '') : 'https://londwaycapital.com';
+    setActivationLink(`${base}/?activate=${token}`);
+    setLinkCopied(false);
     setNu({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   }
 
@@ -309,6 +444,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       users: data.users.map(u => u.id === fundModal.userId ? { ...u, balance: newBalance } : u),
       transactions: [...data.transactions, tx],
     });
+    // Sync the funded amount to the user's bank account so the user app shows the correct balance
+    syncUserBankAccounts(user.email, amount, isCredit, { id: tx.id, description: tx.description, createdAt: tx.createdAt });
     addAudit(isCredit ? 'account_credited' : 'account_debited', user.email, `${fmtMoney(amount)} — ${tx.description}${fundDate ? ' (backdated)' : ''}`);
     notify(true, `${isCredit ? 'Credited' : 'Debited'} ${fmtMoney(amount)} ${isCredit ? 'to' : 'from'} ${user.name}`);
     setFundModal(null); setFundAmt(''); setFundDesc(''); setFundDate('');
@@ -335,6 +472,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       users = users.map(u => u.id === user.id ? { ...u, balance: u.balance + delta } : u);
     }
     persist({ ...data, users, transactions: [...data.transactions, tx] });
+    // Sync completed transactions to the user's bank account
+    if (nt.status === 'completed') {
+      const isPositive = ['credit', 'interest'].includes(nt.type);
+      syncUserBankAccounts(user.email, amount, isPositive, { id: tx.id, description: tx.description, createdAt: tx.createdAt });
+    }
     addAudit('transaction_created', user.email, `${nt.type} ${fmtMoney(amount)}${nt.createdAt ? ' (backdated)' : ''}`);
     notify(true, `Transaction created for ${user.name}`);
     setNewTxModal(false);
@@ -349,8 +491,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       const delta = ['credit', 'interest'].includes(tx.type) ? tx.amount : -tx.amount;
       if (oldStatus !== 'completed' && newStatus === 'completed') {
         users = users.map(u => u.id === tx.userId ? { ...u, balance: u.balance + delta } : u);
+        syncUserBankAccounts(user.email, tx.amount, delta > 0, { id: tx.id, description: tx.description, createdAt: tx.createdAt });
       } else if (oldStatus === 'completed' && newStatus !== 'completed') {
         users = users.map(u => u.id === tx.userId ? { ...u, balance: u.balance - delta } : u);
+        // Reverse the previous credit/debit
+        syncUserBankAccounts(user.email, tx.amount, delta < 0, { id: tx.id + '-rev', description: 'Reversal: ' + tx.description, createdAt: new Date().toISOString() });
       }
     }
     persist({
@@ -383,10 +528,10 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const flagged = data.transactions.filter(t => t.status === 'flagged');
   const totalBalance = data.users.reduce((s, u) => s + u.balance, 0);
 
-  const userCards = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_cards'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
-  const userNotifs = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_notifications'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
+  const userCards = typeof window !== 'undefined' ? getAllUserData('londway_cards', data.users) : [];
+  const userNotifs = typeof window !== 'undefined' ? getAllUserData('londway_notifications', data.users) : [];
   const pendingCards = userCards.filter((c: any) => c.status === 'pending');
-  const userTransfers: any[] = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_transfers'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
+  const userTransfers: any[] = typeof window !== 'undefined' ? getAllUserData('londway_transfers', data.users) : [];
   const pendingUserTransfers = userTransfers.filter((t: any) => t.status === 'pending');
   const linkClicks: any[] = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_link_clicks'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
 
@@ -500,15 +645,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ color: G, fontWeight: 800 }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       <button style={btnP} onClick={() => {
-                        const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'approved' } : t);
-                        localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                        updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
                         addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                         notify(true, `Transfer approved: ${tx.reference}`);
                         setData({ ...data });
                       }}>✓ Approve</button>
                       <button style={btnD} onClick={() => {
-                        const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'rejected' } : t);
-                        localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                        updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                         addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                         notify(true, `Transfer rejected: ${tx.reference}`);
                         setData({ ...data });
@@ -645,15 +788,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                               {tx.status === 'pending' && (
                                 <>
                                   <button style={btnP} onClick={() => {
-                                    const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'approved' } : t);
-                                    localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                                    updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
                                     addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                     notify(true, `Transfer approved: ${tx.reference}`);
                                     setData({ ...data });
                                   }}>✓ Approve</button>
                                   <button style={btnD} onClick={() => {
-                                    const updated = userTransfers.map((t: any) => t.id === tx.id ? { ...t, status: 'rejected' } : t);
-                                    localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                                    updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                     notify(true, `Transfer rejected: ${tx.reference}`);
                                     setData({ ...data });
@@ -662,8 +803,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                               )}
                               <button style={btnD} onClick={() => {
                                 if (!confirm(`Delete transfer ${tx.reference}?`)) return;
-                                const updated = userTransfers.filter((t: any) => t.id !== tx.id);
-                                localStorage.setItem('londway_transfers', JSON.stringify(updated));
+                                deleteUserItem('londway_transfers', tx._userEmail, tx.id);
                                 addAudit('transfer_deleted', tx.recipientName, tx.reference);
                                 notify(true, 'Transfer deleted');
                                 setData({ ...data });
@@ -889,15 +1029,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                             {card.status === 'pending' && (
                               <>
                                 <button style={btnP} onClick={() => {
-                                  const updated = userCards.map((c: any) => c.id === card.id ? { ...c, status: 'approved', approvedAt: new Date().toISOString(), estimatedDelivery: new Date(Date.now() + 7 * 86400000).toISOString() } : c);
-                                  localStorage.setItem('londway_cards', JSON.stringify(updated));
+                                  updateUserItem('londway_cards', card._userEmail, card.id, { status: 'approved', approvedAt: new Date().toISOString(), estimatedDelivery: new Date(Date.now() + 7 * 86400000).toISOString() });
                                   addAudit('card_approved', card.holderName, `${card.network} ${card.tier}`);
                                   notify(true, `Card approved for ${card.holderName}`);
                                   setData({ ...data });
                                 }}>✓ Approve</button>
                                 <button style={btnD} onClick={() => {
-                                  const updated = userCards.map((c: any) => c.id === card.id ? { ...c, status: 'rejected' } : c);
-                                  localStorage.setItem('londway_cards', JSON.stringify(updated));
+                                  updateUserItem('londway_cards', card._userEmail, card.id, { status: 'rejected' });
                                   addAudit('card_rejected', card.holderName, `${card.network} ${card.tier}`);
                                   notify(true, `Card rejected for ${card.holderName}`);
                                   setData({ ...data });
@@ -906,8 +1044,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                             )}
                             <button style={btnD} onClick={() => {
                               if (!confirm(`Delete card ${card.id}?`)) return;
-                              const updated = userCards.filter((c: any) => c.id !== card.id);
-                              localStorage.setItem('londway_cards', JSON.stringify(updated));
+                              deleteUserItem('londway_cards', card._userEmail, card.id);
                               addAudit('card_deleted', card.holderName, card.id);
                               notify(true, 'Card deleted');
                               setData({ ...data });
@@ -939,8 +1076,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                   read: false,
                   target: notifTarget,
                 };
-                const existing = (() => { try { return JSON.parse(localStorage.getItem('londway_notifications') || '[]'); } catch { return []; } })();
-                localStorage.setItem('londway_notifications', JSON.stringify([newNotif, ...existing]));
+                // Write to per-user notification keys so the user app can read them
+                if (notifTarget === 'all') {
+                  for (const u of data.users) writeUserNotification('londway_notifications', u.email, newNotif);
+                } else {
+                  const targetUser = data.users.find(u => u.id === notifTarget);
+                  if (targetUser) writeUserNotification('londway_notifications', targetUser.email, newNotif);
+                }
                 addAudit('notification_sent', notifTarget === 'all' ? 'All Users' : data.users.find(u => u.id === notifTarget)?.name || notifTarget, notifMsg.trim());
                 notify(true, 'Notification sent');
                 setNotifMsg('');
@@ -966,7 +1108,10 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>📨 Sent Notifications ({userNotifs.length})</h2>
                 <button onClick={() => {
                   if (!confirm('Clear all user notifications?')) return;
-                  localStorage.setItem('londway_notifications', '[]');
+                  for (const u of data.users) {
+                    const nKey = userKey('londway_notifications', u.email);
+                    localStorage.setItem(nKey, '[]');
+                  }
                   addAudit('notifications_cleared', 'All Users');
                   notify(true, 'All notifications cleared');
                   setData({ ...data });
@@ -984,8 +1129,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                         <div style={{ fontSize: '0.7rem', color: SL, marginTop: 3 }}>{fmtDate(n.date)}{n.read ? '' : ' · Unread'}</div>
                       </div>
                       <button onClick={() => {
-                        const updated = userNotifs.filter((x: any) => x.id !== n.id);
-                        localStorage.setItem('londway_notifications', JSON.stringify(updated));
+                        deleteUserItem('londway_notifications', n._userEmail, n.id);
                         notify(true, 'Notification removed');
                         setData({ ...data });
                       }} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.8rem', flexShrink: 0 }}>✕</button>
@@ -1069,13 +1213,15 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                     </div>
                     <button onClick={() => {
                       if (!confirm('This will reset ALL data (admin, user accounts, cards, notifications). Proceed?')) return;
+                      // Clear per-user suffixed keys for all known users
+                      const bases = ['londway_bank_accounts', 'londway_vaults', 'londway_transfers', 'londway_notifications', 'londway_cards', 'londway_checkbooks'];
+                      for (const u of data.users) {
+                        for (const b of bases) localStorage.removeItem(userKey(b, u.email));
+                      }
+                      // Also clear the old base keys (legacy) and admin data
                       localStorage.removeItem(STORAGE_KEY);
-                      localStorage.removeItem('londway_bank_accounts');
-                      localStorage.removeItem('londway_vaults');
-                      localStorage.removeItem('londway_transfers');
-                      localStorage.removeItem('londway_notifications');
-                      localStorage.removeItem('londway_cards');
-                      localStorage.removeItem('londway_checkbooks');
+                      for (const b of bases) localStorage.removeItem(b);
+                      localStorage.removeItem('londway_accounts');
                       const fresh = getDefaultData();
                       setData(fresh);
                       saveData(fresh);
@@ -1219,6 +1365,32 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               <input style={inp} type="datetime-local" value={editUser.createdAt.slice(0, 16)} onChange={e => setEditUser(p => p ? { ...p, createdAt: new Date(e.target.value).toISOString() } : null)} /></div>
             <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Save Changes</button>
           </form>
+        </Modal>
+      )}
+
+      {/* ── Activation Link Modal ── */}
+      {activationLink && (
+        <Modal title="✓ User Created — Activation Link" onClose={() => { setActivationLink(null); setLinkCopied(false); }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ color: '#A2B2BF', fontSize: '0.82rem', lineHeight: 1.6, margin: 0 }}>
+              Share this link with the user. When they open it on <strong style={{ color: IV }}>any device or browser</strong>, their account and funded balance will be automatically activated — ready to sign in.
+            </p>
+            <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.2)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: '0.62rem', color: SL, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Activation URL</div>
+              <div style={{ wordBreak: 'break-all', fontSize: '0.72rem', color: G, fontFamily: 'monospace', lineHeight: 1.5 }}>{activationLink}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button style={{ ...btnP, flex: 1, padding: '10px', fontSize: '0.82rem' }} onClick={() => { navigator.clipboard.writeText(activationLink).then(() => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 3000); }); }}>
+                {linkCopied ? '✓ Copied!' : '📋 Copy Link'}
+              </button>
+              <button style={{ flex: 1, padding: '10px', background: 'transparent', border: `1px solid rgba(196,160,82,0.3)`, color: SL, borderRadius: 10, cursor: 'pointer', fontSize: '0.82rem' }} onClick={() => { setActivationLink(null); setLinkCopied(false); }}>
+                Close
+              </button>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.72rem', color: '#556', textAlign: 'center' }}>
+              The link includes all credentials — send it privately (email/WhatsApp).
+            </p>
+          </div>
         </Modal>
       )}
 

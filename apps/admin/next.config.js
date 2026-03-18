@@ -3,6 +3,7 @@ const nextConfig = {
   output: 'export',
   basePath: '/admin',
   reactStrictMode: true,
+  generateBuildId: () => Date.now().toString(36),
   images: {
     unoptimized: true,
   },

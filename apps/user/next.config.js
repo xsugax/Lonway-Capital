@@ -2,6 +2,7 @@
 const nextConfig = {
   output: 'export',
   reactStrictMode: true,
+  generateBuildId: () => Date.now().toString(36),
   images: {
     unoptimized: true,
   },

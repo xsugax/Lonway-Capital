@@ -68,6 +68,14 @@ export default function App({ Component, pageProps }: AppProps) {
       <LangProvider>
         <Head>
           <title>Londway Capital — Premium Private Banking</title>
+          <meta name="referrer" content="strict-origin-when-cross-origin" />
+          <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+          <meta httpEquiv="Pragma" content="no-cache" />
+          <meta httpEquiv="Expires" content="0" />
+          <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
+          <meta httpEquiv="X-Frame-Options" content="SAMEORIGIN" />
+          <meta httpEquiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+          <meta name="robots" content="noindex, nofollow" />
         </Head>
         {!hydrated ? null : (
           showLoader ? (

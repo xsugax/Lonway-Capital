@@ -92,6 +92,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Sync body background/text and scrollbar CSS variables to the active theme
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const c = theme === 'dark' ? DARK : LIGHT;
+    document.body.style.background = c.bg;
+    document.body.style.color = c.text;
+    document.documentElement.style.setProperty('--scrollbar-track', c.bg);
+    document.documentElement.style.setProperty(
+      '--scrollbar-thumb',
+      theme === 'dark' ? 'rgba(196,160,82,0.2)' : 'rgba(139,105,20,0.2)',
+    );
+    document.documentElement.style.setProperty(
+      '--scrollbar-thumb-hover',
+      theme === 'dark' ? 'rgba(196,160,82,0.4)' : 'rgba(139,105,20,0.4)',
+    );
+  }, [theme]);
+
   return (
     <Ctx.Provider value={{ theme, colors: theme === 'dark' ? DARK : LIGHT, toggle }}>
       {children}

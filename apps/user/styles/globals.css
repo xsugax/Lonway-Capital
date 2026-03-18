@@ -32,14 +32,14 @@ a {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #060913;
+  background: var(--scrollbar-track, #060913);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(196, 160, 82, 0.2);
+  background: var(--scrollbar-thumb, rgba(196, 160, 82, 0.2));
   border-radius: 100px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(196, 160, 82, 0.4);
+  background: var(--scrollbar-thumb-hover, rgba(196, 160, 82, 0.4));
 }
 
 /* ─── Keyframe Animations ─── */

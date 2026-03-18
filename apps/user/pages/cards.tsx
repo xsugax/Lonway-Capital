@@ -420,7 +420,7 @@ function ExistingCard({ card, colors }: { card: any; colors: any }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Cards({ user }: { user: { token: string; email?: string } }) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { t } = useLang();
 
   const [network, setNetwork] = useState<Network>('debit');
@@ -517,7 +517,7 @@ export default function Cards({ user }: { user: { token: string; email?: string 
               </div>
             </div>
             <button onClick={() => { setStep('pick'); setFullName(''); setAddress(''); setCity(''); setCountry(''); setResult(null); }}
-              style={{ padding: '0.75rem 2rem', background: colors.gold, border: 'none', borderRadius: 12, color: '#060913', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem' }}>
+              style={{ padding: '0.75rem 2rem', background: colors.gold, border: 'none', borderRadius: 12, color: theme === 'dark' ? '#060913' : '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem' }}>
               Request Another Card
             </button>
           </div>
@@ -560,7 +560,7 @@ export default function Cards({ user }: { user: { token: string; email?: string 
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || !fullName.trim() || !address.trim() || !city.trim() || !country.trim()}
-                  style={{ flex: 2, padding: '0.75rem', background: colors.gold, border: 'none', borderRadius: 12, color: '#060913', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', opacity: (submitting || !fullName.trim()) ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                  style={{ flex: 2, padding: '0.75rem', background: colors.gold, border: 'none', borderRadius: 12, color: theme === 'dark' ? '#060913' : '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', opacity: (submitting || !fullName.trim()) ? 0.5 : 1, transition: 'opacity 0.2s' }}>
                   {submitting ? '…' : t('requestNow')}
                 </button>
               </div>
@@ -651,7 +651,7 @@ export default function Cards({ user }: { user: { token: string; email?: string 
 
                 <button
                   onClick={() => setStep('form')}
-                  style={{ width: '100%', padding: '0.9rem', background: colors.gold, border: 'none', borderRadius: 14, color: '#060913', fontWeight: 800, cursor: 'pointer', fontSize: '1rem', letterSpacing: '0.04em', transition: 'opacity 0.2s, transform 0.2s' }}
+                  style={{ width: '100%', padding: '0.9rem', background: colors.gold, border: 'none', borderRadius: 14, color: theme === 'dark' ? '#060913' : '#fff', fontWeight: 800, cursor: 'pointer', fontSize: '1rem', letterSpacing: '0.04em', transition: 'opacity 0.2s, transform 0.2s' }}
                 >
                   {t('requestNow')} →
                 </button>

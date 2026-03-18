@@ -1,9 +1,9 @@
 'use client';
 import React, { useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function TwoFASetup({ user }: { user: { token: string } }) {
-    const { useTheme } = require('../contexts/ThemeContext');
-    const { colors } = useTheme();
+  const { colors } = useTheme();
   const [step, setStep] = useState<'init' | 'verify' | 'done'>('init');
   const [secret, setSecret] = useState('');
   const [otpauthUrl, setOtpauthUrl] = useState('');

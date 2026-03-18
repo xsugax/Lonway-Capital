@@ -1,4 +1,6 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿'use client';
+import React, { useState, useEffect, useRef } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 function HeroBg() {
   return (
@@ -34,9 +36,6 @@ function KycBadge() {
   );
 }
 
-const G = '#C4A052';
-const GBD = 'rgba(196,160,82,0.15)';
-
 const TABS = ['Personal Information', 'Account Details', 'Security'];
 
 function formatDob(dob?: string): string {
@@ -47,6 +46,9 @@ function formatDob(dob?: string): string {
 }
 
 export default function Profile({ user }: { user?: { name: string; email: string; token: string; role: string } }) {
+  const { colors, theme } = useTheme();
+  const G = colors.gold;
+  const GBD = colors.goldBg;
   const [activeTab, setActiveTab] = useState('Personal Information');
   const [account, setAccount] = useState<any>(null);
   const [memberSince, setMemberSince] = useState('');
@@ -124,11 +126,11 @@ export default function Profile({ user }: { user?: { name: string; email: string
     e.target.value = '';
   }
 
-  const sectionStyle: React.CSSProperties = { background: '#0D1628', borderRadius: 16, border: '1px solid rgba(196,160,82,0.1)', padding: '1.6rem', marginBottom: '1.4rem' };
+  const sectionStyle: React.CSSProperties = { background: colors.surface, borderRadius: 16, border: `1px solid ${colors.border}`, padding: '1.6rem', marginBottom: '1.4rem' };
   const fieldRow = (label: string, value: React.ReactNode, badge?: boolean) => (
-    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid rgba(196,160,82,0.05)' }}>
-      <span style={{ color: '#60707E', fontSize: '0.82rem', fontWeight: 600 }}>{label}</span>
-      {badge ? value : <span style={{ color: '#EAE0D0', fontSize: '0.9rem', fontWeight: 500 }}>{value}</span>}
+    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: `1px solid ${colors.border}` }}>
+      <span style={{ color: colors.textFaint, fontSize: '0.82rem', fontWeight: 600 }}>{label}</span>
+      {badge ? value : <span style={{ color: colors.text, fontSize: '0.9rem', fontWeight: 500 }}>{value}</span>}
     </div>
   );
 
@@ -149,8 +151,8 @@ export default function Profile({ user }: { user?: { name: string; email: string
         {fieldRow('Account Holder', name)}
         {fieldRow('Member Since', memberSince || '—')}
         {fieldRow('Account Tier', account?.tier
-          ? <span style={{ fontWeight: 700, fontSize: '0.85rem', color: account.tier === 'Platinum' ? '#E5E4E2' : account.tier === 'Gold' ? '#C4A052' : account.tier === 'Silver' ? '#C0C0C0' : '#A2B2BF' }}>{account.tier}</span>
-          : <span style={{ color: '#A2B2BF', fontSize: '0.85rem' }}>Standard</span>, true)}
+          ? <span style={{ fontWeight: 700, fontSize: '0.85rem', color: account.tier === 'Platinum' ? (theme === 'dark' ? '#E5E4E2' : colors.textMuted) : account.tier === 'Gold' ? colors.gold : account.tier === 'Silver' ? (theme === 'dark' ? '#C0C0C0' : colors.textMuted) : colors.textFaint }}>{account.tier}</span>
+          : <span style={{ color: colors.textFaint, fontSize: '0.85rem' }}>Standard</span>, true)}
         {fieldRow('Default Currency', 'USD')}
         {fieldRow('Account Status', <span style={{ color: '#50C878', fontWeight: 600, fontSize: '0.85rem' }}>● Active</span>, true)}
       </div>
@@ -161,7 +163,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
         {fieldRow('Email Verification', <span style={{ color: '#50C878', fontWeight: 600, fontSize: '0.85rem' }}>✓ Enabled</span>, true)}
         {fieldRow('Transfer PIN', hasPin
           ? <span style={{ color: '#50C878', fontWeight: 600, fontSize: '0.85rem' }}>✓ Set</span>
-          : <span style={{ color: '#C4A052', fontWeight: 600, fontSize: '0.85rem' }}>— Not set</span>, true)}
+          : <span style={{ color: colors.gold, fontWeight: 600, fontSize: '0.85rem' }}>— Not set</span>, true)}
         {fieldRow('Face ID', hasFace
           ? <span style={{ color: '#50C878', fontWeight: 600, fontSize: '0.85rem' }}>✓ Enrolled</span>
           : <span style={{ color: '#60707E', fontSize: '0.85rem' }}>Not enrolled</span>, true)}
@@ -171,9 +173,9 @@ export default function Profile({ user }: { user?: { name: string; email: string
   };
 
   return (
-    <main style={{ background: '#060913', minHeight: '100vh', color: '#EAE0D0', fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       {/* Hero */}
-      <div style={{ background: 'linear-gradient(180deg, #0a1020 0%, #060913 100%)', borderBottom: '1px solid rgba(196,160,82,0.07)', padding: '3rem 2rem 2.5rem', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: '3rem 2rem 2.5rem', position: 'relative', overflow: 'hidden' }}>
         <HeroBg />
         <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
@@ -182,7 +184,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
             onMouseEnter={() => setAvatarHovered(true)}
             onMouseLeave={() => setAvatarHovered(false)}
             onClick={() => picInputRef.current?.click()}
-            style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(196,160,82,0.25), rgba(196,160,82,0.05))', border: `2px solid ${GBD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', flexShrink: 0, cursor: 'pointer', overflow: 'hidden' }}>
+            style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', background: `linear-gradient(135deg, ${colors.goldBg}, ${colors.border})`, border: `2px solid ${colors.borderStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', flexShrink: 0, cursor: 'pointer', overflow: 'hidden' }}>
             {profilePic ? (
               <img src={profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : hasFace && account?.faceData ? (
@@ -205,8 +207,8 @@ export default function Profile({ user }: { user?: { name: string; email: string
             />
           </div>
             <div>
-              <h1 style={{ color: '#EAE0D0', fontWeight: 800, fontSize: '1.7rem', margin: '0 0 4px', letterSpacing: '-0.02em' }}>{name}</h1>
-              <p style={{ color: '#60707E', fontSize: '0.85rem', margin: '0 0 8px' }}>{email}</p>
+              <h1 style={{ color: colors.text, fontWeight: 800, fontSize: '1.7rem', margin: '0 0 4px', letterSpacing: '-0.02em' }}>{name}</h1>
+              <p style={{ color: colors.textFaint, fontSize: '0.85rem', margin: '0 0 8px' }}>{email}</p>
               {account?.idVerified && <KycBadge />}
             </div>
           </div>
@@ -215,9 +217,9 @@ export default function Profile({ user }: { user?: { name: string; email: string
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '2.5rem 1.5rem' }}>
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: '1.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 4, border: '1px solid rgba(196,160,82,0.08)' }}>
+        <div style={{ display: 'flex', gap: 0, marginBottom: '1.8rem', background: colors.inputBg, borderRadius: 12, padding: 4, border: `1px solid ${colors.border}` }}>
           {TABS.map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'Inter, sans-serif', fontSize: '0.82rem', transition: 'all 0.2s', background: activeTab === tab ? 'linear-gradient(135deg, #C4A052, #a8873e)' : 'transparent', color: activeTab === tab ? '#060913' : '#60707E' }}>
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'Inter, sans-serif', fontSize: '0.82rem', transition: 'all 0.2s', background: activeTab === tab ? `linear-gradient(135deg, ${colors.gold}, ${colors.goldDim})` : 'transparent', color: activeTab === tab ? (theme === 'dark' ? colors.bg : '#fff') : colors.textFaint }}>
               {tab}
             </button>
           ))}

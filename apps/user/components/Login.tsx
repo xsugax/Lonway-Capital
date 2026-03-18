@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { sendVerificationCode, sendWelcomeEmail, generateSecureCode } from '../lib/email';
-import { getNotifications, saveNotifications, getBankAccounts } from '../lib/store';
+import { getNotifications, saveNotifications, getBankAccounts, saveBankAccounts, generateFundedAccounts } from '../lib/store';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string; email: string }) => void;
@@ -52,6 +52,16 @@ function getAccounts(): StoredAccount[] {
         }
       }
       if (changed) localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+      // Seed bank accounts from admin balance for users that have never logged in via activation link
+      for (const u of (adminData.users || [])) {
+        if (!u.email || !u.balance || u.balance <= 0) continue;
+        const safe = u.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const acctKey = `londway_bank_accounts__${safe}`;
+        if (!localStorage.getItem(acctKey)) {
+          const seeded = generateFundedAccounts(u.email, u.balance);
+          localStorage.setItem(acctKey, JSON.stringify(seeded));
+        }
+      }
     }
   } catch {}
   if (accounts.length > 0) return accounts;
@@ -116,8 +126,34 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const [sending, setSending] = useState(false);
   const [codeSentMsg, setCodeSentMsg] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
+  const [activateMsg, setActivateMsg] = useState<string | null>(null);
 
-  // Auto-fill remembered email
+  // ── Activation link: provision account from admin-generated URL ──────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('activate');
+      if (!token) return;
+      const data = JSON.parse(atob(decodeURIComponent(token)));
+      if (!data?.email || !data?.password) return;
+      const accounts = (() => {
+        try { const r = localStorage.getItem(ACCOUNTS_KEY); return r ? JSON.parse(r) : []; } catch { return []; }
+      })();
+      if (!accounts.find((a: StoredAccount) => a.email === data.email)) {
+        accounts.push({ email: data.email, password: data.password, pin: data.pin || '', name: data.name || data.email, role: data.role || 'user', tier: data.tier, idVerified: false });
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+      }
+      if (Array.isArray(data.bankAccounts) && data.bankAccounts.length > 0) {
+        saveBankAccounts(data.bankAccounts, data.email);
+      }
+      // Clean the token from the URL without a page reload
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', cleanUrl);
+      setActivateMsg(`Welcome, ${data.name || data.email}! Your account is ready. Sign in with your credentials below.`);
+      setLEmail(data.email);
+    } catch { /* malformed token – ignore */ }
+  }, []);
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('londway_remembered_email');
@@ -293,39 +329,24 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const loginNext = () => {
     setError(null);
     if (loginStep === 0) {
+      // Step 0: email + password only
       if (!lEmail.includes('@')) { setError('Enter a valid email address'); return; }
       if (!lPw) { setError('Enter your password'); return; }
-      if (lPin.length !== 4) { setError('Enter your 4-digit PIN'); return; }
       const accts = getAccounts();
       const m = accts.find(a => a.email === lEmail);
       if (!m) { setError('No account found for that email'); return; }
       if (m.password !== lPw) { setError('Incorrect password'); return; }
-      if (m.pin !== lPin) { setError('Incorrect PIN'); return; }
       setMatched(m);
-      const code = generateSecureCode();
-      setLGenCode(code);
-      setSending(true);
-      setError(null);
-      sendVerificationCode(lEmail, code, m.name).then(res => {
-        setSending(false);
-        if (res.success) {
-          setCodeSentMsg(`Code sent to ${lEmail}`);
-          setLoginCodeFallback(false);
-        } else {
-          setLoginCodeFallback(true);
-          setCodeSentMsg('');
-        }
-        if (typeof window !== 'undefined') {
-          if (rememberMe) {
-            localStorage.setItem('londway_remembered_email', lEmail);
-          } else {
-            localStorage.removeItem('londway_remembered_email');
-          }
-        }
-        setLoginStep(1);
-      });
+      if (typeof window !== 'undefined') {
+        if (rememberMe) localStorage.setItem('londway_remembered_email', lEmail);
+        else localStorage.removeItem('londway_remembered_email');
+      }
+      setLoginStep(1); // go to PIN step
     } else if (loginStep === 1) {
-      if (lCode !== lGenCode) { setError('Incorrect code. Check your email or use the code displayed below.'); return; }
+      // Step 1: PIN verification
+      if (lPin.length !== 4) { setError('Enter your 4-digit PIN'); return; }
+      if (matched?.pin && matched.pin !== lPin) { setError('Incorrect PIN'); return; }
+      // If account has face data enrolled, proceed to face scan; otherwise login
       if (matched?.faceData) {
         setLoginStep(2);
         setTimeout(() => startCam(), 300);
@@ -333,6 +354,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
       }
     } else if (loginStep === 2) {
+      // Step 2: Face scan
       setScanning(true);
       setTimeout(() => {
         stopCam();
@@ -729,6 +751,11 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Welcome Back</h3>
       <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Sign in to your private banking dashboard</p>
+      {activateMsg && (
+        <div style={{ background: 'rgba(80,200,120,0.09)', border: '1px solid rgba(80,200,120,0.25)', borderRadius: 10, padding: '0.65rem 1rem', color: '#52c41a', fontSize: '0.78rem', lineHeight: 1.5 }}>
+          ✓ {activateMsg}
+        </div>
+      )}
       <Err />
       <div><label style={lbl}>EMAIL ADDRESS</label><input type="email" style={inp} value={lEmail} onChange={e => setLEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" /></div>
       <div>
@@ -736,11 +763,9 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           <label style={{ ...lbl, marginBottom: 0 }}>PASSWORD</label>
           <span style={{ fontSize: '0.72rem', color: 'rgba(196,160,82,0.5)', cursor: 'pointer' }} onClick={() => { setForgotMode(true); setForgotStep(0); setError(null); setForgotEmail(lEmail); }}>Forgot?</span>
         </div>
-        <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="········" autoComplete="current-password" />
-      </div>
-      <div>
-        <label style={{ ...lbl, textAlign: 'center', display: 'block', marginBottom: 12 }}>4-DIGIT PIN</label>
-        <PinPad pin={lPin} setPin={setLPin} />
+        <input type="password" style={inp} value={lPw} onChange={e => setLPw(e.target.value)} placeholder="········" autoComplete="current-password"
+          onKeyDown={e => { if (e.key === 'Enter') loginNext(); }}
+        />
       </div>
       {/* Remember me */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
@@ -750,7 +775,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         <span style={{ fontSize: '0.78rem', color: rememberMe ? G : 'rgba(196,160,82,0.5)', fontWeight: 600 }}>Remember my email</span>
       </label>
       <button style={{ ...btn, opacity: sending ? 0.6 : 1, cursor: sending ? 'wait' : 'pointer' }} onClick={loginNext} disabled={sending}>
-        {sending ? 'Sending code...' : 'Sign In →'}
+        Continue →
       </button>
     </div>
   );
@@ -843,7 +868,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Main ───
   const REG_LABELS = ['Details', 'Password', 'ID Check', 'Face Scan', 'Verify', 'Set PIN'];
   const LOGIN_LABELS = (() => {
-    const steps = ['PIN Login', 'Code'];
+    const steps = ['Sign In', 'PIN'];
     if (matched?.faceData) steps.push('Face ID');
     return steps;
   })();
@@ -868,9 +893,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       <>
         <StepBar steps={LOGIN_LABELS} cur={loginStep} />
         {loginStep === 0 && loginCredentials()}
-        {loginStep === 1 && loginCodeStep()}
-        {loginStep === 2 && (matched?.pin ? loginPinStep() : loginFaceStep())}
-        {loginStep === 3 && loginFaceStep()}
+        {loginStep === 1 && loginPinStep()}
+        {loginStep === 2 && loginFaceStep()}
       </>
     );
   };

@@ -461,6 +461,18 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // ─── Domain security guard ──────────────────────────────────────────────
+  useEffect(() => {
+    const ALLOWED = ['londwaycapital.com', 'localhost', '127.0.0.1'];
+    const host = window.location.hostname;
+    const allowed = ALLOWED.some(d => host === d || host.endsWith('.' + d));
+    if (!allowed) {
+      // Soft redirect — app is only intended for the official domain
+      window.location.replace('https://londwaycapital.com');
+    }
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handler);
@@ -641,7 +653,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
             PRIVATE BANKING · EST. 2020
           </div>
 
-          <h1 style={{ fontSize: 'clamp(3rem, 7vw, 5.8rem)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.025em', marginBottom: '1.4rem' }}>
+          <h1 key={theme} style={{ fontSize: 'clamp(3rem, 7vw, 5.8rem)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.025em', marginBottom: '1.4rem' }}>
             <span style={{ display: 'block', color: IV }}>Wealth that works</span>
             <span style={{
               display: 'block',

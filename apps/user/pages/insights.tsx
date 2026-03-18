@@ -139,7 +139,7 @@ const DEMO_INSIGHTS: Insight[] = [
 const FILTER_TABS = ['all', 'spending', 'savings', 'invest', 'vault', 'tax', 'credit'] as const;
 
 export default function Insights({ user }: { user: { token: string } }) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { t } = useLang();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,7 +266,7 @@ export default function Insights({ user }: { user: { token: string } }) {
                       cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.18s', flexShrink: 0, fontFamily: 'Inter',
                       background: active ? colors.gold : colors.surface,
                       border: `1px solid ${active ? colors.gold : colors.border}`,
-                      color: active ? '#060913' : colors.textMuted,
+                      color: active ? (theme === 'dark' ? '#060913' : '#fff') : colors.textMuted,
                     }}>
                     {catIcon} {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>

@@ -216,10 +216,10 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
     allTx.sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
     setData({
       totalBalance,
-      netWorth: totalBalance + 5550,
-      todayChange: +132.5,
-      monthlyGrowth: +1200,
-      chartData: [17000, 17200, 17500, 18000, 18200, 18400, Math.round(totalBalance)],
+      netWorth: totalBalance,
+      todayChange: 0,
+      monthlyGrowth: 0,
+      chartData: [0, 0, 0, 0, 0, 0, Math.round(totalBalance)],
       chartLabels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
       accounts,
       recentTx: allTx.slice(0, 6),
@@ -330,9 +330,9 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               borderRadius: 18, padding: '1.5rem 1.8rem', minWidth: 160,
             }}>
               <div style={{ color: colors.textFaint, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>{t('monthlyGrowth')}</div>
-              <div style={{ color: colors.gold, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>+${data.monthlyGrowth.toLocaleString()}</div>
-              <div style={{ fontSize: '0.68rem', color: colors.success, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span>▲</span> 7.2% vs last month
+              <div style={{ color: data.monthlyGrowth >= 0 ? colors.gold : colors.danger, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{data.monthlyGrowth >= 0 ? '+' : ''}${data.monthlyGrowth.toLocaleString()}</div>
+              <div style={{ fontSize: '0.68rem', color: data.monthlyGrowth > 0 ? colors.success : colors.textFaint, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                {data.monthlyGrowth > 0 ? <><span>▲</span> Growing</> : 'No change yet'}
               </div>
             </div>
           </div>

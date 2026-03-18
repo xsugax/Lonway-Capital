@@ -46,17 +46,18 @@ interface ModalProps {
 }
 
 function Modal({ title, onClose, onSubmit, submitLabel, loading, children, colors }: ModalProps) {
+  const { theme } = useTheme();
   return (
     <div style={{ position: 'fixed', inset: 0, background: colors.overlayBg, backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <div style={{ background: colors.surface, borderRadius: 20, padding: '2rem', minWidth: 340, maxWidth: 440, width: '100%', border: `1px solid ${colors.border}`, boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h3 style={{ color: colors.text, fontWeight: 800, fontSize: '1.1rem', margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.textFaint, fontSize: '1.4rem', lineHeight: 1, padding: '0 4px' }}></button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.textFaint, fontSize: '1.4rem', lineHeight: 1, padding: '0 4px' }}>×</button>
         </div>
         {children}
         <div style={{ display: 'flex', gap: 10, marginTop: '1.5rem' }}>
           <button onClick={onClose} style={{ flex: 1, padding: '0.75rem', background: 'transparent', border: `1px solid ${colors.border}`, borderRadius: 10, color: colors.textMuted, cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Cancel</button>
-          <button onClick={onSubmit} disabled={loading} style={{ flex: 2, padding: '0.75rem', background: colors.gold, border: 'none', borderRadius: 10, color: '#060913', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.9rem', opacity: loading ? 0.7 : 1 }}>{loading ? '...' : submitLabel}</button>
+          <button onClick={onSubmit} disabled={loading} style={{ flex: 2, padding: '0.75rem', background: colors.gold, border: 'none', borderRadius: 10, color: theme === 'dark' ? '#060913' : '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.9rem', opacity: loading ? 0.7 : 1 }}>{loading ? '...' : submitLabel}</button>
         </div>
       </div>
     </div>
@@ -77,8 +78,7 @@ const VAULT_COLORS = ['#C4A052', '#9b8fbf', '#3D9E7A', '#E07040', '#4A90D9'];
 const APY = 4.8;
 
 export default function Vaults({ user }: { user: { token: string; email?: string } }) {
-  const { colors } = useTheme();
-  const { t } = useLang();
+  const { colors, theme } = useTheme();  const { t } = useLang();
 
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,7 +164,7 @@ export default function Vaults({ user }: { user: { token: string; email?: string
               </div>
             )}
           </div>
-          <button onClick={() => setShowCreate(true)} style={{ padding: '0.75rem 1.5rem', background: colors.gold, border: 'none', borderRadius: 12, color: '#060913', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', flexShrink: 0 }}>
+          <button onClick={() => setShowCreate(true)} style={{ padding: '0.75rem 1.5rem', background: colors.gold, border: 'none', borderRadius: 12, color: theme === 'dark' ? '#060913' : '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', flexShrink: 0 }}>
             ＋ {t('createVault')}
           </button>
         </div>
@@ -186,7 +186,7 @@ export default function Vaults({ user }: { user: { token: string; email?: string
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}></div>
             <div style={{ fontWeight: 700, fontSize: '1.1rem', color: colors.text, marginBottom: 6 }}>No vaults yet</div>
             <div style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>Create your first savings vault to start earning {APY}% APY</div>
-            <button onClick={() => setShowCreate(true)} style={{ padding: '0.75rem 2rem', background: colors.gold, border: 'none', borderRadius: 12, color: '#060913', fontWeight: 700, cursor: 'pointer' }}>＋ {t('createVault')}</button>
+            <button onClick={() => setShowCreate(true)} style={{ padding: '0.75rem 2rem', background: colors.gold, border: 'none', borderRadius: 12, color: theme === 'dark' ? '#060913' : '#fff', fontWeight: 700, cursor: 'pointer' }}>＋ {t('createVault')}</button>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.4rem' }}>
