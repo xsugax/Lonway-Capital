@@ -5,10 +5,9 @@ import React, { useState, useEffect } from 'react';
 const G = '#C4A052';
 const BG = '#060913';
 
-type AdminUser = { name: string; token: string; expires: number };
+type AdminUser = { name: string; token: string; loginAt: number };
 
-const SESSION_KEY = 'londway_admin';
-const SESSION_DAYS = 30;
+const SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function AdminLogin({ onLogin }: { onLogin: (u: AdminUser) => void }) {
   const [code, setCode] = useState('');
@@ -24,13 +23,9 @@ function AdminLogin({ onLogin }: { onLogin: (u: AdminUser) => void }) {
     setError('');
     setTimeout(() => {
       if (code === 'LONDWAY-GOD-2026') {
-        onLogin({
-          name: 'God Admin',
-          token: 'admin-god-' + Date.now(),
-          expires: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000,
-        });
+        onLogin({ name: 'God Admin', token: 'admin-god-' + Date.now(), loginAt: Date.now() });
       } else {
-        setError('Invalid access code. Try again.');
+        setError('Invalid access code');
         setLoading(false);
       }
     }, 800);
@@ -91,11 +86,7 @@ function AdminLogin({ onLogin }: { onLogin: (u: AdminUser) => void }) {
           </button>
         </form>
 
-        <div style={{ marginTop: '1rem', textAlign: 'center', color: '#556', fontSize: '0.72rem' }}>
-          Access from any device worldwide · Session lasts {SESSION_DAYS} days
-        </div>
-
-        <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center', gap: 16, opacity: 0.35, fontSize: '0.7rem', color: '#888' }}>
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: 16, opacity: 0.35, fontSize: '0.7rem', color: '#888' }}>
           <span>🔒 Encrypted</span><span>✦ Audit Logged</span><span>✦ IP Tracked</span>
         </div>
       </div>
@@ -108,28 +99,28 @@ export default function AdminApp({ Component, pageProps }: AppProps) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(SESSION_KEY);
+    const stored = window.localStorage.getItem('londway_admin');
     if (stored) {
       try {
         const parsed: AdminUser = JSON.parse(stored);
-        // Auto-expire after SESSION_DAYS days
-        if (parsed.expires && parsed.expires > Date.now()) {
+        // Auto-expire after 30 days — valid on any device
+        if (parsed.loginAt && Date.now() - parsed.loginAt < SESSION_TTL) {
           setAdmin(parsed);
         } else {
-          window.localStorage.removeItem(SESSION_KEY);
+          window.localStorage.removeItem('londway_admin');
         }
-      } catch { window.localStorage.removeItem(SESSION_KEY); }
+      } catch { window.localStorage.removeItem('londway_admin'); }
     }
     setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (admin) window.localStorage.setItem(SESSION_KEY, JSON.stringify(admin));
+    if (admin) window.localStorage.setItem('londway_admin', JSON.stringify(admin));
   }, [admin]);
 
   const handleLogout = () => {
     setAdmin(null);
-    window.localStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem('londway_admin');
   };
 
   if (!hydrated) return null;
