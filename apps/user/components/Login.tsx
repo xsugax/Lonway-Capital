@@ -76,7 +76,18 @@ function getAccounts(): StoredAccount[] {
 
 function saveNewAccount(account: StoredAccount) {
   const accounts = getAccounts();
-  accounts.push(account);
+  const idx = accounts.findIndex(a => a.email.toLowerCase() === account.email.toLowerCase());
+  if (idx !== -1) {
+    // Update existing — merge fields, prefer non-empty values
+    const existing = accounts[idx];
+    if (account.password) existing.password = account.password;
+    if (account.pin) existing.pin = account.pin;
+    if (account.name) existing.name = account.name;
+    if (account.role) existing.role = account.role;
+    if (account.faceData) existing.faceData = account.faceData;
+  } else {
+    accounts.push(account);
+  }
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
@@ -342,10 +353,15 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       setSending(true);
       try {
         const cloud = await cloudLookup(emailLower);
-        if (cloud && cloud.password) {
+        if (cloud) {
+          // Merge cloud data into local — cloud is source of truth
           const local: StoredAccount = {
-            email: cloud.email, password: cloud.password, pin: cloud.pin || '',
-            name: cloud.name, role: cloud.role, idVerified: false,
+            email: cloud.email,
+            password: cloud.password || (m?.password || ''),
+            pin: cloud.pin || (m?.pin || ''),
+            name: cloud.name || (m?.name || ''),
+            role: cloud.role || (m?.role || 'user'),
+            idVerified: false,
           };
           saveNewAccount(local);
           if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {

@@ -271,25 +271,33 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   }, [aName]);
 
   // ── Auto-sync ALL users to Supabase on admin panel load ──────
-  // This ensures every user in localStorage is pushed to the cloud.
-  // Without this, users created BEFORE the cloud fix are invisible to Supabase.
+  // Merges passwords from both admin data AND londway_accounts so users
+  // that were created before the cloud fix get their credentials pushed.
   useEffect(() => {
     if (!isCloudEnabled()) return;
     const d = loadData();
+    // Also read londway_accounts which stores passwords/PINs for login
+    let loginAccounts: any[] = [];
+    try { const raw = localStorage.getItem('londway_accounts'); if (raw) loginAccounts = JSON.parse(raw); } catch {}
     let synced = 0;
     for (const u of d.users) {
+      // Find matching login account to get password/pin (admin data may not have them)
+      const loginAcct = loginAccounts.find((a: any) => a.email?.toLowerCase() === u.email?.toLowerCase());
+      const password = u.password || loginAcct?.password || '';
+      const pin = u.pin || loginAcct?.pin || '';
+      // Only sync users that have a password (skip demo/seed users without credentials)
+      if (!password) continue;
       const bankKey = userKey('londway_bank_accounts', u.email);
       let bankAccounts: any[] | null = null;
       try { const raw = localStorage.getItem(bankKey); if (raw) bankAccounts = JSON.parse(raw); } catch {}
       cloudSaveUser({
-        email: u.email, password: u.password || '', pin: u.pin || '',
+        email: u.email, password, pin,
         name: u.name, role: u.role, tier: u.tier || 'Standard',
         balance: u.balance || 0, phone: u.phone || '',
         bank_accounts: bankAccounts,
       }).then(() => { synced++; }).catch(() => {});
     }
-    // Log once after a short delay
-    setTimeout(() => { console.log(`[admin] Cloud sync complete: ${synced}/${d.users.length} users pushed to Supabase`); }, 5000);
+    setTimeout(() => { console.log(`[admin] Cloud sync: ${synced} users with credentials pushed to Supabase`); }, 5000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Activation link helpers ────────────────────────────────────
@@ -644,13 +652,18 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 { label: '💰 Fund Account', action: () => setTab('funding'), c: G },
                 { label: '☁ Sync All to Cloud', action: () => {
                   if (!isCloudEnabled()) { notify(false, 'Cloud not configured'); return; }
+                  let loginAccounts: any[] = [];
+                  try { const raw = localStorage.getItem('londway_accounts'); if (raw) loginAccounts = JSON.parse(raw); } catch {}
                   let ok = 0;
                   const all = data.users;
                   Promise.all(all.map(u => {
+                    const loginAcct = loginAccounts.find((a: any) => a.email?.toLowerCase() === u.email?.toLowerCase());
+                    const password = u.password || loginAcct?.password || '';
+                    const pin = u.pin || loginAcct?.pin || '';
                     const bankKey = userKey('londway_bank_accounts', u.email);
                     let ba: any[] | null = null;
                     try { const raw = localStorage.getItem(bankKey); if (raw) ba = JSON.parse(raw); } catch {}
-                    return cloudSaveUser({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role, tier: u.tier || 'Standard', balance: u.balance || 0, phone: u.phone || '', bank_accounts: ba }).then(() => { ok++; }).catch(() => {});
+                    return cloudSaveUser({ email: u.email, password, pin, name: u.name, role: u.role, tier: u.tier || 'Standard', balance: u.balance || 0, phone: u.phone || '', bank_accounts: ba }).then(() => { ok++; }).catch(() => {});
                   })).then(() => notify(true, `☁ Synced ${ok}/${all.length} users to cloud`));
                 }, c: '#3B82F6' },
               ].map(a => (
