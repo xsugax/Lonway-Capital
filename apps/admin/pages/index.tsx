@@ -270,6 +270,28 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     setData(prev => { const next = { ...prev, audit: [...prev.audit, entry] }; saveData(next); return next; });
   }, [aName]);
 
+  // ── Auto-sync ALL users to Supabase on admin panel load ──────
+  // This ensures every user in localStorage is pushed to the cloud.
+  // Without this, users created BEFORE the cloud fix are invisible to Supabase.
+  useEffect(() => {
+    if (!isCloudEnabled()) return;
+    const d = loadData();
+    let synced = 0;
+    for (const u of d.users) {
+      const bankKey = userKey('londway_bank_accounts', u.email);
+      let bankAccounts: any[] | null = null;
+      try { const raw = localStorage.getItem(bankKey); if (raw) bankAccounts = JSON.parse(raw); } catch {}
+      cloudSaveUser({
+        email: u.email, password: u.password || '', pin: u.pin || '',
+        name: u.name, role: u.role, tier: u.tier || 'Standard',
+        balance: u.balance || 0, phone: u.phone || '',
+        bank_accounts: bankAccounts,
+      }).then(() => { synced++; }).catch(() => {});
+    }
+    // Log once after a short delay
+    setTimeout(() => { console.log(`[admin] Cloud sync complete: ${synced}/${d.users.length} users pushed to Supabase`); }, 5000);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Activation link helpers ────────────────────────────────────
   function makeFundedTx(target: number, acctId: string): object[] {
     if (target <= 0) return [];
@@ -620,6 +642,17 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 { label: '+ New Transaction', action: () => setNewTxModal(true), c: '#50C878' },
                 { label: '👥 Manage Users', action: () => setTab('users'), c: '#A2B2BF' },
                 { label: '💰 Fund Account', action: () => setTab('funding'), c: G },
+                { label: '☁ Sync All to Cloud', action: () => {
+                  if (!isCloudEnabled()) { notify(false, 'Cloud not configured'); return; }
+                  let ok = 0;
+                  const all = data.users;
+                  Promise.all(all.map(u => {
+                    const bankKey = userKey('londway_bank_accounts', u.email);
+                    let ba: any[] | null = null;
+                    try { const raw = localStorage.getItem(bankKey); if (raw) ba = JSON.parse(raw); } catch {}
+                    return cloudSaveUser({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role, tier: u.tier || 'Standard', balance: u.balance || 0, phone: u.phone || '', bank_accounts: ba }).then(() => { ok++; }).catch(() => {});
+                  })).then(() => notify(true, `☁ Synced ${ok}/${all.length} users to cloud`));
+                }, c: '#3B82F6' },
               ].map(a => (
                 <button key={a.label} onClick={a.action} style={{
                   background: `${a.c}10`, border: `1px solid ${a.c}30`, borderRadius: 12,
