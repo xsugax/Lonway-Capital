@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getBankAccounts, saveBankAccounts } from '../lib/store';
@@ -56,7 +56,19 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
   const ct = CARD_THEMES[themeIdx % CARD_THEMES.length];
   const cardNum = account.accountNumber?.slice(-4) ?? '••••';
   const [hovered, setHovered] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const copyKey = account.accountNumber ?? account.id;
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const close = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('touchstart', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close); };
+  }, [showMenu]);
 
   return (
     <div
@@ -64,7 +76,7 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
       onMouseLeave={() => setHovered(false)}
       style={{
         background: ct.bg, borderRadius: 20, padding: '1.8rem',
-        position: 'relative', overflow: 'hidden', cursor: 'default',
+        position: 'relative', overflow: 'visible', cursor: 'default',
         transition: 'transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease',
         transform: hovered ? 'translateY(-5px) scale(1.01)' : 'translateY(0) scale(1)',
         boxShadow: hovered ? `0 20px 50px rgba(0,0,0,0.6), 0 0 50px ${ct.accent}18` : '0 8px 30px rgba(0,0,0,0.45)',
@@ -72,20 +84,52 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
         opacity: account.frozen ? 0.75 : 1,
       }}
     >
-      {account.frozen && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(20,50,90,0.6)', borderRadius: 20, zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ color: '#A2B2BF', fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.1em', background: 'rgba(0,0,0,0.55)', padding: '0.4rem 1rem', borderRadius: 8, border: '1px solid rgba(162,178,191,0.3)' }}>❄ FROZEN</span>
-        </div>
-      )}
-      <div style={{ position: 'absolute', top: '-30%', right: '-10%', width: 200, height: 200, borderRadius: '50%', border: `1px solid ${ct.accent}12`, pointerEvents: 'none' }}/>
-      <div style={{ position: 'absolute', top: '-10%', right: '5%', width: 140, height: 140, borderRadius: '50%', border: `1px solid ${ct.accent}08`, pointerEvents: 'none' }}/>
+      {/* Inner clip for background rings only */}
+      <div style={{ position: 'absolute', inset: 0, borderRadius: 20, overflow: 'hidden', pointerEvents: 'none' }}>
+        {account.frozen && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(20,50,90,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+            <span style={{ color: '#A2B2BF', fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.1em', background: 'rgba(0,0,0,0.55)', padding: '0.4rem 1rem', borderRadius: 8, border: '1px solid rgba(162,178,191,0.3)', pointerEvents: 'none' }}>❄ FROZEN</span>
+          </div>
+        )}
+        <div style={{ position: 'absolute', top: '-30%', right: '-10%', width: 200, height: 200, borderRadius: '50%', border: `1px solid ${ct.accent}12` }}/>
+        <div style={{ position: 'absolute', top: '-10%', right: '5%', width: 140, height: 140, borderRadius: '50%', border: `1px solid ${ct.accent}08` }}/>
+      </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.2rem', position: 'relative', zIndex: 1 }}>
+      {/* Header: account info + ⋮ menu + chip */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.2rem', position: 'relative', zIndex: 10 }}>
         <div>
           <div style={{ fontSize: '0.6rem', color: ct.accent, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>{account.type}</div>
           <div style={{ color: ct.alt, fontWeight: 700, fontSize: '1rem' }}>{account.name}</div>
         </div>
-        <div style={{ opacity: 0.9 }}><ChipSvg /></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* ⋮ Actions menu — always visible, works on mobile & desktop */}
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={e => { e.stopPropagation(); setShowMenu(prev => !prev); }}
+              title="Account actions"
+              style={{ background: `${ct.accent}20`, border: `1px solid ${ct.accent}40`, borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ct.accent, fontSize: '1.1rem', cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}
+            >
+              ⋮
+            </button>
+            {showMenu && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: '#0d1020', border: `1px solid ${ct.accent}30`, borderRadius: 10, zIndex: 200, minWidth: 175, boxShadow: '0 16px 48px rgba(0,0,0,0.85)', overflow: 'hidden' }}>
+                <button
+                  onClick={() => { onCopy(copyKey); setShowMenu(false); }}
+                  style={{ display: 'block', width: '100%', padding: '0.8rem 1rem', background: 'none', border: 'none', borderBottom: `1px solid ${ct.accent}15`, color: ct.accent, fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
+                >
+                  {copied === copyKey ? `✓ ${tFn('copied')}` : `📋 ${tFn('copyAccountNo')}`}
+                </button>
+                <button
+                  onClick={() => { onFreeze(account.id); setShowMenu(false); }}
+                  style={{ display: 'block', width: '100%', padding: '0.8rem 1rem', background: 'none', border: 'none', color: account.frozen ? '#3D9E7A' : '#A2B2BF', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
+                >
+                  {account.frozen ? `🔓 ${tFn('unfreezeCard')}` : `❄ ${tFn('freezeCard')}`}
+                </button>
+              </div>
+            )}
+          </div>
+          <div style={{ opacity: 0.9 }}><ChipSvg /></div>
+        </div>
       </div>
 
       <div style={{ position: 'relative', zIndex: 1, marginBottom: '1.2rem' }}>
@@ -103,21 +147,6 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
           <div style={{ color: ct.alt, fontSize: '0.74rem', fontWeight: 600, letterSpacing: '0.08em' }}>12/28</div>
         </div>
         <div style={{ color: `${ct.alt}60`, fontSize: '0.88rem', fontWeight: 600, letterSpacing: '0.12em' }}>•••• {cardNum}</div>
-      </div>
-
-      <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', gap: 6, zIndex: 10, opacity: hovered ? 1 : 0, transform: hovered ? 'translateY(0)' : 'translateY(5px)', transition: 'all 0.2s' }}>
-        <button
-          onClick={() => onCopy(copyKey)}
-          style={{ background: `${ct.accent}22`, border: `1px solid ${ct.accent}44`, borderRadius: 7, padding: '0.28rem 0.65rem', color: ct.accent, fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', backdropFilter: 'blur(4px)' }}
-        >
-          {copied === copyKey ? tFn('copied') : tFn('copyAccountNo')}
-        </button>
-        <button
-          onClick={() => onFreeze(account.id)}
-          style={{ background: account.frozen ? 'rgba(61,158,122,0.15)' : 'rgba(100,160,220,0.12)', border: `1px solid ${account.frozen ? 'rgba(61,158,122,0.3)' : 'rgba(100,160,220,0.25)'}`, borderRadius: 7, padding: '0.28rem 0.65rem', color: account.frozen ? '#3D9E7A' : '#A2B2BF', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', backdropFilter: 'blur(4px)' }}
-        >
-          {account.frozen ? tFn('unfreezeCard') : tFn('freezeCard')}
-        </button>
       </div>
     </div>
   );

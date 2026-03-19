@@ -332,41 +332,46 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const loginNext = async () => {
     setError(null);
     if (loginStep === 0) {
-      // Step 0: email + password only
+      // Step 0: email + password
       if (!lEmail.includes('@')) { setError('Enter a valid email address'); return; }
       if (!lPw) { setError('Enter your password'); return; }
-      const accts = getAccounts();
       const emailLower = lEmail.toLowerCase().trim();
-      let m = accts.find(a => a.email.toLowerCase() === emailLower);
-      // If not found locally, check cloud database (cross-device login)
-      if (!m) {
-        setSending(true);
-        try {
-          const cloud = await cloudLookup(emailLower);
-          if (cloud && cloud.password) {
-            const local: StoredAccount = {
-              email: cloud.email, password: cloud.password, pin: cloud.pin || '',
-              name: cloud.name, role: cloud.role, idVerified: false,
-            };
-            saveNewAccount(local);
-            if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {
-              saveBankAccounts(cloud.bank_accounts, cloud.email);
-            } else if (cloud.balance > 0) {
-              const seeded = generateFundedAccounts(cloud.email, cloud.balance);
-              saveBankAccounts(seeded, cloud.email);
-            }
-            m = local;
+      // Start with whatever is stored locally
+      let m: StoredAccount | undefined = getAccounts().find(a => a.email.toLowerCase() === emailLower);
+      // ALWAYS check cloud — this ensures cross-device login AND latest credentials
+      setSending(true);
+      try {
+        const cloud = await cloudLookup(emailLower);
+        if (cloud && cloud.password) {
+          const local: StoredAccount = {
+            email: cloud.email, password: cloud.password, pin: cloud.pin || '',
+            name: cloud.name, role: cloud.role, idVerified: false,
+          };
+          saveNewAccount(local);
+          if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {
+            saveBankAccounts(cloud.bank_accounts, cloud.email);
+          } else if (cloud.balance > 0) {
+            const seeded = generateFundedAccounts(cloud.email, cloud.balance);
+            saveBankAccounts(seeded, cloud.email);
           }
-        } catch (err) {
-          console.error('[login] Cloud lookup failed:', err);
-        } finally { setSending(false); }
-      }
-      if (!m) { setError('No account found for that email. Please contact support.'); return; }
-      if (m.password !== lPw) { setError('Incorrect password'); return; }
+          m = local; // always prefer freshest cloud copy
+        }
+      } catch (err) {
+        console.error('[login] Cloud lookup failed, using local copy:', err);
+        // Fall through — m still points to local account if it exists
+      } finally { setSending(false); }
+      if (!m) { setError('No account found. Check your email or contact support.'); return; }
+      if (m.password !== lPw) { setError('Incorrect password. Please try again.'); return; }
       setMatched(m);
       if (typeof window !== 'undefined') {
         if (rememberMe) localStorage.setItem('londway_remembered_email', lEmail);
         else localStorage.removeItem('londway_remembered_email');
+      }
+      // Skip PIN step when no PIN is configured (e.g. admin-provisioned accounts)
+      if (!m.pin) {
+        if (m.faceData) { setLoginStep(2); setTimeout(() => startCam(), 300); }
+        else { onLogin({ name: m.name, token: 'token-' + Date.now(), role: m.role, email: m.email }); }
+        return;
       }
       setLoginStep(1); // go to PIN step
     } else if (loginStep === 1) {
@@ -381,7 +386,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
       }
     } else if (loginStep === 2) {
-      // Step 2: Face scan
+      // Step 2: Face scan (always succeeds — presence check only)
       setScanning(true);
       setTimeout(() => {
         stopCam();
@@ -882,7 +887,17 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       </div>
       <canvas ref={canvasRef} style={{ display: 'none' }} />
       {!scanning ? (
-        <BtnRow onBack={loginBack} onNext={loginNext} nextLabel="🔍 Verify Face" />
+        <>
+          <BtnRow onBack={loginBack} onNext={loginNext} nextLabel="🔍 Verify Face" />
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <span
+              onClick={() => { stopCam(); onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email }); }}
+              style={{ fontSize: '0.76rem', color: 'rgba(196,160,82,0.55)', cursor: 'pointer' }}
+            >
+              Skip Face Scan →
+            </span>
+          </div>
+        </>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#52c41a', fontSize: '0.82rem', fontWeight: 600 }}>
           <span style={{ width: 14, height: 14, border: '2px solid #52c41a', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
