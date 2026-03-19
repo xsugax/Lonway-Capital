@@ -42,6 +42,12 @@ export const TIER_LIMITS: Record<string, TierLimits> = {
     maxAccounts: 10, maxVaults: 10, savingsRate: 5.0,
     color: '#E5E4E2', description: 'Unlimited private banking',
   },
+  Black: {
+    tier: 'Black', dailyTransferLimit: 10_000_000, perTxLimit: 5_000_000,
+    intlAllowed: true, cryptoAllowed: true,
+    maxAccounts: 25, maxVaults: 25, savingsRate: 6.5,
+    color: '#1a1a2e', description: 'Ultra-exclusive elite private banking',
+  },
 };
 
 /** Get tier limits for a given tier name (falls back to Standard). */
