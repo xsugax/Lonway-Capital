@@ -28,28 +28,36 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const router = useRouter();
 
+  const closeSidebar = () => setMobileNavOpen(false);
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── Sidebar ── */}
-      <aside style={{
-        width: 240, flexShrink: 0, background: colors.navBg,
-        borderRight: `1px solid ${colors.border}`,
-        display: 'flex', flexDirection: 'column',
-        position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 101,
-        transition: 'transform 0.25s',
-        transform: mobileNavOpen ? 'translateX(0)' : undefined,
-      }}
-        className="sidebar-desktop"
+      <aside
+        className={`sidebar-desktop${mobileNavOpen ? ' sidebar-open' : ''}`}
+        style={{
+          width: 240, flexShrink: 0, background: colors.navBg,
+          borderRight: `1px solid ${colors.border}`,
+          display: 'flex', flexDirection: 'column',
+          position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 200,
+          transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
+        }}
       >
-        {/* Logo */}
+        {/* Logo row + close button (mobile) */}
         <div style={{ padding: '1.2rem 1.4rem', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
           <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
             <circle cx="18" cy="18" r="15.5" stroke={colors.gold} strokeWidth="1.3" fill="none"/>
             <path d="M11,27 V15 C11,6.5 25,6.5 25,15 V27" stroke={colors.gold} strokeWidth="2" fill="none"/>
             <line x1="7.5" y1="27" x2="28.5" y2="27" stroke={colors.gold} strokeWidth="1"/>
           </svg>
-          <span style={{ color: colors.gold, fontWeight: 800, fontSize: '1.1rem', letterSpacing: '0.04em' }}>Londway</span>
+          <span style={{ color: colors.gold, fontWeight: 800, fontSize: '1.1rem', letterSpacing: '0.04em', flex: 1 }}>Londway</span>
+          {/* Close button — only visible on mobile */}
+          <button
+            onClick={closeSidebar}
+            className="sidebar-close-btn"
+            style={{ display: 'none', background: 'none', border: 'none', color: colors.textMuted, fontSize: '1.4rem', cursor: 'pointer', padding: '2px 6px', lineHeight: 1 }}
+          >✕</button>
         </div>
 
         {/* Nav links */}
@@ -57,7 +65,7 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
           {NAV_ITEMS.map(item => {
             const active = router.pathname === item.href;
             return (
-              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} onClick={closeSidebar}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '0.65rem 1.4rem', margin: '2px 0.6rem', borderRadius: 10,
@@ -105,7 +113,7 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
               <div style={{
                 position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4,
                 background: colors.navBg, border: `1px solid ${colors.border}`, borderRadius: 8,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)', maxHeight: 200, overflowY: 'auto', zIndex: 200,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)', maxHeight: 200, overflowY: 'auto', zIndex: 300,
               }}>
                 {(Object.keys(LANG_NAMES) as LangCode[]).map(code => (
                   <div key={code} onClick={() => { setLang(code); setLangOpen(false); }} style={{
@@ -120,14 +128,28 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
               </div>
             )}
           </div>
+
+          {/* Sign Out (bottom of sidebar — handy on mobile) */}
+          <button onClick={onLogout} style={{
+            background: 'transparent', border: `1px solid ${colors.border}`,
+            color: colors.textMuted, borderRadius: 8, padding: '0.5rem 0.8rem',
+            fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+            transition: 'all 0.15s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = colors.danger; e.currentTarget.style.color = colors.danger; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.color = colors.textMuted; }}
+          >
+            🚪 Sign Out
+          </button>
         </div>
       </aside>
 
-      {/* ── Mobile nav overlay ── */}
+      {/* ── Mobile overlay — tap to close ── */}
       {mobileNavOpen && (
-        <div onClick={() => setMobileNavOpen(false)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
-        }}/>
+        <div
+          onClick={closeSidebar}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 199, backdropFilter: 'blur(2px)' }}
+        />
       )}
 
       {/* ── Main content area ── */}
@@ -138,14 +160,18 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0.7rem 2rem', background: colors.navBg,
           borderBottom: `1px solid ${colors.border}`,
-          position: 'sticky', top: 0, zIndex: 99,
+          position: 'sticky', top: 0, zIndex: 100,
           boxShadow: '0 2px 8px rgba(196,160,82,0.04)',
         }}>
-          {/* Mobile hamburger */}
-          <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="mobile-nav-btn" style={{
-            display: 'none', background: 'none', border: 'none', color: colors.text,
-            fontSize: '1.5rem', cursor: 'pointer', padding: 4,
-          }}>☰</button>
+          {/* Hamburger — shown on mobile */}
+          <button
+            onClick={() => setMobileNavOpen(prev => !prev)}
+            className="mobile-nav-btn"
+            aria-label="Open navigation"
+            style={{ display: 'none', background: 'none', border: 'none', color: colors.text, fontSize: '1.6rem', cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}
+          >
+            ☰
+          </button>
 
           <div style={{ fontSize: '0.85rem', color: colors.textMuted }}>
             Welcome, <span style={{ color: colors.gold, fontWeight: 700 }}>{userName}</span>
@@ -170,14 +196,39 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
         </main>
       </div>
 
-      {/* Responsive CSS */}
+      {/* Responsive CSS — class-based, no attribute selectors */}
       <style>{`
+        /* Desktop: sidebar always visible */
+        .sidebar-desktop {
+          transform: translateX(0);
+        }
+
         @media (max-width: 768px) {
-          .sidebar-desktop { transform: translateX(-100%) !important; }
-          .sidebar-desktop[style*="translateX(0)"] { transform: translateX(0) !important; }
-          .mobile-nav-btn { display: flex !important; }
-          .main-content { margin-left: 0 !important; }
-          .main-content header { padding: 0.7rem 1rem !important; }
+          /* Sidebar hidden by default on mobile */
+          .sidebar-desktop {
+            transform: translateX(-100%);
+            box-shadow: none;
+          }
+          /* Open state — toggled via className */
+          .sidebar-desktop.sidebar-open {
+            transform: translateX(0) !important;
+            box-shadow: 4px 0 40px rgba(0,0,0,0.6);
+          }
+          /* Show hamburger, hide on desktop */
+          .mobile-nav-btn {
+            display: flex !important;
+          }
+          /* Show close ✕ button inside sidebar on mobile */
+          .sidebar-close-btn {
+            display: block !important;
+          }
+          /* Push content to edge */
+          .main-content {
+            margin-left: 0 !important;
+          }
+          .main-content header {
+            padding: 0.7rem 1rem !important;
+          }
         }
       `}</style>
     </div>
