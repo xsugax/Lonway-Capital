@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
-import { getVaults, saveVaults } from '../lib/store';
+import { getVaults, saveVaults, getBankAccounts, saveBankAccounts } from '../lib/store';
 
 interface Vault {
   id: string;
@@ -118,15 +118,41 @@ export default function Vaults({ user }: { user: { token: string; email?: string
     if (!activeModal || !modalAmount) return;
     setModalLoading(true);
     const { type, vault } = activeModal;
+    const amt = parseFloat(modalAmount);
+    if (!amt || amt <= 0) { setModalLoading(false); return; }
+
+    // Get bank accounts to deduct/credit balance
+    const bankAccts = getBankAccounts(user?.email);
+    const checking = bankAccts.find((a: any) => a.type === 'Checking') || bankAccts[0];
+
+    if (type === 'topup') {
+      // Verify sufficient balance in checking account
+      if (!checking || (checking.balance ?? 0) < amt) {
+        setError('Insufficient balance in your checking account.');
+        setModalLoading(false);
+        return;
+      }
+    }
+
     const all = getVaults(user?.email);
     const v = all.find((x: any) => x.id === vault.id);
-    if (v) {
-      if (type === 'topup') v.balance += parseFloat(modalAmount);
-      else v.balance = Math.max(0, v.balance - parseFloat(modalAmount));
+    if (v && checking) {
+      if (type === 'topup') {
+        v.balance += amt;
+        checking.balance = Math.round((checking.balance - amt) * 100) / 100;
+        checking.recentActivity = `Vault top-up: -$${amt.toFixed(2)} → ${v.name}`;
+      } else {
+        const withdrawAmt = Math.min(amt, v.balance);
+        v.balance = Math.max(0, v.balance - withdrawAmt);
+        checking.balance = Math.round((checking.balance + withdrawAmt) * 100) / 100;
+        checking.recentActivity = `Vault withdraw: +$${withdrawAmt.toFixed(2)} from ${v.name}`;
+      }
       saveVaults(all, user?.email);
+      saveBankAccounts(bankAccts, user?.email);
     }
     setActiveModal(null);
     setModalAmount('');
+    setError(null);
     loadVaults();
     setModalLoading(false);
   };

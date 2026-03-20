@@ -93,7 +93,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
     setPinError('');
   };
 
-  const handleConfirmPin = () => {
+  const handleConfirmPin = async () => {
     if (!pin || pin.length < 4) { setPinError('Please enter your PIN.'); return; }
     setPinError('');
     setSubmitting(true);
@@ -160,11 +160,12 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
         selectedCoin.address,
       ).catch(() => {});
 
-      // Write to global aggregate for admin visibility
+      // Write to per-user transfers for admin visibility
       try {
-        const globalTransfers = JSON.parse(localStorage.getItem('londway_transfers') || '[]');
-        globalTransfers.unshift({ id: 'tr-cry-' + Date.now(), type: 'crypto_deposit', recipientName: user.email, amount: usd, currency: 'USD', description: `${amt} ${selectedCoin.symbol} deposit`, reference: ref, status: 'completed', createdAt: new Date().toISOString() });
-        localStorage.setItem('londway_transfers', JSON.stringify(globalTransfers.slice(0, 200)));
+        const { getTransfers, saveTransfers } = await import('../lib/store');
+        const userTransfers = getTransfers(user.email);
+        userTransfers.unshift({ id: 'tr-cry-' + Date.now(), type: 'crypto_deposit', recipientName: user.email, amount: usd, currency: 'USD', description: `${amt} ${selectedCoin.symbol} deposit`, reference: ref, status: 'completed', createdAt: new Date().toISOString() });
+        saveTransfers(userTransfers, user.email);
       } catch {}
     }
 

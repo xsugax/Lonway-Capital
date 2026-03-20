@@ -69,7 +69,7 @@ function getOrSeed<T>(key: string, seed: T[]): T[] {
   if (typeof window === 'undefined') return seed;
   try {
     const raw = localStorage.getItem(key);
-    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length > 0) return parsed; }
+    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) return parsed; }
   } catch {}
   localStorage.setItem(key, JSON.stringify(seed));
   return seed;

@@ -175,6 +175,19 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       const all = getTransfers(user?.email);
       all.unshift(newTransfer);
       saveTransfers(all, user?.email);
+
+      // Deduct amount from primary checking account (hold until admin approves/rejects)
+      if (user?.email) {
+        const bankAccts = getBankAccounts(user.email);
+        const checking = bankAccts.find((a: any) => a.type === 'Checking') || bankAccts[0];
+        if (checking) {
+          checking.balance = Math.round(Math.max(0, checking.balance - amt) * 100) / 100;
+          checking.recentActivity = `Transfer hold: -$${amt.toFixed(2)} → ${isLocal ? localRecipient : intlName}`;
+          const { saveBankAccounts: saveBankAcctsFn } = await import('../lib/store');
+          saveBankAcctsFn(bankAccts, user.email);
+        }
+      }
+
       // Track daily usage
       if (user?.email) {
         addDailyUsage(user.email, amt);

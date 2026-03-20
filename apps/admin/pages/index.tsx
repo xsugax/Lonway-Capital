@@ -207,15 +207,33 @@ function syncUserBankAccounts(
 }
 
 // ── Aggregate helpers: read per-user data across all known users ────────────
+// Collect ALL known emails from both admin data AND londway_accounts
+// so self-registered users' transfers/cards/etc are visible to admin.
+function getAllKnownEmails(adminUsers: User[]): string[] {
+  const emails = new Set<string>();
+  for (const u of adminUsers) emails.add(u.email.toLowerCase());
+  try {
+    const raw = localStorage.getItem('londway_accounts');
+    if (raw) {
+      const accts = JSON.parse(raw);
+      for (const a of accts) {
+        if (a.email && a.role !== 'admin') emails.add(a.email.toLowerCase());
+      }
+    }
+  } catch {}
+  return Array.from(emails);
+}
+
 function getAllUserData(base: string, users: User[]): any[] {
   const all: any[] = [];
-  for (const u of users) {
-    const key = userKey(base, u.email);
+  const emails = getAllKnownEmails(users);
+  for (const email of emails) {
+    const key = userKey(base, email);
     try {
       const raw = localStorage.getItem(key);
       if (raw) {
         const items = JSON.parse(raw);
-        if (Array.isArray(items)) all.push(...items.map((item: any) => ({ ...item, _userEmail: u.email })));
+        if (Array.isArray(items)) all.push(...items.map((item: any) => ({ ...item, _userEmail: email })));
       }
     } catch {}
   }
@@ -315,13 +333,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [fundModal, setFundModal] = useState<{ userId: string; mode: 'credit' | 'debit' } | null>(null);
   const [fundAmt, setFundAmt] = useState('');
   const [fundDesc, setFundDesc] = useState('');
+  const [fundSender, setFundSender] = useState('');
   const [fundDate, setFundDate] = useState('');
   const [newUserModal, setNewUserModal] = useState(false);
   const [newTxModal, setNewTxModal] = useState(false);
   const [editTxModal, setEditTxModal] = useState<Transaction | null>(null);
 
   const [nu, setNu] = useState({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
-  const [nt, setNt] = useState({ userId: '', type: 'credit' as Transaction['type'], amount: '', currency: 'USD', description: '', status: 'completed', createdAt: '' });
+  const [nt, setNt] = useState({ userId: '', type: 'credit' as Transaction['type'], amount: '', currency: 'USD', description: '', senderName: '', status: 'completed', createdAt: '' });
   const [activationLink, setActivationLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -554,9 +573,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     const isCredit = fundModal.mode === 'credit';
     const newBalance = isCredit ? user.balance + amount : user.balance - amount;
     const tx: Transaction = {
-      id: uid(), userId: user.id, userName: user.name,
+      id: uid(), userId: user.id, userName: fundSender || user.name,
       type: isCredit ? 'credit' : 'debit', amount, currency: 'USD', status: 'completed',
-      description: fundDesc || (isCredit ? 'Admin credit' : 'Admin debit'),
+      description: fundDesc || (isCredit ? 'Wire Transfer Received' : 'Account Adjustment'),
       reference: `ADM-${Date.now().toString(36).toUpperCase()}`,
       createdAt: fundDate ? new Date(fundDate).toISOString() : new Date().toISOString(),
       processedAt: new Date().toISOString(),
@@ -570,7 +589,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     syncUserBankAccounts(user.email, amount, isCredit, { id: tx.id, description: tx.description, createdAt: tx.createdAt });
     addAudit(isCredit ? 'account_credited' : 'account_debited', user.email, `${fmtMoney(amount)} — ${tx.description}${fundDate ? ' (backdated)' : ''}`);
     notify(true, `${isCredit ? 'Credited' : 'Debited'} ${fmtMoney(amount)} ${isCredit ? 'to' : 'from'} ${user.name}`);
-    setFundModal(null); setFundAmt(''); setFundDesc(''); setFundDate('');
+    setFundModal(null); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate('');
   }
 
   // ── Transaction Actions ──────────────────────────────────────
@@ -581,9 +600,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     const amount = parseFloat(nt.amount);
     if (!amount || amount <= 0) { notify(false, 'Invalid amount'); return; }
     const tx: Transaction = {
-      id: uid(), userId: user.id, userName: user.name,
+      id: uid(), userId: user.id, userName: nt.senderName || user.name,
       type: nt.type, amount, currency: nt.currency, status: nt.status,
-      description: nt.description || 'Manual transaction',
+      description: nt.description || 'Wire Transfer',
       reference: `MAN-${Date.now().toString(36).toUpperCase()}`,
       createdAt: nt.createdAt ? new Date(nt.createdAt).toISOString() : new Date().toISOString(),
       processedAt: nt.status === 'completed' ? new Date().toISOString() : undefined,
@@ -602,7 +621,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('transaction_created', user.email, `${nt.type} ${fmtMoney(amount)}${nt.createdAt ? ' (backdated)' : ''}`);
     notify(true, `Transaction created for ${user.name}`);
     setNewTxModal(false);
-    setNt({ userId: '', type: 'credit', amount: '', currency: 'USD', description: '', status: 'completed', createdAt: '' });
+    setNt({ userId: '', type: 'credit', amount: '', currency: 'USD', description: '', senderName: '', status: 'completed', createdAt: '' });
   }
 
   function changeTransactionStatus(tx: Transaction, newStatus: string) {
@@ -797,11 +816,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                       }}>✓ Approve</button>
                       <button style={btnD} onClick={() => {
                         updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
-                        addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
-                        notify(true, `Transfer rejected: ${tx.reference}`);
+                        // Refund held amount back to user's checking account
+                        syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
+                        addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
+                        notify(true, `Transfer rejected & refunded: ${tx.reference}`);
                         writeUserNotification('londway_notifications', tx._userEmail, {
                           id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
-                          message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. Contact support for details.`,
+                          message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. The amount has been refunded to your account.`,
                         });
                         setData({ ...data });
                       }}>✕ Reject</button>
@@ -838,7 +859,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                         <select value={u.role} onChange={e => changeRole(u, e.target.value)} style={{ background: 'rgba(196,160,82,0.06)', border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 10px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontWeight: 700 }}>
-                          {['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}
+                          {['user','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}
                         </select>
                         <span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', fontWeight: 700 }}>{u.tier || 'Standard'}</span>
                         <button onClick={() => toggleKyc(u)} style={{ background: u.kyc ? 'rgba(80,200,120,0.1)' : 'rgba(255,77,79,0.1)', border: `1px solid ${u.kyc ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)'}`, color: u.kyc ? '#50C878' : '#ff4d4f', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'Inter,sans-serif' }}>{u.kyc ? '✓ KYC' : '✗ KYC'}</button>
@@ -894,8 +915,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
                   {/* Row 4: Actions — full power */}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid rgba(196,160,82,0.06)' }}>
-                    <button style={{ ...btnP, padding: '7px 14px' }} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>+ Credit</button>
-                    <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>− Debit</button>
+                    <button style={{ ...btnP, padding: '7px 14px' }} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>+ Credit</button>
+                    <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>− Debit</button>
                     <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => setEditUser(u)}>✏ Edit</button>
                     <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => { setPinModal(u); setPinValue(u.pin || ''); }}>🔑 PIN</button>
                     <button style={{ ...btnG, padding: '7px 14px', color: u.frozen ? '#50C878' : '#ff4d4f', borderColor: u.frozen ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)' }} onClick={() => toggleFreeze(u)}>{u.frozen ? '🔓 Unfreeze' : '🔒 Freeze'}</button>
@@ -956,11 +977,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                   }}>✓ Approve</button>
                                   <button style={btnD} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
-                                    addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
-                                    notify(true, `Transfer rejected: ${tx.reference}`);
+                                    // Refund held amount back to user's checking account
+                                    syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
+                                    addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
+                                    notify(true, `Transfer rejected & refunded: ${tx.reference}`);
                                     writeUserNotification('londway_notifications', tx._userEmail, {
                                       id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
-                                      message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. Contact support for details.`,
+                                      message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. The amount has been refunded to your account.`,
                                     });
                                     setData({ ...data });
                                   }}>✕ Reject</button>
@@ -1039,8 +1062,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                       <div style={{ color: SL, fontSize: '0.75rem' }}>{fmtMoney(u.balance)}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button style={btnP} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>+ Credit</button>
-                      <button style={btnG} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundDate(''); }}>− Debit</button>
+                      <button style={btnP} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>+ Credit</button>
+                      <button style={btnG} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>− Debit</button>
                     </div>
                   </div>
                 ))}
@@ -1418,8 +1441,12 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             <form onSubmit={handleFund} style={{ display: 'grid', gap: 14 }}>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Amount (USD)</label>
                 <input style={inp} type="number" min="0.01" step="0.01" value={fundAmt} onChange={e => setFundAmt(e.target.value)} placeholder="0.00" required autoFocus /></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Sender / Account Name</label>
+                <input style={inp} value={fundSender} onChange={e => setFundSender(e.target.value)} placeholder="e.g. JP Morgan, Wire Services, Client Name..." />
+                <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Appears as the transaction source name. Leave empty to use account holder name.</div></div>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
-                <input style={inp} value={fundDesc} onChange={e => setFundDesc(e.target.value)} placeholder="Wire deposit, correction..." /></div>
+                <input style={inp} value={fundDesc} onChange={e => setFundDesc(e.target.value)} placeholder="Wire deposit, salary payment, account correction..." />
+                <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Shown to the user as the transaction description.</div></div>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate (optional)</label>
                 <input style={inp} type="datetime-local" value={fundDate} onChange={e => setFundDate(e.target.value)} />
                 <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Leave empty for now</div></div>
@@ -1487,7 +1514,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Role</label>
-                <select style={sel} value={nu.role} onChange={e => setNu(p => ({ ...p, role: e.target.value }))}>{['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
+                <select style={sel} value={nu.role} onChange={e => setNu(p => ({ ...p, role: e.target.value }))}>{['user','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Tier</label>
                 <select style={sel} value={nu.tier} onChange={e => setNu(p => ({ ...p, tier: e.target.value }))}>{['Standard','Silver','Gold','Platinum','Black'].map(t => <option key={t}>{t}</option>)}</select></div>
             </div>
@@ -1522,7 +1549,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Role</label>
-                <select style={sel} value={editUser.role} onChange={e => setEditUser(p => p ? { ...p, role: e.target.value } : null)}>{['user','admin','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
+                <select style={sel} value={editUser.role} onChange={e => setEditUser(p => p ? { ...p, role: e.target.value } : null)}>{['user','vip','support','auditor'].map(r => <option key={r}>{r}</option>)}</select></div>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Tier</label>
                 <select style={sel} value={editUser.tier || 'Standard'} onChange={e => setEditUser(p => p ? { ...p, tier: e.target.value } : null)}>{['Standard','Silver','Gold','Platinum','Black'].map(t => <option key={t}>{t}</option>)}</select></div>
             </div>
@@ -1584,8 +1611,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Currency</label>
                 <select style={sel} value={nt.currency} onChange={e => setNt(p => ({ ...p, currency: e.target.value }))}>{['USD','EUR','GBP','CHF','JPY','AED'].map(c => <option key={c}>{c}</option>)}</select></div>
             </div>
+            <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Sender / Account Name</label>
+              <input style={inp} value={nt.senderName} onChange={e => setNt(p => ({ ...p, senderName: e.target.value }))} placeholder="e.g. JP Morgan, Wire Services..." />
+              <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Appears as sender. Leave empty to use account holder name.</div></div>
             <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
-              <input style={inp} value={nt.description} onChange={e => setNt(p => ({ ...p, description: e.target.value }))} placeholder="Wire deposit, card purchase..." /></div>
+              <input style={inp} value={nt.description} onChange={e => setNt(p => ({ ...p, description: e.target.value }))} placeholder="Wire deposit, card purchase, salary..." /></div>
             <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate (optional)</label>
               <input style={inp} type="datetime-local" value={nt.createdAt} onChange={e => setNt(p => ({ ...p, createdAt: e.target.value }))} /></div>
             <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Create Transaction</button>
