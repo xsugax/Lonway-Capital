@@ -32,6 +32,36 @@ export default function Document() {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
+        {/* Structured Data — Google Rich Snippets */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FinancialProduct",
+              "name": "Londway Capital — Premium Private Banking",
+              "description": "Secure private banking, wealth management, investments, and digital banking platform. Manage accounts, transfers, cards, vaults, and portfolio.",
+              "url": "https://londwaycapital.com",
+              "brand": {
+                "@type": "Brand",
+                "name": "Londway Capital"
+              },
+              "provider": {
+                "@type": "FinancialService",
+                "name": "Londway Capital",
+                "url": "https://londwaycapital.com"
+              },
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.8",
+                "bestRating": "5",
+                "worstRating": "1",
+                "ratingCount": "250"
+              }
+            })
+          }}
+        />
+
         {/* Smartsupp Live Chat — Gold themed */}
         <script
           type="text/javascript"
