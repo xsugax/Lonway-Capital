@@ -73,6 +73,77 @@ ${account ? `<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-
   }
 }
 
+async function sendRejectionEmail(email: string, userName: string, ref: string, amount: number, currency: string, recipient: string) {
+  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  const firstName = userName.split(' ')[0];
+  const amtFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  const body = `
+<div style="text-align:center;margin-bottom:28px;"><div style="display:inline-block;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:26px;margin-bottom:12px;">&#10007;</div>
+<p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#0d1628;">Transfer Declined</p>
+<p style="margin:0;font-size:13px;color:#6b7280;">Your transfer request has been reviewed and could not be processed at this time.</p></div>
+<div style="background:#faf8f4;border:1px solid rgba(196,160,82,0.25);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+<div style="background:rgba(196,160,82,0.08);padding:14px 20px;border-bottom:1px solid rgba(196,160,82,0.15);"><span style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#C4A052;text-transform:uppercase;">Transfer Details</span><span style="float:right;font-size:11px;color:#9ca3af;">${dateStr}</span></div>
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;width:40%;border-bottom:1px solid #f0ece4;">Reference</td><td style="padding:12px 20px;font-size:13px;font-weight:800;color:#C4A052;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${ref}</td></tr>
+<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Recipient</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${recipient}</td></tr>
+<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Amount</td><td style="padding:12px 20px;font-size:15px;font-weight:800;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${amtFmt}</td></tr>
+<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;">Status</td><td style="padding:12px 20px;text-align:right;"><span style="display:inline-block;background:rgba(255,77,79,0.1);border:1px solid rgba(255,77,79,0.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:#ff4d4f;">&#10007; REJECTED</span></td></tr>
+</table></div>
+<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+<p style="margin:0;font-size:13px;color:#991b1b;line-height:1.6;">Hello ${firstName}, your transfer of <strong>${amtFmt}</strong> to <strong>${recipient}</strong> has been declined. The held amount has been fully refunded to your checking account. If you believe this is an error, please contact our support team.</p></div>
+<div style="text-align:center;margin-bottom:20px;"><a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#a8873e);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:8px;padding:12px 28px;">View Transfer History &rarr;</a></div>
+<p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
+  const html = receiptEmailHtml('Transfer Update', body);
+  try {
+    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
+        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Transfer Declined — ${amtFmt} to ${recipient} (${ref})`, html_content: html, reply_to: 'support@londwaycapital.com' },
+      }),
+    });
+  } catch {}
+}
+
+async function sendFundingEmail(email: string, userName: string, amount: number, description: string, isCredit: boolean) {
+  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  const firstName = userName.split(' ')[0];
+  const amtFmt = `USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  const verb = isCredit ? 'credited to' : 'debited from';
+  const icon = isCredit ? '&#10003;' : '&#8595;';
+  const colorBg = isCredit ? '#ecfdf5' : '#fef2f2';
+  const colorBorder = isCredit ? '#86efac' : '#fca5a5';
+  const colorText = isCredit ? '#16a34a' : '#ff4d4f';
+  const body = `
+<div style="text-align:center;margin-bottom:28px;"><div style="display:inline-block;background:${colorBg};border:1.5px solid ${colorBorder};border-radius:50%;width:52px;height:52px;line-height:52px;font-size:26px;margin-bottom:12px;">${icon}</div>
+<p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#0d1628;">Account ${isCredit ? 'Credited' : 'Debited'}</p>
+<p style="margin:0;font-size:13px;color:#6b7280;">${amtFmt} has been ${verb} your account.</p></div>
+<div style="text-align:center;background:linear-gradient(135deg,#faf8f4,#fdf9f0);border:1.5px solid rgba(196,160,82,0.3);border-radius:14px;padding:24px 20px;margin-bottom:28px;">
+<div style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">${isCredit ? 'Amount Received' : 'Amount Debited'}</div>
+<div style="font-size:36px;font-weight:900;color:#0d1628;line-height:1;">${amtFmt}</div>
+<div style="margin-top:8px;font-size:12px;color:#6b7280;">${description}</div></div>
+<div style="background:#faf8f4;border:1px solid rgba(196,160,82,0.25);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;width:40%;border-bottom:1px solid #f0ece4;">Date</td><td style="padding:12px 20px;font-size:13px;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${dateStr}</td></tr>
+<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Description</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${description}</td></tr>
+<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;">Status</td><td style="padding:12px 20px;text-align:right;"><span style="display:inline-block;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:${colorText};">COMPLETED</span></td></tr>
+</table></div>
+<div style="background:${isCredit ? '#f0fdf4' : '#fef2f2'};border:1px solid ${isCredit ? '#bbf7d0' : '#fecaca'};border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+<p style="margin:0;font-size:13px;color:${isCredit ? '#15803d' : '#991b1b'};line-height:1.6;">Hello ${firstName}, this email confirms that <strong>${amtFmt}</strong> has been ${verb} your Londway Capital account. Description: <strong>${description}</strong>.</p></div>
+<div style="text-align:center;margin-bottom:20px;"><a href="https://londwaycapital.com/accounts" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#a8873e);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:8px;padding:12px 28px;">View Your Account &rarr;</a></div>
+<p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
+  const html = receiptEmailHtml(isCredit ? 'Funds Received' : 'Account Update', body);
+  try {
+    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
+        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `${isCredit ? 'Funds Received' : 'Account Debited'} — ${amtFmt} | ${description}`, html_content: html, reply_to: 'support@londwaycapital.com' },
+      }),
+    });
+  } catch {}
+}
+
 // ── Types ──────────────────────────────────────────────────────
 interface User {
   id: string; name: string; email: string; role: string;
@@ -587,6 +658,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     });
     // Sync the funded amount to the user's bank account so the user app shows the correct balance
     syncUserBankAccounts(user.email, amount, isCredit, { id: tx.id, description: tx.description, createdAt: tx.createdAt });
+    // Send email notification to the user about the fund action
+    sendFundingEmail(user.email, user.name, amount, tx.description, isCredit).catch(() => {});
+    writeUserNotification('londway_notifications', user.email, {
+      id: 'notif-' + Date.now(), type: isCredit ? 'success' : 'warning', date: new Date().toISOString(), read: false,
+      message: isCredit
+        ? `💰 Funds Received — USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} has been credited to your account. Description: ${tx.description}.`
+        : `📤 Account Debited — USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} has been debited from your account. Description: ${tx.description}.`,
+    });
     addAudit(isCredit ? 'account_credited' : 'account_debited', user.email, `${fmtMoney(amount)} — ${tx.description}${fundDate ? ' (backdated)' : ''}`);
     notify(true, `${isCredit ? 'Credited' : 'Debited'} ${fmtMoney(amount)} ${isCredit ? 'to' : 'from'} ${user.name}`);
     setFundModal(null); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate('');
@@ -820,6 +899,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                         syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                         addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                         notify(true, `Transfer rejected & refunded: ${tx.reference}`);
+                        const rejectUser = data.users.find(u => u.email === tx._userEmail);
+                        sendRejectionEmail(tx._userEmail, rejectUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName).catch(() => {});
                         writeUserNotification('londway_notifications', tx._userEmail, {
                           id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
                           message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. The amount has been refunded to your account.`,
@@ -981,6 +1062,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                     syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                                     notify(true, `Transfer rejected & refunded: ${tx.reference}`);
+                                    const rejectUser2 = data.users.find(u => u.email === tx._userEmail);
+                                    sendRejectionEmail(tx._userEmail, rejectUser2?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName).catch(() => {});
                                     writeUserNotification('londway_notifications', tx._userEmail, {
                                       id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
                                       message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. The amount has been refunded to your account.`,
