@@ -6,14 +6,11 @@
   "scripts": {
     "dev:user": "cd apps/user && npm run dev",
     "dev:admin": "cd apps/admin && npm run dev",
-    "dev:api": "cd apps/api && npm run start:dev",
     "build:user": "cd apps/user && npm run build",
     "build:admin": "cd apps/admin && npm run build",
-    "build:api": "cd apps/api && npm run build",
-    "build:all": "npm run build:api && npm run build:user && npm run build:admin",
+    "build:all": "npm run build:user && npm run build:admin",
     "start:user": "cd apps/user && npm start",
     "start:admin": "cd apps/admin && npm start",
-    "start:api": "cd apps/api && npm start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

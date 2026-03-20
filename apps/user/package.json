@@ -12,7 +12,6 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "apexcharts": "^5.10.3",
-    "axios": "^1.13.6",
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-apexcharts": "^2.1.0",

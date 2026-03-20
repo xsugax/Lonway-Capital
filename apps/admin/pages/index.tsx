@@ -369,7 +369,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         bank_accounts: bankAccounts,
       }).then(() => { synced++; }).catch(() => {});
     }
-    setTimeout(() => { console.log(`[admin] Cloud sync: ${synced} users with credentials pushed to Supabase`); }, 5000);
+    setTimeout(() => { console.info(`[admin] Cloud sync: ${synced} users pushed to Supabase`); }, 5000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Activation link helpers ────────────────────────────────────
