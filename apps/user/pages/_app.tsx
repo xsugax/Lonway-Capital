@@ -30,7 +30,15 @@ export default function App({ Component, pageProps }: AppProps) {
       const saved = localStorage.getItem('londway_session');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.token) setUser(parsed);
+        if (parsed && parsed.token) {
+          // Session expires after 24 hours
+          const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
+          if (parsed.loginAt && Date.now() - parsed.loginAt > SESSION_MAX_MS) {
+            localStorage.removeItem('londway_session');
+          } else {
+            setUser(parsed);
+          }
+        }
       }
     } catch {}
     setHydrated(true);
@@ -60,8 +68,9 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [user]);
 
   function handleLogin(u: any) {
-    setUser(u);
-    try { localStorage.setItem('londway_session', JSON.stringify(u)); } catch {}
+    const session = { ...u, loginAt: Date.now() };
+    setUser(session);
+    try { localStorage.setItem('londway_session', JSON.stringify(session)); } catch {}
     setShowLogin(false);
     setShowRegister(false);
   }

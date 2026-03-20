@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage } from '../lib/store';
+import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage, getBankAccounts } from '../lib/store';
 import { sendTransferNotification } from '../lib/email';
 import type { TierLimits } from '../lib/store';
 
@@ -104,6 +104,27 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
     const isLocal = tab === 'local';
     const amt = parseFloat(isLocal ? localAmount : intlAmount);
     if (!amt || amt <= 0) { setSubmitResult({ ok: false, message: 'Please enter a valid amount.' }); return; }
+
+    // ─── Frozen account check ───
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
+          if (acct?.frozen) { setSubmitResult({ ok: false, message: 'Your account is frozen. Transfers are disabled. Please contact support.' }); return; }
+        }
+      } catch {}
+    }
+
+    // ─── Balance sufficiency check ───
+    if (user?.email) {
+      const bankAccts = getBankAccounts(user.email);
+      const totalBalance = bankAccts.reduce((sum: number, a: any) => sum + (a.balance ?? 0), 0);
+      if (amt > totalBalance) {
+        setSubmitResult({ ok: false, message: `Insufficient balance. Available: $${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}. Please fund your account first.` });
+        return;
+      }
+    }
 
     // ─── Tier limit enforcement ───
     if (amt > tierLimits.perTxLimit) {

@@ -436,7 +436,17 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   }
 
   function toggleFreeze(u: User) {
-    persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, frozen: !x.frozen } : x) });
+    const newFrozen = !u.frozen;
+    persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, frozen: newFrozen } : x) });
+    // Sync frozen status to londway_accounts so user app enforces it
+    try {
+      const raw = localStorage.getItem('londway_accounts');
+      if (raw) {
+        const accounts = JSON.parse(raw);
+        const idx = accounts.findIndex((a: any) => a.email?.toLowerCase() === u.email.toLowerCase());
+        if (idx !== -1) { accounts[idx].frozen = newFrozen; localStorage.setItem('londway_accounts', JSON.stringify(accounts)); }
+      }
+    } catch {}
     addAudit(u.frozen ? 'account_unfrozen' : 'account_frozen', u.email);
     notify(true, `${u.name} ${u.frozen ? 'unfrozen' : 'frozen'}`);
   }
