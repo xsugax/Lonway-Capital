@@ -24,6 +24,7 @@ interface StoredAccount {
   idVerified?: boolean;
   faceData?: string;
   pin?: string;
+  tier?: string;
 }
 
 function getAccounts(): StoredAccount[] {
@@ -43,12 +44,13 @@ function getAccounts(): StoredAccount[] {
         if (!u.password && !u.pin) continue;
         const existing = accounts.find((a: StoredAccount) => a.email === u.email);
         if (!existing) {
-          accounts.push({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role || 'user', idVerified: false });
+          accounts.push({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role || 'user', tier: u.tier || 'Standard', idVerified: false });
           changed = true;
         } else {
           let dirty = false;
           if (u.password && existing.password !== u.password) { existing.password = u.password; dirty = true; }
           if (u.pin && existing.pin !== u.pin) { existing.pin = u.pin; dirty = true; }
+          if (u.tier && existing.tier !== u.tier) { existing.tier = u.tier; dirty = true; }
           if (dirty) { existing.name = u.name; existing.role = u.role || existing.role; changed = true; }
         }
       }
@@ -84,6 +86,7 @@ function saveNewAccount(account: StoredAccount) {
     if (account.pin) existing.pin = account.pin;
     if (account.name) existing.name = account.name;
     if (account.role) existing.role = account.role;
+    if (account.tier) existing.tier = account.tier;
     if (account.faceData) existing.faceData = account.faceData;
   } else {
     accounts.push(account);
@@ -361,6 +364,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
             pin: cloud.pin || (m?.pin || ''),
             name: cloud.name || (m?.name || ''),
             role: cloud.role || (m?.role || 'user'),
+            tier: cloud.tier || (m as any)?.tier || 'Standard',
             idVerified: false,
           };
           saveNewAccount(local);
