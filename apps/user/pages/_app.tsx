@@ -99,7 +99,7 @@ export default function App({ Component, pageProps }: AppProps) {
             <BankLoader onDone={() => setShowLoader(false)} />
           ) : user ? (
             user.role === 'admin' && typeof window !== 'undefined' && window.location.pathname !== '/admin' ? null : (
-              <Layout onLogout={handleLogout} userName={user.name}>
+              <Layout onLogout={handleLogout} userName={user.name} userEmail={user.email}>
                 <Component {...pageProps} user={user} />
               </Layout>
             )

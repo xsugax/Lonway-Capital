@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getBankAccounts, saveBankAccounts, getCryptoDeposits, saveCryptoDeposits, getNotifications, saveNotifications, getTierLimits } from '../lib/store';
+import { sendTransferReceipt } from '../lib/email';
 
 const COINS = [
   { id: 'bitcoin',     symbol: 'BTC', name: 'Bitcoin',  icon: '₿',  color: '#F7931A', address: 'bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5' },
@@ -148,6 +149,16 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
       const notifs = getNotifications(user.email);
       notifs.unshift({ id: 'notif-' + Date.now(), message: `Crypto deposit confirmed: ${amt} ${selectedCoin.symbol} ($${usd.toFixed(2)}) added to your account. Ref: ${ref}`, type: 'success', date: new Date().toISOString(), read: false });
       saveNotifications(notifs, user.email);
+
+      // Send deposit receipt email
+      sendTransferReceipt(
+        user.email,
+        user.name || 'Valued Client',
+        ref, usd, 'USD',
+        `${user.name || 'Self'} (${selectedCoin.symbol} Deposit)`,
+        'local',
+        selectedCoin.address,
+      ).catch(() => {});
 
       // Write to global aggregate for admin visibility
       try {

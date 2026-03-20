@@ -1,6 +1,78 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled } from '../lib/cloud';
 
+// ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
+const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
+const EJS_TID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME || '';
+const EJS_PK  = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || '';
+
+const LOGO_SVG_ADMIN = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="15.5" stroke="#C4A052" stroke-width="1.3" fill="none"/><path d="M11,27 V15 C11,6.5 25,6.5 25,15 V27" stroke="#C4A052" stroke-width="2" fill="none"/><line x1="7.5" y1="27" x2="28.5" y2="27" stroke="#C4A052" stroke-width="1"/></svg>`;
+
+function receiptEmailHtml(headerLabel: string, body: string) {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0eff4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0eff4;padding:40px 16px;"><tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+<tr><td style="background:linear-gradient(135deg,#060913,#0d1628);border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;">
+<table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="vertical-align:middle;padding-right:12px;">${LOGO_SVG_ADMIN}</td><td style="vertical-align:middle;text-align:left;"><div style="font-size:18px;font-weight:800;letter-spacing:0.08em;color:#fff;">LONDWAY <span style="color:#C4A052;">CAPITAL</span></div><div style="font-size:9px;color:rgba(196,160,82,0.55);letter-spacing:0.18em;margin-top:2px;">PREMIUM PRIVATE BANKING</div></td></tr></table>
+<div style="margin-top:16px;display:inline-block;background:rgba(196,160,82,0.12);border:1px solid rgba(196,160,82,0.22);border-radius:20px;padding:4px 16px;font-size:10px;font-weight:700;color:#C4A052;letter-spacing:0.12em;text-transform:uppercase;">${headerLabel}</div>
+</td></tr><tr><td style="background:#fff;padding:36px 40px;">${body}</td></tr>
+<tr><td style="background:#f8f7f4;border-radius:0 0 12px 12px;border-top:1px solid #ede9e0;padding:20px 40px;text-align:center;">
+<p style="margin:0 0 6px;font-size:11px;color:#9ca3af;">&#128274; 256-bit SSL &middot; FDIC Insured &middot; SOC 2 Type II</p>
+<p style="margin:0;font-size:11px;color:#9ca3af;">&copy; 2026 Londway Capital, Inc. &middot; <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a></p>
+</td></tr></table></td></tr></table></body></html>`;
+}
+
+async function sendApprovalReceiptEmail(email: string, userName: string, ref: string, amount: number, currency: string, recipient: string, type: string, account?: string) {
+  if (!EJS_SID || !EJS_TID || !EJS_PK) {
+    console.warn('[Admin Email] EmailJS not configured. Set NEXT_PUBLIC_EMAILJS_SERVICE_ID, NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME, NEXT_PUBLIC_EMAILJS_PUBLIC_KEY env vars.');
+    return;
+  }
+  const firstName = userName.split(' ')[0];
+  const amtFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const typeLabel = type === 'international' ? 'International Wire Transfer' : 'Domestic Transfer';
+  const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  const receiptNo = `RCT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+  const body = `
+<div style="text-align:center;margin-bottom:28px;"><div style="display:inline-block;background:#ecfdf5;border:1.5px solid #86efac;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:26px;margin-bottom:12px;">&#10003;</div>
+<p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#0d1628;">Transfer Approved</p>
+<p style="margin:0;font-size:13px;color:#6b7280;">Your transfer has been reviewed and approved by our compliance team.</p></div>
+<div style="text-align:center;background:linear-gradient(135deg,#faf8f4,#fdf9f0);border:1.5px solid rgba(196,160,82,0.3);border-radius:14px;padding:24px 20px;margin-bottom:28px;">
+<div style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Amount Transferred</div>
+<div style="font-size:36px;font-weight:900;color:#0d1628;line-height:1;">${amtFmt}</div>
+<div style="margin-top:8px;font-size:12px;color:#6b7280;">${typeLabel}</div></div>
+<div style="background:#faf8f4;border:1px solid rgba(196,160,82,0.25);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+<div style="background:rgba(196,160,82,0.08);padding:14px 20px;border-bottom:1px solid rgba(196,160,82,0.15);"><span style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#C4A052;text-transform:uppercase;">Transfer Receipt</span><span style="float:right;font-size:11px;color:#9ca3af;">${dateStr}</span></div>
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;width:40%;border-bottom:1px solid #f0ece4;">Receipt No.</td><td style="padding:12px 20px;font-size:13px;font-weight:700;color:#0d1628;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${receiptNo}</td></tr>
+<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Reference</td><td style="padding:12px 20px;font-size:13px;font-weight:800;color:#C4A052;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${ref}</td></tr>
+<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Sender</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${userName}</td></tr>
+<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Recipient</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${recipient}</td></tr>
+${account ? `<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Account</td><td style="padding:12px 20px;font-size:13px;color:#6b7280;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${account}</td></tr>` : ''}
+<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Amount</td><td style="padding:12px 20px;font-size:15px;font-weight:800;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${amtFmt}</td></tr>
+<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;">Status</td><td style="padding:12px 20px;text-align:right;"><span style="display:inline-block;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:#16a34a;">&#10003; APPROVED</span></td></tr>
+</table></div>
+<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+<p style="margin:0;font-size:13px;color:#15803d;line-height:1.6;">Hello ${firstName}, this confirms your transfer of <strong>${amtFmt}</strong> to <strong>${recipient}</strong> has been approved and is being processed. Please retain this receipt for your records.</p></div>
+<div style="text-align:center;margin-bottom:20px;"><a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#a8873e);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:8px;padding:12px 28px;">View Transfer History &rarr;</a></div>
+<p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">If you have questions about this transfer, contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
+  const html = receiptEmailHtml('Transfer Receipt', body);
+  try {
+    const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
+        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Transfer Approved — Receipt for ${amtFmt} to ${recipient} (${ref})`, html_content: html, reply_to: 'support@londwaycapital.com' },
+      }),
+    });
+    if (!resp.ok) console.error('[Admin Email] EmailJS responded with', resp.status, await resp.text().catch(() => ''));
+    else console.info(`[Admin Email] ✓ Approval receipt sent → ${email}`);
+  } catch (err) {
+    console.error('[Admin Email] ✗ Failed to send approval receipt:', err);
+  }
+}
+
 // ── Types ──────────────────────────────────────────────────────
 interface User {
   id: string; name: string; email: string; role: string;
@@ -714,12 +786,23 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                         updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
                         addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                         notify(true, `Transfer approved: ${tx.reference}`);
+                        // Send receipt email + in-app notification
+                        const approveUser = data.users.find(u => u.email === tx._userEmail);
+                        sendApprovalReceiptEmail(tx._userEmail, approveUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName, tx.type, tx.toAccountId).catch(() => {});
+                        writeUserNotification('londway_notifications', tx._userEmail, {
+                          id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
+                          message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
+                        });
                         setData({ ...data });
                       }}>✓ Approve</button>
                       <button style={btnD} onClick={() => {
                         updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                         addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                         notify(true, `Transfer rejected: ${tx.reference}`);
+                        writeUserNotification('londway_notifications', tx._userEmail, {
+                          id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
+                          message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. Contact support for details.`,
+                        });
                         setData({ ...data });
                       }}>✕ Reject</button>
                     </div>
@@ -863,12 +946,22 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
                                     addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                     notify(true, `Transfer approved: ${tx.reference}`);
+                                    const approveUser2 = data.users.find(u => u.email === tx._userEmail);
+                                    sendApprovalReceiptEmail(tx._userEmail, approveUser2?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName, tx.type, tx.toAccountId).catch(() => {});
+                                    writeUserNotification('londway_notifications', tx._userEmail, {
+                                      id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
+                                      message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
+                                    });
                                     setData({ ...data });
                                   }}>✓ Approve</button>
                                   <button style={btnD} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                     notify(true, `Transfer rejected: ${tx.reference}`);
+                                    writeUserNotification('londway_notifications', tx._userEmail, {
+                                      id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
+                                      message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. Contact support for details.`,
+                                    });
                                     setData({ ...data });
                                   }}>✕ Reject</button>
                                 </>

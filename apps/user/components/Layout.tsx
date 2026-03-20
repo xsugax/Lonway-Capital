@@ -1,9 +1,10 @@
 "use client";
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang, LANG_NAMES, LangCode } from '../contexts/LanguageContext';
+import { getNotifications, saveNotifications } from '../lib/store';
 
 const NAV_ITEMS = [
   { href: '/',              icon: '🏠', label: 'Dashboard' },
@@ -21,12 +22,79 @@ const NAV_ITEMS = [
   { href: '/twofa',         icon: '🔐', label: '2FA Setup' },
 ];
 
-export default function Layout({ children, onLogout, userName }: { children: React.ReactNode; onLogout: () => void; userName: string }) {
+export default function Layout({ children, onLogout, userName, userEmail }: { children: React.ReactNode; onLogout: () => void; userName: string; userEmail?: string }) {
   const { theme, colors, toggle } = useTheme();
   const { lang, setLang, t } = useLang();
   const [langOpen, setLangOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const router = useRouter();
+
+  // ── Notification state ──
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [toastNotif, setToastNotif] = useState<{ id: string; message: string; type: string } | null>(null);
+  const lastCountRef = useRef<number>(-1);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Play a pleasant 2-note ascending chime via Web Audio API
+  const playNotificationSound = useCallback(() => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      const now = ctx.currentTime;
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+      // First note
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now); // D5
+      osc1.connect(gain);
+      osc1.start(now);
+      osc1.stop(now + 0.25);
+
+      // Second note (higher)
+      const gain2 = ctx.createGain();
+      gain2.connect(ctx.destination);
+      gain2.gain.setValueAtTime(0.18, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.15); // A5
+      osc2.connect(gain2);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.5);
+    } catch {}
+  }, []);
+
+  // Poll localStorage for unread notifications every 2 seconds
+  useEffect(() => {
+    if (!userEmail) return;
+    const poll = () => {
+      const notifs = getNotifications(userEmail);
+      const unread = notifs.filter((n: any) => !n.read).length;
+      setUnreadCount(unread);
+
+      // Detect new notification arrival
+      if (lastCountRef.current >= 0 && unread > lastCountRef.current) {
+        // Show toast for the newest unread notification
+        const newest = notifs.find((n: any) => !n.read);
+        if (newest) {
+          setToastNotif({ id: newest.id, message: newest.message, type: newest.type });
+          playNotificationSound();
+          // Auto-dismiss after 5s
+          setTimeout(() => setToastNotif(prev => prev?.id === newest.id ? null : prev), 5000);
+        }
+      }
+      lastCountRef.current = unread;
+    };
+    poll();
+    const interval = setInterval(poll, 2000);
+    return () => clearInterval(interval);
+  }, [userEmail, playNotificationSound]);
 
   const closeSidebar = () => setMobileNavOpen(false);
 
@@ -177,17 +245,38 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
             Welcome, <span style={{ color: colors.gold, fontWeight: 700 }}>{userName}</span>
           </div>
 
-          <button onClick={onLogout} style={{
-            background: 'transparent', border: `1px solid ${colors.border}`,
-            color: colors.textMuted, borderRadius: 8, padding: '0.4rem 1rem',
-            fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600,
-            transition: 'all 0.15s',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = colors.danger; e.currentTarget.style.color = colors.danger; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.color = colors.textMuted; }}
-          >
-            Sign Out
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Notification bell */}
+            <Link href="/notifications" style={{ position: 'relative', textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px 6px' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={unreadCount > 0 ? colors.gold : colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 0, right: 0,
+                  background: '#ff4d4f', color: '#fff',
+                  fontSize: '0.6rem', fontWeight: 800,
+                  borderRadius: '50%', minWidth: 16, height: 16,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  lineHeight: 1, padding: '0 3px',
+                  boxShadow: '0 0 0 2px ' + colors.navBg,
+                }}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+              )}
+            </Link>
+
+            <button onClick={onLogout} style={{
+              background: 'transparent', border: `1px solid ${colors.border}`,
+              color: colors.textMuted, borderRadius: 8, padding: '0.4rem 1rem',
+              fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600,
+              transition: 'all 0.15s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = colors.danger; e.currentTarget.style.color = colors.danger; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.color = colors.textMuted; }}
+            >
+              Sign Out
+            </button>
+          </div>
         </header>
 
         {/* Page content */}
@@ -229,6 +318,39 @@ export default function Layout({ children, onLogout, userName }: { children: Rea
           .main-content header {
             padding: 0.7rem 1rem !important;
           }
+        }
+      `}</style>
+
+      {/* ── Toast notification popup ── */}
+      {toastNotif && (
+        <div
+          style={{
+            position: 'fixed', top: 20, right: 20, zIndex: 9999,
+            background: colors.navBg, border: `1px solid ${colors.gold}`,
+            borderRadius: 12, padding: '0.8rem 1.2rem', maxWidth: 340,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            animation: 'toastSlideIn 0.35s ease-out',
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+          }}
+        >
+          <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>
+            {toastNotif.type === 'success' ? '✅' : toastNotif.type === 'error' ? '❌' : toastNotif.type === 'warning' ? '⚠️' : '🔔'}
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '0.72rem', color: colors.gold, fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>New Notification</div>
+            <div style={{ fontSize: '0.82rem', color: colors.text, lineHeight: 1.4 }}>{toastNotif.message}</div>
+          </div>
+          <button
+            onClick={() => setToastNotif(null)}
+            style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer', fontSize: '1rem', padding: '0 4px', lineHeight: 1, flexShrink: 0 }}
+          >✕</button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes toastSlideIn {
+          from { transform: translateX(120%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
     </div>

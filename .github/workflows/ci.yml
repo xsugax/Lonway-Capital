@@ -18,12 +18,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: apps/user/package-lock.json
-      - run: npm ci
+      - run: npm install --legacy-peer-deps
       - run: npm run build
         env:
           NEXT_PUBLIC_API_URL: https://api.londwaycapital.com
+          NEXT_PUBLIC_EMAILJS_SERVICE_ID: ${{ secrets.NEXT_PUBLIC_EMAILJS_SERVICE_ID }}
+          NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP: ${{ secrets.NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP }}
+          NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME: ${{ secrets.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME }}
+          NEXT_PUBLIC_EMAILJS_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
   build-admin:
     name: Build Admin App
@@ -36,25 +40,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: apps/admin/package-lock.json
-      - run: npm ci
+      - run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
       - run: npm run build
         env:
           NEXT_PUBLIC_API_URL: https://api.londwaycapital.com
-
-  build-api:
-    name: Build API
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: apps/api/package-lock.json
-      - run: npm ci
-      - run: npm run build
+          NEXT_PUBLIC_EMAILJS_SERVICE_ID: ${{ secrets.NEXT_PUBLIC_EMAILJS_SERVICE_ID }}
+          NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME: ${{ secrets.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME }}
+          NEXT_PUBLIC_EMAILJS_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}

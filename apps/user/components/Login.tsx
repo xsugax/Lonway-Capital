@@ -288,7 +288,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           setCodeSentMsg('');
         }
         setRegStep(4); // always advance — fallback shown in UI if email fails
-      });
+      }).catch(() => { setSending(false); setRegCodeFallback(true); setRegStep(4); });
     } else if (regStep === 4) {
       if (rCode !== rGenCode) { setError('Incorrect code. Check your email or use the code displayed below.'); return; }
       saveNewAccount({
@@ -604,7 +604,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       setSending(false);
       if (res.success) { setCodeSentMsg('New code sent! Check your inbox.'); setRegCodeFallback(false); }
       else { setRegCodeFallback(true); }
-    });
+    }).catch(() => { setSending(false); setRegCodeFallback(true); });
   };
 
   const regEmailCode = () => (
@@ -736,7 +736,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         if (res.success) { setCodeSentMsg(`Code sent to ${forgotEmail}`); setForgotCodeFallback(false); }
         else { setForgotCodeFallback(true); setCodeSentMsg(''); }
         setForgotStep(1);
-      });
+      }).catch(() => { setSending(false); setForgotCodeFallback(true); setForgotStep(1); });
     };
     if (forgotStep === 0) return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
@@ -846,7 +846,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       setSending(false);
       if (res.success) { setCodeSentMsg('New code sent! Check your inbox.'); setLoginCodeFallback(false); }
       else { setLoginCodeFallback(true); }
-    });
+    }).catch(() => { setSending(false); setLoginCodeFallback(true); });
   };
 
   const loginCodeStep = () => (

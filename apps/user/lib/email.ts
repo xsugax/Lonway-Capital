@@ -1,10 +1,15 @@
-// Email service for Londway Capital — EmailJS (browser-compatible)
-import axios from 'axios';
+// Email service for Londway Capital — @emailjs/browser SDK
+import emailjs from '@emailjs/browser';
 
-const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-const EMAILJS_TEMPLATE_OTP = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP;      // 1-time password template
-const EMAILJS_TEMPLATE_WELCOME = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME; // welcome / notifications template
-const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
+const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
+const EMAILJS_TEMPLATE_OTP = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_OTP || '';
+const EMAILJS_TEMPLATE_WELCOME = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME || '';
+const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || '';
+
+// Initialize EmailJS once
+if (typeof window !== 'undefined' && EMAILJS_PUBLIC_KEY) {
+  emailjs.init(EMAILJS_PUBLIC_KEY);
+}
 
 /** Generate a cryptographically secure 6-digit code */
 export function generateSecureCode(): string {
@@ -13,24 +18,29 @@ export function generateSecureCode(): string {
   return String(100000 + (arr[0] % 900000));
 }
 
+// ── SVG Logo for email (inline, no external URLs) ──
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 36 36" fill="none">
+  <circle cx="18" cy="18" r="15.5" stroke="#C4A052" stroke-width="1.3" fill="none"/>
+  <path d="M11,27 V15 C11,6.5 25,6.5 25,15 V27" stroke="#C4A052" stroke-width="2" fill="none"/>
+  <line x1="7.5" y1="27" x2="28.5" y2="27" stroke="#C4A052" stroke-width="1"/>
+</svg>`;
+
 function emailWrapper(headerLabel: string, body: string): string {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>Londway Capital</title></head>
 <body style="margin:0;padding:0;background:#f0eff4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0eff4;padding:40px 16px;">
 <tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-  <!-- Header -->
-  <tr><td style="background:#060913;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;">
-    <div style="display:inline-flex;align-items:center;gap:10px;">
-      <div style="width:36px;height:36px;border-radius:8px;border:1.5px solid rgba(196,160,82,0.6);display:inline-flex;align-items:center;justify-content:center;">
-        <span style="font-size:18px;">&#127963;</span>
-      </div>
-      <div style="text-align:left;">
-        <div style="font-size:17px;font-weight:800;letter-spacing:0.08em;color:#ffffff;">LONDWAY <span style="color:#C4A052;">CAPITAL</span></div>
-        <div style="font-size:9px;color:rgba(196,160,82,0.55);letter-spacing:0.18em;margin-top:1px;">PREMIUM PRIVATE BANKING</div>
-      </div>
-    </div>
-    <div style="margin-top:14px;display:inline-block;background:rgba(196,160,82,0.12);border:1px solid rgba(196,160,82,0.22);border-radius:20px;padding:4px 14px;font-size:10px;font-weight:700;color:#C4A052;letter-spacing:0.12em;text-transform:uppercase;">${headerLabel}</div>
+  <!-- Header with Logo -->
+  <tr><td style="background:linear-gradient(135deg,#060913 0%,#0d1628 100%);border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;">
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
+      <td style="vertical-align:middle;padding-right:12px;">${LOGO_SVG}</td>
+      <td style="vertical-align:middle;text-align:left;">
+        <div style="font-size:18px;font-weight:800;letter-spacing:0.08em;color:#ffffff;">LONDWAY <span style="color:#C4A052;">CAPITAL</span></div>
+        <div style="font-size:9px;color:rgba(196,160,82,0.55);letter-spacing:0.18em;margin-top:2px;">PREMIUM PRIVATE BANKING</div>
+      </td>
+    </tr></table>
+    <div style="margin-top:16px;display:inline-block;background:rgba(196,160,82,0.12);border:1px solid rgba(196,160,82,0.22);border-radius:20px;padding:4px 16px;font-size:10px;font-weight:700;color:#C4A052;letter-spacing:0.12em;text-transform:uppercase;">${headerLabel}</div>
   </td></tr>
   <!-- Body -->
   <tr><td style="background:#ffffff;padding:36px 40px;">${body}</td></tr>
@@ -44,14 +54,12 @@ function emailWrapper(headerLabel: string, body: string): string {
 }
 
 /**
- * Send an email via EmailJS (CORS-friendly, works from browser).
+ * Send an email via the @emailjs/browser SDK.
  */
 async function sendViaEmailJS(
-  to: string, toName: string, subject: string, htmlContent: string, templateId: string | undefined
+  to: string, toName: string, subject: string, htmlContent: string, templateId: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!EMAILJS_SERVICE_ID || !templateId || !EMAILJS_PUBLIC_KEY) {
-    // This means the GitHub Secrets (NEXT_PUBLIC_EMAILJS_*) are not set in the repository.
-    // The in-app code fallback will be shown to the user automatically.
     console.warn(
       '[Londway Email] EmailJS not configured.\n' +
       'Add these four secrets to your GitHub repository → Settings → Secrets → Actions:\n' +
@@ -64,22 +72,22 @@ async function sendViaEmailJS(
     return { success: false, error: 'Email service not configured' };
   }
   try {
-    await axios.post('https://api.emailjs.com/api/v1.0/email/send', {
-      service_id: EMAILJS_SERVICE_ID,
-      template_id: templateId,
-      user_id: EMAILJS_PUBLIC_KEY,
-      template_params: {
-        to_email: to,
-        to_name: toName,
-        from_name: 'Londway Capital',
-        subject,
-        html_content: htmlContent,
-        reply_to: 'support@londwaycapital.com',
-      },
+    // Re-init before every send to guarantee the key is registered
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    await emailjs.send(EMAILJS_SERVICE_ID, templateId, {
+      to_email: to,
+      to_name: toName,
+      from_name: 'Londway Capital',
+      subject,
+      html_content: htmlContent,
+      reply_to: 'support@londwaycapital.com',
     });
+    console.info(`[Londway Email] ✓ Sent "${subject}" → ${to}`);
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error?.response?.data || error.message };
+    const msg = error?.text || error?.message || 'Email sending failed';
+    console.error(`[Londway Email] ✗ Failed "${subject}" → ${to}:`, msg);
+    return { success: false, error: msg };
   }
 }
 
@@ -177,5 +185,75 @@ export async function sendTransferNotification(
 
   const html = emailWrapper('Transfer Notice', body);
   const subject = `Transfer ${ref} received — pending review`;
+  return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
+}
+
+/**
+ * Send a professional transfer receipt email when a transfer is approved/completed.
+ */
+export async function sendTransferReceipt(
+  to: string,
+  userName: string,
+  ref: string,
+  amount: number,
+  currency: string,
+  recipient: string,
+  type: 'local' | 'international',
+  account?: string,
+): Promise<{ success: boolean; error?: string }> {
+  const firstName = userName.split(' ')[0];
+  const amountFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const typeLabel = type === 'international' ? 'International Wire Transfer' : 'Domestic Transfer';
+  const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  const receiptNo = `RCT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+
+  const body = `
+    <!-- Receipt header -->
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="display:inline-block;background:#ecfdf5;border:1.5px solid #86efac;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:26px;margin-bottom:12px;">&#10003;</div>
+      <p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#0d1628;">Transfer Successful</p>
+      <p style="margin:0;font-size:13px;color:#6b7280;">Your transfer has been processed and completed.</p>
+    </div>
+
+    <!-- Amount highlight -->
+    <div style="text-align:center;background:linear-gradient(135deg,#faf8f4,#fdf9f0);border:1.5px solid rgba(196,160,82,0.3);border-radius:14px;padding:24px 20px;margin-bottom:28px;">
+      <div style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Amount Transferred</div>
+      <div style="font-size:36px;font-weight:900;color:#0d1628;letter-spacing:0.02em;line-height:1;">${amountFmt}</div>
+      <div style="margin-top:8px;font-size:12px;color:#6b7280;">${typeLabel}</div>
+    </div>
+
+    <!-- Receipt Details Card -->
+    <div style="background:#faf8f4;border:1px solid rgba(196,160,82,0.25);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+      <div style="background:linear-gradient(135deg,rgba(196,160,82,0.08),rgba(196,160,82,0.04));padding:14px 20px;border-bottom:1px solid rgba(196,160,82,0.15);display:flex;justify-content:space-between;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#C4A052;text-transform:uppercase;">Transfer Receipt</span>
+        <span style="float:right;font-size:11px;color:#9ca3af;">${dateStr}</span>
+      </div>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;width:40%;border-bottom:1px solid #f0ece4;">Receipt No.</td><td style="padding:12px 20px;font-size:13px;font-weight:700;color:#0d1628;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #f0ece4;">${receiptNo}</td></tr>
+        <tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Reference</td><td style="padding:12px 20px;font-size:13px;font-weight:800;color:#C4A052;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #f0ece4;">${ref}</td></tr>
+        <tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Sender</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${userName}</td></tr>
+        <tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Recipient</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${recipient}</td></tr>
+        ${account ? `<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Recipient Account</td><td style="padding:12px 20px;font-size:13px;color:#6b7280;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #f0ece4;">${account}</td></tr>` : ''}
+        <tr${account ? ' style="background:#fdf9f3;"' : ''}><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Amount</td><td style="padding:12px 20px;font-size:15px;font-weight:800;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${amountFmt}</td></tr>
+        <tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Type</td><td style="padding:12px 20px;font-size:13px;color:#6b7280;text-align:right;border-bottom:1px solid #f0ece4;">${typeLabel}</td></tr>
+        <tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Date &amp; Time</td><td style="padding:12px 20px;font-size:13px;color:#6b7280;text-align:right;border-bottom:1px solid #f0ece4;">${dateStr}</td></tr>
+        <tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">Status</td><td style="padding:12px 20px;text-align:right;"><span style="display:inline-block;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:#16a34a;letter-spacing:0.06em;">&#10003; COMPLETED</span></td></tr>
+      </table>
+    </div>
+
+    <!-- Confirmation note -->
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+      <p style="margin:0;font-size:13px;color:#15803d;line-height:1.6;">Hello ${firstName}, this receipt confirms your transfer of <strong>${amountFmt}</strong> to <strong>${recipient}</strong> has been successfully processed. Please retain this receipt for your records.</p>
+    </div>
+
+    <!-- Dashboard link -->
+    <div style="text-align:center;margin-bottom:20px;">
+      <a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#a8873e);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:8px;padding:12px 28px;letter-spacing:0.04em;">View Transfer History &rarr;</a>
+    </div>
+
+    <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.6;text-align:center;">This is an automated receipt from Londway Capital. If you have questions about this transfer, contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
+
+  const html = emailWrapper('Transfer Receipt', body);
+  const subject = `Receipt: ${amountFmt} to ${recipient} — ${ref}`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }

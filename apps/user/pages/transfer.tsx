@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage, getBankAccounts } from '../lib/store';
-import { sendTransferNotification } from '../lib/email';
+import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage, getBankAccounts, getNotifications, saveNotifications } from '../lib/store';
+import { sendTransferNotification, sendTransferReceipt } from '../lib/email';
 import type { TierLimits } from '../lib/store';
 
 type TransferType = 'local' | 'international';
@@ -156,7 +156,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       } catch {}
     }
 
-    const doTransfer = () => {
+    const doTransfer = async () => {
       setLoading(true);
       const ref = 'TRF-' + Date.now().toString(36).toUpperCase();
       const newTransfer: any = {
@@ -181,17 +181,44 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         setDailyUsed(d => d + amt);
       }
 
-      // Send confirmation email
+      // Send confirmation email + receipt (await both, never let failure block the transfer)
+      let emailSent = false;
       if (user?.email) {
-        sendTransferNotification(
-          user.email,
-          user.name || 'Valued Client',
-          ref,
-          amt,
-          isLocal ? 'USD' : intlCurrency,
-          isLocal ? localRecipient : intlName,
-          tab,
-        );
+        try {
+          const [notifRes, receiptRes] = await Promise.all([
+            sendTransferNotification(
+              user.email,
+              user.name || 'Valued Client',
+              ref, amt,
+              isLocal ? 'USD' : intlCurrency,
+              isLocal ? localRecipient : intlName,
+              tab,
+            ),
+            sendTransferReceipt(
+              user.email,
+              user.name || 'Valued Client',
+              ref, amt,
+              isLocal ? 'USD' : intlCurrency,
+              isLocal ? localRecipient : intlName,
+              tab,
+              isLocal ? localAccount : (intlIban || intlSwift),
+            ),
+          ]);
+          emailSent = notifRes.success || receiptRes.success;
+        } catch {
+          emailSent = false;
+        }
+
+        // Save receipt notification in-app
+        const notifs = getNotifications(user.email);
+        notifs.unshift({
+          id: 'notif-' + Date.now(),
+          message: `📋 Transfer Receipt — ${(isLocal ? 'USD' : intlCurrency)} ${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${isLocal ? localRecipient : intlName}. Ref: ${ref}. Status: Pending Review.${emailSent ? ` A confirmation email has been sent to ${user.email}.` : ''}`,
+          type: 'success',
+          date: new Date().toISOString(),
+          read: false,
+        });
+        saveNotifications(notifs, user.email);
       }
 
       setSubmitResult({ ok: true, message: 'Transfer submitted. Pending admin review.', ref });
