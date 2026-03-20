@@ -1,0 +1,7 @@
+# Londway Capital — https://londwaycapital.com
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+Sitemap: https://londwaycapital.com/sitemap.xml

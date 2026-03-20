@@ -92,7 +92,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
           <meta httpEquiv="X-Frame-Options" content="SAMEORIGIN" />
           <meta httpEquiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
-          <meta name="robots" content="noindex, nofollow" />
+          <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
         </Head>
         {!hydrated ? null : (
           showLoader ? (
