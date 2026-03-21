@@ -92,15 +92,15 @@ export default function App({ Component, pageProps }: AppProps) {
           <title>Londway Capital — Premium Private Banking</title>
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
           <meta name="referrer" content="strict-origin-when-cross-origin" />
-          <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-          <meta httpEquiv="Pragma" content="no-cache" />
-          <meta httpEquiv="Expires" content="0" />
           <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
           <meta httpEquiv="X-Frame-Options" content="SAMEORIGIN" />
           <meta httpEquiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
           <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
         </Head>
-        {!hydrated ? null : (
+        {/* SEO: Render Welcome in pre-rendered HTML so Google can index content */}
+        {!hydrated ? (
+          <Welcome onSignIn={() => {}} onOpenAccount={() => {}} />
+        ) : (
           showLoader ? (
             <BankLoader onDone={() => setShowLoader(false)} />
           ) : user ? (
@@ -123,6 +123,24 @@ export default function App({ Component, pageProps }: AppProps) {
             </>
           )
         )}
+        {/* Fallback for crawlers that don't execute JS */}
+        <noscript>
+          <div style={{ maxWidth: 800, margin: '80px auto', padding: '2rem', fontFamily: 'Inter, sans-serif', color: '#0D1628' }}>
+            <h1>Londway Capital — Premium Private Banking</h1>
+            <p>Londway Capital is the private bank for founders, executives, and families who demand more — combining institutional-grade security with the intelligence of modern technology.</p>
+            <h2>Our Services</h2>
+            <ul>
+              <li>Institutional Security — Military-grade AES-256 encryption, biometric authentication</li>
+              <li>Intelligent Investing — AI-driven portfolio management</li>
+              <li>Frictionless Transfers — Near-instant payments in 195 currencies</li>
+              <li>Premium Accounts — High-yield Savings Vaults (4.8% APY)</li>
+              <li>Financial Intelligence — Personalized health scores and analytics</li>
+              <li>White-Glove Service — 24/7 dedicated wealth advisors</li>
+            </ul>
+            <p>Trusted by 2.4 million members across 195 countries. FDIC Insured. SOC 2 Type II Certified.</p>
+            <p>Visit <a href="https://londwaycapital.com">londwaycapital.com</a> to open your account.</p>
+          </div>
+        </noscript>
       </LangProvider>
     </ThemeProvider>
   );
