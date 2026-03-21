@@ -12,6 +12,14 @@ export default function Document() {
         <meta name="keywords" content="Londway Capital, private banking, wealth management, online banking, investments, secure banking, digital banking, vaults, portfolio, transfers" />
         <meta name="author" content="Londway Capital" />
         <meta name="theme-color" content="#060913" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Londway Capital" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="Londway Capital" />
+        <meta name="msapplication-TileColor" content="#060913" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <link rel="canonical" href="https://londwaycapital.com" />
 
         {/* Open Graph */}
@@ -21,6 +29,12 @@ export default function Document() {
         <meta property="og:site_name" content="Londway Capital" />
         <meta property="og:url" content="https://londwaycapital.com" />
         <meta property="og:locale" content="en_US" />
+
+        {/* OG Image for social sharing */}
+        <meta property="og:image" content="https://londwaycapital.com/og-image.svg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:image" content="https://londwaycapital.com/og-image.svg" />
 
         {/* Twitter card */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -94,6 +108,14 @@ export default function Document() {
         />
 
         {/* Smartsupp Live Chat — Gold themed */}
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${process.env.NEXT_PUBLIC_GA_ID||'G-XXXXXXXXXX'}');`
+          }}
+        />
+
         <script
           type="text/javascript"
           dangerouslySetInnerHTML={{

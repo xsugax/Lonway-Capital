@@ -11,6 +11,8 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 import { LangProvider } from '../contexts/LanguageContext';
 import { trackPageVisit } from '../lib/trackVisit';
 
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID || '';
+
 // Only one export default function allowed
 export default function App({ Component, pageProps }: AppProps) {
   const [user, setUser] = useState<{ name: string; token: string; role: string; email: string } | null>(null);
@@ -42,6 +44,10 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     } catch {}
     setHydrated(true);
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
     // Track initial page visit
     trackPageVisit(window.location.pathname + window.location.search);
     // Auto-open login modal when activation link is detected

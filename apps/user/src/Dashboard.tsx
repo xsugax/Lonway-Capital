@@ -10,6 +10,8 @@ import Link from 'next/link';
 import { useTheme } from '../contexts/ThemeContext';
 import { getBankAccounts } from '../lib/store';
 import { useLang } from '../contexts/LanguageContext';
+import { exportCSV, exportPDF } from '../lib/exportData';
+import { DashboardSkeleton } from '../components/LoadingSkeleton';
 
 const Chart = dynamic(() => import('react-apexcharts').then(mod => mod.default), { ssr: false });
 
@@ -229,13 +231,9 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
   }, []);
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.gold, justifyContent: 'center', marginTop: 120, fontSize: '0.9rem', fontFamily: "'Inter', sans-serif" }}>
-      <svg width="20" height="20" viewBox="0 0 20 20" style={{ animation: 'spin 0.9s linear infinite' }}>
-        <circle cx="10" cy="10" r="8" fill="none" stroke={colors.goldBg} strokeWidth="2.5"/>
-        <path d="M10 2 A8 8 0 0 1 18 10" stroke={colors.gold} strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-      </svg>
-      Loading dashboard...
-    </div>
+    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif", padding: 'clamp(1rem, 3vw, 2rem)' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}><DashboardSkeleton /></div>
+    </main>
   );
 
   if (error) return (
@@ -454,7 +452,11 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
                 <h3 style={{ margin: 0, color: colors.text, fontWeight: 700, fontSize: '1rem' }}>{t('recentTransactions')}</h3>
                 <div style={{ color: colors.textFaint, fontSize: '0.62rem', marginTop: 2 }}>Latest activity across all accounts</div>
               </div>
-              <Link href="/accounts" style={{ color: colors.gold, fontSize: '0.68rem', fontWeight: 700, textDecoration: 'none' }}>{t('viewAll')}</Link>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button onClick={() => user?.email && exportCSV(user.email, 'Client')} title="Download CSV" style={{ background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 8, padding: '4px 10px', color: colors.gold, fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.04em' }}>CSV</button>
+                <button onClick={() => user?.email && exportPDF(user.email, 'Client')} title="Print / Save PDF" style={{ background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 8, padding: '4px 10px', color: colors.gold, fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.04em' }}>PDF</button>
+                <Link href="/accounts" style={{ color: colors.gold, fontSize: '0.68rem', fontWeight: 700, textDecoration: 'none' }}>{t('viewAll')}</Link>
+              </div>
             </div>
             {data.recentTx.length === 0 ? (
               <div style={{ color: colors.textFaint, fontSize: '0.85rem' }}>No recent transactions.</div>

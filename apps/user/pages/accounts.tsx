@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getBankAccounts, saveBankAccounts } from '../lib/store';
+import { exportCSV, exportPDF } from '../lib/exportData';
+import { PageSkeleton } from '../components/LoadingSkeleton';
 
 interface Transaction {
   id: string;
@@ -207,6 +209,10 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
                 {accounts[0]?.currency}{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
               <span style={{ color: colors.textFaint, fontSize: '0.78rem' }}>{t('acrossAccounts')}</span>
+              <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                <button onClick={() => user?.email && exportCSV(user.email, 'Client')} title="Download CSV Statement" style={{ background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 8, padding: '5px 14px', color: colors.gold, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.04em' }}>📥 CSV</button>
+                <button onClick={() => user?.email && exportPDF(user.email, 'Client')} title="Print / Save PDF Statement" style={{ background: `linear-gradient(135deg, ${colors.gold}, ${colors.goldDim})`, border: 'none', borderRadius: 8, padding: '5px 14px', color: '#0D1628', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.04em' }}>📄 PDF</button>
+              </div>
             </div>
           )}
         </div>
@@ -214,13 +220,7 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
 
       <section style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem)' }}>
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.gold, justifyContent: 'center', marginTop: 80, fontSize: '0.9rem' }}>
-            <svg width="20" height="20" viewBox="0 0 20 20" style={{ animation: 'spin 0.9s linear infinite' }}>
-              <circle cx="10" cy="10" r="8" fill="none" stroke={`${colors.gold}25`} strokeWidth="2.5"/>
-              <path d="M10 2 A8 8 0 0 1 18 10" stroke={colors.gold} strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-            </svg>
-            {t('loading')}
-          </div>
+          <div style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem)' }}><PageSkeleton /></div>
         ) : error ? (
           <div style={{ color: colors.danger, textAlign: 'center', marginTop: 40, background: `${colors.danger}10`, border: `1px solid ${colors.danger}28`, borderRadius: 12, padding: '1.6rem' }}>{error}</div>
         ) : (
