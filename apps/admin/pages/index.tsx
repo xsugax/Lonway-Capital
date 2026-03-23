@@ -147,7 +147,7 @@ async function sendFundingEmail(email: string, userName: string, amount: number,
 // ── Types ──────────────────────────────────────────────────────
 interface User {
   id: string; name: string; email: string; role: string;
-  frozen: boolean; kyc: boolean; balance: number;
+  frozen: boolean; blocked: boolean; kyc: boolean; balance: number;
   createdAt: string; phone?: string; address?: string; tier?: string; password?: string; pin?: string;
 }
 interface Transaction {
@@ -183,11 +183,11 @@ const STORAGE_KEY = 'londway_admin_data';
 function getDefaultData() {
   const now = new Date().toISOString();
   const users: User[] = [
-    { id: 'u1', name: 'Jane Doe', email: 'user@londwaycapital.com', role: 'user', frozen: false, kyc: true, balance: 2847563.42, createdAt: '2021-01-15T10:00:00Z', phone: '+1 (555) 234-5678', address: '420 Park Avenue, New York, NY 10022', tier: 'Platinum' },
-    { id: 'u2', name: 'Marcus Chen', email: 'marcus@example.com', role: 'user', frozen: false, kyc: true, balance: 1253800.00, createdAt: '2022-03-22T14:30:00Z', phone: '+1 (555) 876-5432', address: '888 Market St, San Francisco, CA 94103', tier: 'Gold' },
-    { id: 'u3', name: 'Elena Volkov', email: 'elena@example.com', role: 'user', frozen: false, kyc: false, balance: 589200.75, createdAt: '2023-07-10T09:15:00Z', phone: '+44 20 7946 0958', address: '12 Kensington Palace Gardens, London W8 4QU', tier: 'Silver' },
-    { id: 'u4', name: 'Omar Al-Rashid', email: 'omar@example.com', role: 'user', frozen: true, kyc: true, balance: 4120000.00, createdAt: '2020-11-05T16:45:00Z', phone: '+971 4 333 4444', address: 'DIFC Gate Building, Dubai, UAE', tier: 'Platinum' },
-    { id: 'u5', name: 'Sarah Williams', email: 'sarah@example.com', role: 'user', frozen: false, kyc: true, balance: 156430.20, createdAt: '2024-01-18T11:20:00Z', phone: '+1 (555) 111-2222', address: '200 Lakeshore Dr, Chicago, IL 60601', tier: 'Standard' },
+    { id: 'u1', name: 'Jane Doe', email: 'user@londwaycapital.com', role: 'user', frozen: false, blocked: false, kyc: true, balance: 2847563.42, createdAt: '2021-01-15T10:00:00Z', phone: '+1 (555) 234-5678', address: '420 Park Avenue, New York, NY 10022', tier: 'Platinum' },
+    { id: 'u2', name: 'Marcus Chen', email: 'marcus@example.com', role: 'user', frozen: false, blocked: false, kyc: true, balance: 1253800.00, createdAt: '2022-03-22T14:30:00Z', phone: '+1 (555) 876-5432', address: '888 Market St, San Francisco, CA 94103', tier: 'Gold' },
+    { id: 'u3', name: 'Elena Volkov', email: 'elena@example.com', role: 'user', frozen: false, blocked: false, kyc: false, balance: 589200.75, createdAt: '2023-07-10T09:15:00Z', phone: '+44 20 7946 0958', address: '12 Kensington Palace Gardens, London W8 4QU', tier: 'Silver' },
+    { id: 'u4', name: 'Omar Al-Rashid', email: 'omar@example.com', role: 'user', frozen: true, blocked: false, kyc: true, balance: 4120000.00, createdAt: '2020-11-05T16:45:00Z', phone: '+971 4 333 4444', address: 'DIFC Gate Building, Dubai, UAE', tier: 'Platinum' },
+    { id: 'u5', name: 'Sarah Williams', email: 'sarah@example.com', role: 'user', frozen: false, blocked: false, kyc: true, balance: 156430.20, createdAt: '2024-01-18T11:20:00Z', phone: '+1 (555) 111-2222', address: '200 Lakeshore Dr, Chicago, IL 60601', tier: 'Standard' },
   ];
   const transactions: Transaction[] = [
     { id: 't1', userId: 'u1', userName: 'Jane Doe', type: 'credit', amount: 500000, currency: 'USD', status: 'completed', description: 'Wire deposit from JPMorgan Chase', reference: 'WIR-2026-001', createdAt: '2026-03-10T14:22:00Z', processedAt: '2026-03-10T14:25:00Z' },
@@ -510,7 +510,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     e.preventDefault();
     const user: User = {
       id: uid(), name: nu.name, email: nu.email, role: nu.role,
-      frozen: false, kyc: false, balance: parseFloat(nu.balance) || 0,
+      frozen: false, blocked: false, kyc: false, balance: parseFloat(nu.balance) || 0,
       createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
       phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
       password: nu.password || undefined,
@@ -628,9 +628,34 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   function deleteUser(u: User) {
     if (!confirm(`Permanently delete "${u.name}"? All their transactions will remain for audit.`)) return;
     persist({ ...data, users: data.users.filter(x => x.id !== u.id) });
+    // Remove from londway_accounts so deleted user cannot log in
+    try {
+      const raw = localStorage.getItem('londway_accounts');
+      if (raw) {
+        const accounts = JSON.parse(raw);
+        const idx = accounts.findIndex((a: any) => a.email?.toLowerCase() === u.email.toLowerCase());
+        if (idx !== -1) { accounts[idx].deleted = true; localStorage.setItem('londway_accounts', JSON.stringify(accounts)); }
+      }
+    } catch {}
     addAudit('user_deleted', u.email, `Balance at deletion: ${fmtMoney(u.balance)}`);
     notify(true, `${u.name} deleted`);
     cloudDeleteUser(u.email).catch(() => {});
+  }
+
+  function toggleBlock(u: User) {
+    const newBlocked = !u.blocked;
+    persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, blocked: newBlocked } : x) });
+    // Sync blocked status to londway_accounts so user app enforces it
+    try {
+      const raw = localStorage.getItem('londway_accounts');
+      if (raw) {
+        const accounts = JSON.parse(raw);
+        const idx = accounts.findIndex((a: any) => a.email?.toLowerCase() === u.email.toLowerCase());
+        if (idx !== -1) { accounts[idx].blocked = newBlocked; localStorage.setItem('londway_accounts', JSON.stringify(accounts)); }
+      }
+    } catch {}
+    addAudit(u.blocked ? 'account_unblocked' : 'account_blocked', u.email);
+    notify(true, `${u.name} ${u.blocked ? 'unblocked' : 'blocked'}`);
   }
 
   // ── Fund / Debit ─────────────────────────────────────────────
@@ -926,8 +951,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               {filteredUsers.map(u => {
                 const userTxs = data.transactions.filter(t => t.userId === u.id);
                 return (
-                <div key={u.id} style={{ background: S2, borderRadius: 16, border: `1px solid ${u.frozen ? 'rgba(255,77,79,0.25)' : 'rgba(196,160,82,0.12)'}`, padding: '1.2rem 1.4rem', position: 'relative' }}>
+                <div key={u.id} style={{ background: S2, borderRadius: 16, border: `1px solid ${u.frozen ? 'rgba(255,77,79,0.25)' : u.blocked ? 'rgba(255,140,0,0.25)' : 'rgba(196,160,82,0.12)'}`, padding: '1.2rem 1.4rem', position: 'relative' }}>
                   {u.frozen && <div style={{ position: 'absolute', top: 12, right: 14, background: 'rgba(255,77,79,0.12)', color: '#ff4d4f', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em' }}>FROZEN</div>}
+                  {u.blocked && !u.frozen && <div style={{ position: 'absolute', top: 12, right: 14, background: 'rgba(255,140,0,0.12)', color: '#ff8c00', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em' }}>BLOCKED</div>}
                   {/* Row 1: Identity */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
@@ -1001,6 +1027,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                     <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => setEditUser(u)}>✏ Edit</button>
                     <button style={{ ...btnG, padding: '7px 14px' }} onClick={() => { setPinModal(u); setPinValue(u.pin || ''); }}>🔑 PIN</button>
                     <button style={{ ...btnG, padding: '7px 14px', color: u.frozen ? '#50C878' : '#ff4d4f', borderColor: u.frozen ? 'rgba(80,200,120,0.3)' : 'rgba(255,77,79,0.3)' }} onClick={() => toggleFreeze(u)}>{u.frozen ? '🔓 Unfreeze' : '🔒 Freeze'}</button>
+                    <button style={{ ...btnG, padding: '7px 14px', color: u.blocked ? '#50C878' : '#ff8c00', borderColor: u.blocked ? 'rgba(80,200,120,0.3)' : 'rgba(255,140,0,0.3)' }} onClick={() => toggleBlock(u)}>{u.blocked ? '✅ Unblock' : '🚫 Block'}</button>
                     <button style={{ ...btnG, padding: '7px 14px', color: '#58a6ff', borderColor: 'rgba(88,166,255,0.3)' }} onClick={() => {
                       const token = buildActivationToken(u.email, u.password || '', u.pin || '', u.name, u.role, u.tier || 'Standard', u.balance || 0);
                       const base = typeof window !== 'undefined' ? window.location.origin.replace('/admin', '') : 'https://londwaycapital.com';

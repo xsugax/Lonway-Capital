@@ -432,6 +432,7 @@ export default function Cards({ user }: { user: { token: string; email?: string 
   const [country, setCountry] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [cardError, setCardError] = useState<string | null>(null);
   const [existingCards, setExistingCards] = useState<any[]>([]);
 
   const cards = network === 'debit' ? DEBIT_CARDS : MC_CARDS;
@@ -453,6 +454,17 @@ export default function Cards({ user }: { user: { token: string; email?: string 
 
   const handleSubmit = () => {
     if (!fullName.trim() || !address.trim() || !city.trim() || !country.trim()) return;
+    // Frozen / Blocked account check
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
+          if (acct?.frozen) { setCardError('Your account is frozen. Card requests are disabled.'); return; }
+          if (acct?.blocked) { setCardError('Your account is blocked. Transactions are disabled.'); return; }
+        }
+      } catch {}
+    }
     setSubmitting(true);
     const card = { id: 'card-' + Date.now(), network, tier: def.tier, holderName: fullName, deliveryAddress: address, city, country, status: 'pending', requestedAt: new Date().toISOString() };
     const all = getCards(user?.email);
@@ -552,8 +564,9 @@ export default function Cards({ user }: { user: { token: string; email?: string 
                 Annual fee: <strong style={{ color: colors.text }}>{def.annualFee}</strong> ·
                 Est. delivery: <strong style={{ color: colors.text }}>{def.deliveryDays} business days</strong>
               </div>
+              {cardError && <div style={{ background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.2)', borderRadius: 10, padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#ff4d4f', fontWeight: 600 }}>{cardError}</div>}
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setStep('pick')}
+                <button onClick={() => { setStep('pick'); setCardError(null); }}
                   style={{ flex: 1, padding: '0.75rem', background: 'none', border: `1px solid ${colors.border}`, borderRadius: 12, color: colors.textMuted, fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>
                   {t('back')}
                 </button>

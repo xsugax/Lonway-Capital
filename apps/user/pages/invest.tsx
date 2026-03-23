@@ -324,12 +324,13 @@ export default function Invest({ user }: { user: { token: string; email?: string
   // ── trade execution ────────────────────────────────────────
   const handleTrade = () => {
     if (!tradeModal || !tradeAmount || !userEmail) return;
-    // Frozen account check
+    // Frozen / Blocked account check
     try {
       const raw = localStorage.getItem(ACCOUNTS_KEY);
       if (raw) {
         const acct = JSON.parse(raw).find((a: any) => a.email?.toLowerCase() === userEmail.toLowerCase());
         if (acct?.frozen) { setTradeError('Your account is frozen. Trading is disabled. Please contact support.'); return; }
+        if (acct?.blocked) { setTradeError('Your account is blocked. Transactions are disabled. Please contact support.'); return; }
       }
     } catch {}
     const amount = parseFloat(tradeAmount);

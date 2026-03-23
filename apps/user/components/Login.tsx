@@ -26,6 +26,8 @@ interface StoredAccount {
   pin?: string;
   tier?: string;
   frozen?: boolean;
+  blocked?: boolean;
+  deleted?: boolean;
 }
 
 function getAccounts(): StoredAccount[] {
@@ -45,7 +47,7 @@ function getAccounts(): StoredAccount[] {
         if (!u.password && !u.pin) continue;
         const existing = accounts.find((a: StoredAccount) => a.email === u.email);
         if (!existing) {
-          accounts.push({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role || 'user', tier: u.tier || 'Standard', frozen: !!u.frozen, idVerified: false });
+          accounts.push({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role || 'user', tier: u.tier || 'Standard', frozen: !!u.frozen, blocked: !!u.blocked, idVerified: false });
           changed = true;
         } else {
           let dirty = false;
@@ -53,6 +55,7 @@ function getAccounts(): StoredAccount[] {
           if (u.pin && existing.pin !== u.pin) { existing.pin = u.pin; dirty = true; }
           if (u.tier && existing.tier !== u.tier) { existing.tier = u.tier; dirty = true; }
           if (existing.frozen !== !!u.frozen) { existing.frozen = !!u.frozen; dirty = true; }
+          if (existing.blocked !== !!u.blocked) { existing.blocked = !!u.blocked; dirty = true; }
           if (dirty) { existing.name = u.name; existing.role = u.role || existing.role; changed = true; }
         }
       }
@@ -383,6 +386,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         // Fall through — m still points to local account if it exists
       } finally { setSending(false); }
       if (!m) { setError('No account found. Check your email or contact support.'); return; }
+      if (m.deleted) { setError('This account has been permanently deleted. Please contact support.'); return; }
       if (m.password !== lPw) { setError('Incorrect password. Please try again.'); return; }
       if (m.frozen) { setError('Your account has been frozen. Please contact support or visit a branch.'); return; }
       setMatched(m);

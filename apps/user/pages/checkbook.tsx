@@ -81,6 +81,17 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
     e.preventDefault();
     setRequesting(true);
     setReqResult(null);
+    // Frozen / Blocked account check
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
+          if (acct?.frozen) { setReqResult({ ok: false, message: 'Your account is frozen. Checkbook requests are disabled.' }); setRequesting(false); return; }
+          if (acct?.blocked) { setReqResult({ ok: false, message: 'Your account is blocked. Transactions are disabled.' }); setRequesting(false); return; }
+        }
+      } catch {}
+    }
     const book = { id: 'cb-' + Date.now(), status: 'pending' as BookStatus, requestedAt: new Date().toISOString(), checks: [] as Check[], deliveryAddress: reqForm.address, notes: reqForm.notes };
     const all = getCheckbooks(user.email);
     all.push(book);
@@ -95,6 +106,16 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
   function handleUpdateCheck(e: React.FormEvent) {
     e.preventDefault();
     if (!editCheck) return;
+    // Frozen / Blocked account check
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
+          if (acct?.frozen || acct?.blocked) return;
+        }
+      } catch {}
+    }
     const all = getCheckbooks(user.email);
     const book = all.find((b: any) => b.id === editCheck.bookId);
     if (book) {

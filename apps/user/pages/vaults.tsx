@@ -104,6 +104,17 @@ export default function Vaults({ user }: { user: { token: string; email?: string
 
   const handleCreate = () => {
     if (!newName.trim() || !newGoal) return;
+    // Frozen / Blocked account check
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
+          if (acct?.frozen) { setError('Your account is frozen. Vault creation is disabled.'); return; }
+          if (acct?.blocked) { setError('Your account is blocked. Transactions are disabled.'); return; }
+        }
+      } catch {}
+    }
     setCreating(true);
     const v = { id: 'vault-' + Date.now(), name: newName, balance: 0, goal: parseFloat(newGoal), currency: newCurrency, createdAt: new Date().toISOString() };
     const updated = [...getVaults(user?.email), v];
@@ -116,6 +127,17 @@ export default function Vaults({ user }: { user: { token: string; email?: string
 
   const handleAction = () => {
     if (!activeModal || !modalAmount) return;
+    // Frozen / Blocked account check
+    if (typeof window !== 'undefined' && user?.email) {
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
+          if (acct?.frozen) { setError('Your account is frozen. Vault transactions are disabled.'); return; }
+          if (acct?.blocked) { setError('Your account is blocked. Transactions are disabled.'); return; }
+        }
+      } catch {}
+    }
     setModalLoading(true);
     const { type, vault } = activeModal;
     const amt = parseFloat(modalAmount);

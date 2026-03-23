@@ -78,13 +78,14 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
 
   const handleSubmitDeposit = () => {
     if (!cryptoAmount || parseFloat(cryptoAmount) <= 0) return;
-    // Frozen account check
+    // Frozen / Blocked account check
     if (typeof window !== 'undefined' && user?.email) {
       try {
         const raw = localStorage.getItem('londway_accounts');
         if (raw) {
           const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
           if (acct?.frozen) { setResult({ ok: false, message: 'Your account is frozen. Deposits are disabled. Please contact support.' }); return; }
+          if (acct?.blocked) { setResult({ ok: false, message: 'Your account is blocked. Transactions are disabled. Please contact support.' }); return; }
         }
       } catch {}
     }

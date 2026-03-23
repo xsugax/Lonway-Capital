@@ -105,13 +105,14 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
     const amt = parseFloat(isLocal ? localAmount : intlAmount);
     if (!amt || amt <= 0) { setSubmitResult({ ok: false, message: 'Please enter a valid amount.' }); return; }
 
-    // ─── Frozen account check ───
+    // ─── Frozen / Blocked account check ───
     if (typeof window !== 'undefined' && user?.email) {
       try {
         const raw = localStorage.getItem('londway_accounts');
         if (raw) {
           const acct = JSON.parse(raw).find((a: any) => a.email === user.email);
           if (acct?.frozen) { setSubmitResult({ ok: false, message: 'Your account is frozen. Transfers are disabled. Please contact support.' }); return; }
+          if (acct?.blocked) { setSubmitResult({ ok: false, message: 'Your account is blocked. Transactions are disabled. Please contact support.' }); return; }
         }
       } catch {}
     }
