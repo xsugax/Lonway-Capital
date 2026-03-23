@@ -38,7 +38,14 @@ export default function App({ Component, pageProps }: AppProps) {
           if (parsed.loginAt && Date.now() - parsed.loginAt > SESSION_MAX_MS) {
             localStorage.removeItem('londway_session');
           } else {
-            setUser(parsed);
+            // Re-validate account status — block deleted/frozen users from restoring session
+            let blocked = false;
+            try {
+              const accts = JSON.parse(localStorage.getItem('londway_accounts') || '[]');
+              const acct = accts.find((a: any) => a.email === parsed.email);
+              if (acct?.deleted || acct?.frozen) { blocked = true; localStorage.removeItem('londway_session'); }
+            } catch {}
+            if (!blocked) setUser(parsed);
           }
         }
       }

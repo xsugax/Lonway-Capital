@@ -560,9 +560,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         if (updated.tier) accounts[idx].tier = updated.tier;
         if (updated.password) accounts[idx].password = updated.password;
         if (updated.pin) accounts[idx].pin = updated.pin;
+        accounts[idx].frozen = !!updated.frozen;
+        accounts[idx].blocked = !!updated.blocked;
         localStorage.setItem('londway_accounts', JSON.stringify(accounts));
       } else if (updated.password || updated.pin) {
-        accounts.push({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier, idVerified: false });
+        accounts.push({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier, frozen: !!updated.frozen, blocked: !!updated.blocked, idVerified: false });
         localStorage.setItem('londway_accounts', JSON.stringify(accounts));
       }
     } catch {}

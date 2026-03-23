@@ -281,13 +281,19 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
 
         {/* Page content */}
         <main className="layout-content" style={{ flex: 1, overflow: 'auto' }}>
-          {/* Blocked account banner */}
+          {/* Account status banners */}
           {(() => {
             if (typeof window === 'undefined' || !userEmail) return null;
             try {
               const raw = localStorage.getItem('londway_accounts');
               if (raw) {
                 const acct = JSON.parse(raw).find((a: any) => a.email === userEmail);
+                if (acct?.frozen) return (
+                  <div style={{ background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.25)', borderRadius: 12, margin: '1rem 1.2rem 0', padding: '0.8rem 1.2rem', display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', fontWeight: 600, color: '#ff4d4f' }}>
+                    <span style={{ fontSize: '1.1rem' }}>🔒</span>
+                    Your account has been frozen. All transactions and services are disabled. Please contact support.
+                  </div>
+                );
                 if (acct?.blocked) return (
                   <div style={{ background: 'rgba(255,140,0,0.1)', border: '1px solid rgba(255,140,0,0.3)', borderRadius: 12, margin: '1rem 1.2rem 0', padding: '0.8rem 1.2rem', display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', fontWeight: 600, color: '#ff8c00' }}>
                     <span style={{ fontSize: '1.1rem' }}>🚫</span>

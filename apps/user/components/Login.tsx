@@ -56,6 +56,8 @@ function getAccounts(): StoredAccount[] {
           if (u.tier && existing.tier !== u.tier) { existing.tier = u.tier; dirty = true; }
           if (existing.frozen !== !!u.frozen) { existing.frozen = !!u.frozen; dirty = true; }
           if (existing.blocked !== !!u.blocked) { existing.blocked = !!u.blocked; dirty = true; }
+          // If user exists in admin data, they are NOT deleted (admin re-created them)
+          if (existing.deleted) { existing.deleted = false; dirty = true; }
           if (dirty) { existing.name = u.name; existing.role = u.role || existing.role; changed = true; }
         }
       }
