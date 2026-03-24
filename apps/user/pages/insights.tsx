@@ -1,5 +1,6 @@
 ﻿'use client';
 import React, { useEffect, useState } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 
@@ -159,6 +160,10 @@ export default function Insights({ user }: { user: { token: string } }) {
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Insights — Londway Capital | Financial Intelligence</title>
+        <meta name="description" content="Get AI-powered financial insights from Londway Capital. Personalized analytics, spending trends, and actionable recommendations for your wealth." />
+      </Head>
       {/* Hero */}
       <section style={{ position: 'relative', overflow: 'hidden', background: `linear-gradient(135deg, ${colors.surface} 0%, ${colors.bg} 65%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <NeuralBg gold={colors.gold} />

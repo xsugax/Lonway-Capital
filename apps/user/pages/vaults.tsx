@@ -1,5 +1,6 @@
 ﻿'use client';
 import React, { useEffect, useState } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getVaults, saveVaults, getBankAccounts, saveBankAccounts } from '../lib/store';
@@ -194,6 +195,10 @@ export default function Vaults({ user }: { user: { token: string; email?: string
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Savings Vaults — Londway Capital | High-Yield 4.8% APY</title>
+        <meta name="description" content="Grow your wealth with Londway Capital high-yield savings vaults. Earn up to 4.8% APY with institutional-grade security and flexible access." />
+      </Head>
       {/* Hero */}
       <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 40% 80% at 5% 50%, ${colors.goldBg} 0%, transparent 70%)`, pointerEvents: 'none' }}/>

@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getBankAccounts, saveBankAccounts } from '../lib/store';
@@ -193,6 +194,10 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Accounts — Londway Capital | Private Banking</title>
+        <meta name="description" content="Manage your Londway Capital bank accounts. Track balances, view transactions, and control your checking and savings accounts with premium private banking." />
+      </Head>
       {/* Hero */}
       <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 40% 80% at 5% 50%, ${colors.goldBg} 0%, transparent 70%)`, pointerEvents: 'none' }}/>

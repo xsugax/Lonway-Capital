@@ -6,8 +6,10 @@ export default function Document() {
       <Head>
         <meta charSet="utf-8" />
 
-        <meta name="description" content="Londway Capital — Premium private banking, wealth management, investments, and secure digital banking. Manage your accounts, transfers, cards, vaults, and portfolio." />
-        <meta name="keywords" content="Londway Capital, private banking, wealth management, online banking, investments, secure banking, digital banking, vaults, portfolio, transfers" />
+
+
+        <meta name="description" content="Londway Capital — Premium private banking and wealth management for founders, executives, and families. Secure digital banking, high-yield savings vaults, AI-driven investments, and institutional-grade security. Trusted by 2.4M+ members in 195 countries." />
+        <meta name="keywords" content="Londway Capital, Londway, private banking, wealth management, online banking, investments, secure banking, digital banking, savings vaults, portfolio management, premium bank, private bank, capital management, financial services, fintech" />
         <meta name="author" content="Londway Capital" />
         <meta name="theme-color" content="#060913" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -18,26 +20,28 @@ export default function Document() {
         <meta name="msapplication-TileColor" content="#060913" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-        <link rel="canonical" href="https://londwaycapital.com" />
+
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="Londway Capital — Premium Private Banking" />
-        <meta property="og:description" content="Secure wealth management, investments, and digital banking. Manage your finances with confidence." />
+        <meta property="og:title" content="Londway Capital — Premium Private Banking & Wealth Management" />
+        <meta property="og:description" content="The private bank for founders, executives, and families. Secure wealth management, AI-driven investments, high-yield savings vaults, and institutional-grade security. Trusted by 2.4M+ members worldwide." />
         <meta property="og:site_name" content="Londway Capital" />
         <meta property="og:url" content="https://londwaycapital.com" />
         <meta property="og:locale" content="en_US" />
 
         {/* OG Image for social sharing */}
-        <meta property="og:image" content="https://londwaycapital.com/og-image.svg" />
+        <meta property="og:image" content="https://londwaycapital.com/og-image.png" />
+        <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta name="twitter:image" content="https://londwaycapital.com/og-image.svg" />
+        <meta property="og:image:alt" content="Londway Capital — Premium Private Banking" />
+        <meta name="twitter:image" content="https://londwaycapital.com/og-image.png" />
 
         {/* Twitter card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Londway Capital — Premium Private Banking" />
-        <meta name="twitter:description" content="Secure wealth management, investments, and digital banking." />
+        <meta name="twitter:title" content="Londway Capital — Premium Private Banking & Wealth Management" />
+        <meta name="twitter:description" content="The private bank for founders, executives, and families. Secure wealth management and AI-driven investments." />
         <meta name="twitter:site" content="@LondwayCapital" />
 
         {/* Favicon */}
@@ -57,9 +61,14 @@ export default function Document() {
                 "@context": "https://schema.org",
                 "@type": "Organization",
                 "name": "Londway Capital",
+                "alternateName": "Londway",
                 "url": "https://londwaycapital.com",
-                "description": "Premium private banking, wealth management, and secure digital banking.",
-                "foundingDate": "2024",
+                "logo": "https://londwaycapital.com/icons/icon-512.svg",
+                "description": "Londway Capital is a premium private banking and wealth management platform for founders, executives, and families. Institutional-grade security, AI-driven investments, and high-yield savings vaults.",
+                "foundingDate": "2020",
+                "slogan": "Wealth that works as hard as you do",
+                "areaServed": "Worldwide",
+                "knowsLanguage": ["en", "fr", "es", "de", "pt", "zh", "ja", "ar"],
                 "contactPoint": {
                   "@type": "ContactPoint",
                   "email": "support@londwaycapital.com",
@@ -71,7 +80,14 @@ export default function Document() {
                 "@context": "https://schema.org",
                 "@type": "WebSite",
                 "name": "Londway Capital",
+                "alternateName": "Londway Capital — Premium Private Banking",
                 "url": "https://londwaycapital.com",
+                "description": "Londway Capital private banking platform — manage accounts, transfers, investments, savings vaults, and wealth.",
+                "publisher": {
+                  "@type": "Organization",
+                  "name": "Londway Capital",
+                  "url": "https://londwaycapital.com"
+                },
                 "potentialAction": {
                   "@type": "SearchAction",
                   "target": "https://londwaycapital.com/?q={search_term_string}",
@@ -80,26 +96,49 @@ export default function Document() {
               },
               {
                 "@context": "https://schema.org",
-                "@type": "FinancialProduct",
-                "name": "Londway Capital — Premium Private Banking",
-                "description": "Secure private banking, wealth management, investments, and digital banking platform. Manage accounts, transfers, cards, vaults, and portfolio.",
+                "@type": "FinancialService",
+                "name": "Londway Capital",
+                "description": "Premium private banking, wealth management, AI-driven investments, high-yield savings vaults, and secure digital banking. Trusted by 2.4 million members across 195 countries.",
                 "url": "https://londwaycapital.com",
+                "logo": "https://londwaycapital.com/icons/icon-512.svg",
+                "priceRange": "$$$",
+                "currenciesAccepted": "USD, EUR, GBP, CHF",
+                "areaServed": {
+                  "@type": "Place",
+                  "name": "Worldwide"
+                },
                 "brand": {
                   "@type": "Brand",
-                  "name": "Londway Capital"
-                },
-                "provider": {
-                  "@type": "FinancialService",
                   "name": "Londway Capital",
-                  "url": "https://londwaycapital.com"
+                  "slogan": "Wealth that works as hard as you do"
+                },
+                "hasOfferCatalog": {
+                  "@type": "OfferCatalog",
+                  "name": "Banking Products",
+                  "itemListElement": [
+                    { "@type": "Offer", "itemOffered": { "@type": "FinancialProduct", "name": "Private Banking Accounts" } },
+                    { "@type": "Offer", "itemOffered": { "@type": "FinancialProduct", "name": "High-Yield Savings Vaults" } },
+                    { "@type": "Offer", "itemOffered": { "@type": "FinancialProduct", "name": "AI-Driven Investment Portfolio" } },
+                    { "@type": "Offer", "itemOffered": { "@type": "FinancialProduct", "name": "Premium Debit & Credit Cards" } }
+                  ]
                 },
                 "aggregateRating": {
                   "@type": "AggregateRating",
                   "ratingValue": "4.8",
                   "bestRating": "5",
                   "worstRating": "1",
-                  "ratingCount": "250"
+                  "ratingCount": "2400"
                 }
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "WebPage",
+                "name": "Londway Capital — Premium Private Banking & Wealth Management",
+                "description": "Londway Capital is the private bank for founders, executives, and families who demand more.",
+                "url": "https://londwaycapital.com",
+                "isPartOf": { "@type": "WebSite", "name": "Londway Capital", "url": "https://londwaycapital.com" },
+                "about": { "@type": "FinancialService", "name": "Londway Capital" },
+                "mainEntity": { "@type": "FinancialService", "name": "Londway Capital" }
               }
             ])
           }}

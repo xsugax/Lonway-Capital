@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState, useCallback } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getTierLimits, getDailyUsage, addDailyUsage } from '../lib/store';
@@ -429,6 +430,10 @@ export default function Invest({ user }: { user: { token: string; email?: string
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Investments — Londway Capital | AI-Driven Portfolio</title>
+        <meta name="description" content="Invest smarter with Londway Capital AI-driven portfolio management. Trade stocks, ETFs, and bonds with institutional-grade research and analytics." />
+      </Head>
       {/* Hero */}
       <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)' }}>
         <svg style={{ position: 'absolute', right: '4%', bottom: 0, opacity: 0.045, pointerEvents: 'none' }}

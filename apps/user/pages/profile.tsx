@@ -1,5 +1,6 @@
 ﻿'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 
 function HeroBg() {
@@ -174,6 +175,10 @@ export default function Profile({ user }: { user?: { name: string; email: string
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Profile — Londway Capital | Account Settings</title>
+        <meta name="description" content="Manage your Londway Capital profile, security settings, KYC verification, and account preferences." />
+      </Head>
       {/* Hero */}
       <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)', position: 'relative', overflow: 'hidden' }}>
         <HeroBg />

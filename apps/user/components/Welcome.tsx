@@ -656,6 +656,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
           </div>
 
           <h1 key={theme} style={{ fontSize: 'clamp(3rem, 7vw, 5.8rem)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.025em', marginBottom: '1.4rem' }}>
+            <span style={{ display: 'block', fontSize: '0.2em', color: G, letterSpacing: '0.2em', fontWeight: 700, marginBottom: '0.6rem', textTransform: 'uppercase' as const }}>Londway Capital</span>
             <span style={{ display: 'block', color: IV }}>Wealth that works</span>
             <span style={{
               display: 'block',

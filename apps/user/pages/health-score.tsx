@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 
 const SCORE = 82;
@@ -55,6 +56,10 @@ export default function HealthScore({ user }: { user?: { token: string; email?: 
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Financial Health Score — Londway Capital</title>
+        <meta name="description" content="Track your financial health score with Londway Capital. Analyze savings rate, debt management, investment growth, and emergency fund strength." />
+      </Head>
 
       {/* Hero */}
       <section style={{ position: 'relative', overflow: 'hidden', background: `linear-gradient(135deg, ${colors.surface} 0%, ${colors.bg} 60%)`, borderBottom: `1px solid ${colors.border}`, padding: '2.8rem 2rem 2.2rem' }}>

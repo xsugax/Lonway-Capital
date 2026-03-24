@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCheckbooks, saveCheckbooks } from '../lib/store';
 
@@ -133,6 +134,10 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Checkbook — Londway Capital | Manage Checks</title>
+        <meta name="description" content="Request and manage checkbooks with Londway Capital. Track check usage, order new books, and manage your checking account seamlessly." />
+      </Head>
       {/* Hero */}
       <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: '5%', top: '50%', transform: 'translateY(-50%)', opacity: 0.05, pointerEvents: 'none' }}>

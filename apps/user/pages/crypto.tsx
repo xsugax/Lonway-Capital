@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState, useCallback } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { getBankAccounts, saveBankAccounts, getCryptoDeposits, saveCryptoDeposits, getNotifications, saveNotifications, getTierLimits } from '../lib/store';
 import { sendTransferReceipt } from '../lib/email';
@@ -200,6 +201,10 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Crypto — Londway Capital | Buy & Manage Cryptocurrency</title>
+        <meta name="description" content="Buy, hold, and manage cryptocurrency securely with Londway Capital. Bitcoin, Ethereum, USDT, and more with real-time prices and instant deposits." />
+      </Head>
 
       {/* Hero */}
       <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>

@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage, getBankAccounts, getNotifications, saveNotifications } from '../lib/store';
 import { sendTransferNotification, sendTransferReceipt } from '../lib/email';
@@ -257,6 +258,10 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Transfers — Londway Capital | Send Money Worldwide</title>
+        <meta name="description" content="Send money locally and internationally with Londway Capital. Near-instant transfers in 195 currencies with institutional-grade security." />
+      </Head>
 
       {/* PIN Gate Modal */}
       {showPinModal && (

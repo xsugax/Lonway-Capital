@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
+import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getCards, saveCards } from '../lib/store';
@@ -478,6 +479,10 @@ export default function Cards({ user }: { user: { token: string; email?: string 
 
   return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+      <Head>
+        <title>Cards — Londway Capital | Premium Debit & Credit Cards</title>
+        <meta name="description" content="Manage your Londway Capital premium debit and credit cards. From Standard to Black World Elite, experience luxury banking." />
+      </Head>
 
       {/* ── Hero ── */}
       <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
