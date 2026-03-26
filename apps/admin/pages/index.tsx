@@ -941,7 +941,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ color: G, fontWeight: 800 }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       <button style={btnP} onClick={() => {
-                        updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
+                        updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
                         updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
                         addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                         notify(true, `Transfer approved: ${tx.reference}`);
@@ -1109,7 +1109,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                               {tx.status === 'pending' && (
                                 <>
                                   <button style={btnP} onClick={() => {
-                                    updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
+                                    updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
                                     updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
                                     addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                     notify(true, `Transfer approved: ${tx.reference}`);

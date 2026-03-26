@@ -701,7 +701,7 @@ export function migrateLegacyTransfers(email: string): number {
     if (existingRefs.has(lt.reference)) continue; // Already migrated
 
     const statusMap: Record<string, TransactionStatus> = {
-      pending: 'pending', approved: 'processing', rejected: 'failed',
+      pending: 'pending', approved: 'completed', rejected: 'failed',
       completed: 'completed', failed: 'failed', reversed: 'reversed',
     };
 
