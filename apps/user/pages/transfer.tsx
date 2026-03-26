@@ -323,6 +323,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         reference: ledgerTx.reference,
         description: reviewData.memo || (isLocal ? 'Local Transfer' : 'International Wire'),
         createdAt: new Date().toISOString(),
+        fee: reviewData.fee + (reviewData.fxFee || 0),
         ...(reviewData.country ? { country: reviewData.country } : {}),
       };
       const all = getTransfers(user?.email);

@@ -958,7 +958,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                         updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                         updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
                         // Refund held amount back to user's checking account
-                        syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
+                        syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                         addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                         notify(true, `Transfer rejected & refunded: ${tx.reference}`);
                         const rejectUser = data.users.find(u => u.email === tx._userEmail);
@@ -1125,7 +1125,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                     updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
                                     // Refund held amount back to user's checking account
-                                    syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
+                                    syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                                     notify(true, `Transfer rejected & refunded: ${tx.reference}`);
                                     const rejectUser2 = data.users.find(u => u.email === tx._userEmail);
