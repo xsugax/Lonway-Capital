@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
-import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage, getBankAccounts, getNotifications, saveNotifications } from '../lib/store';
+import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage, getBankAccounts, saveBankAccounts, getNotifications, saveNotifications } from '../lib/store';
 import { sendTransferNotification, sendTransferReceipt } from '../lib/email';
 import {
   createTransaction, migrateLegacyTransfers,
@@ -336,8 +336,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         if (checking) {
           checking.balance = Math.round(Math.max(0, checking.balance - reviewData.total) * 100) / 100;
           checking.recentActivity = `Transfer hold: -$${reviewData.total.toFixed(2)} → ${reviewData.recipientName}`;
-          const { saveBankAccounts: saveBankAcctsFn } = await import('../lib/store');
-          saveBankAcctsFn(bankAccts, user.email);
+          saveBankAccounts(bankAccts, user.email);
         }
       }
 

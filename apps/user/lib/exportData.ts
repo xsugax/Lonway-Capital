@@ -23,7 +23,7 @@ function escCsv(v: string): string {
 
 function gatherData(email: string): { rows: ExportTransaction[]; accountName: string; accountNumber: string } {
   const accounts = getBankAccounts(email);
-  const checking = accounts.find((a: any) => a.type === 'checking') || accounts[0];
+  const checking = accounts.find((a: any) => a.type === 'Checking') || accounts[0];
   const transfers = getTransfers(email);
 
   const rows: ExportTransaction[] = [];
