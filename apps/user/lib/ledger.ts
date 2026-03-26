@@ -132,7 +132,7 @@ export interface AuditEntry {
 
 const VALID_TRANSITIONS: Record<TransactionStatus, TransactionStatus[]> = {
   initiated:  ['pending', 'failed'],
-  pending:    ['processing', 'failed', 'reversed'],
+  pending:    ['processing', 'completed', 'failed', 'reversed'],
   processing: ['completed', 'failed', 'reversed'],
   completed:  ['reversed'],
   failed:     [],             // Terminal state

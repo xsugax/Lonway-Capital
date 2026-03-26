@@ -341,6 +341,39 @@ function writeUserNotification(base: string, email: string, notif: any) {
   } catch {}
 }
 
+// ── Core Ledger Sync (reads/writes the user app's core ledger in localStorage) ──
+const CORE_TX_KEY = 'londway_core_transactions';
+
+function getCoreTransactions(): any[] {
+  try {
+    const raw = localStorage.getItem(CORE_TX_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function updateCoreTransactionStatus(txId: string, newStatus: string, actor: string, detail?: string) {
+  const all = getCoreTransactions();
+  const idx = all.findIndex((t: any) => t.id === txId);
+  if (idx === -1) return;
+  const now = new Date().toISOString();
+  const prevStatus = all[idx].status;
+  all[idx].status = newStatus;
+  all[idx].updatedAt = now;
+  if (newStatus === 'completed') all[idx].completedAt = now;
+  if (newStatus === 'processing') all[idx].processedAt = now;
+  if (newStatus === 'reversed') all[idx].reversedAt = now;
+  if (!all[idx].auditTrail) all[idx].auditTrail = [];
+  all[idx].auditTrail.push({
+    timestamp: now,
+    action: 'STATUS_CHANGE',
+    actor,
+    detail: detail || `Status changed from ${prevStatus} to ${newStatus}`,
+    prevStatus,
+    newStatus,
+  });
+  localStorage.setItem(CORE_TX_KEY, JSON.stringify(all));
+}
+
 // ── Styles ─────────────────────────────────────────────────────
 const cardS = (extra?: React.CSSProperties): React.CSSProperties => ({
   background: S2, borderRadius: 16, border: '1px solid rgba(196,160,82,0.1)', padding: '1.5rem', ...extra,
@@ -909,6 +942,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                       <span style={{ color: G, fontWeight: 800 }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       <button style={btnP} onClick={() => {
                         updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
+                        updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
                         addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                         notify(true, `Transfer approved: ${tx.reference}`);
                         // Send receipt email + in-app notification
@@ -922,6 +956,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                       }}>✓ Approve</button>
                       <button style={btnD} onClick={() => {
                         updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
+                        updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
                         // Refund held amount back to user's checking account
                         syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                         addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
@@ -1075,6 +1110,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                 <>
                                   <button style={btnP} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'approved' });
+                                    updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
                                     addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                     notify(true, `Transfer approved: ${tx.reference}`);
                                     const approveUser2 = data.users.find(u => u.email === tx._userEmail);
@@ -1087,6 +1123,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                   }}>✓ Approve</button>
                                   <button style={btnD} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
+                                    updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
                                     // Refund held amount back to user's checking account
                                     syncUserBankAccounts(tx._userEmail, Number(tx.amount), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
