@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 // LONDWAY CAPITAL — PDF RECEIPT GENERATOR
-// Client-side PDF generation using canvas → PDF without dependencies
+// Professional HTML/CSS receipt with branded logo — Save as PDF
 // ═══════════════════════════════════════════════════════════════════
 
 import type { Transaction } from './ledger';
@@ -22,109 +22,20 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
 }
 
-/** Generate and download a professional PDF receipt for a transaction. */
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Generate and open a professional HTML/CSS receipt for printing/saving as PDF. */
 export async function downloadReceipt(tx: Transaction): Promise<void> {
-  const W = 595; // A4 width in points (72dpi)
-  const H = 842; // A4 height in points
-
-  const canvas = document.createElement('canvas');
-  canvas.width = W * 2; // 2x for retina
-  canvas.height = H * 2;
-  const ctx = canvas.getContext('2d')!;
-  ctx.scale(2, 2);
-
-  // Colors
-  const GOLD = '#C4A052';
-  const DARK = '#0D1628';
-  const BG = '#FFFFFF';
-  const MUTED = '#6B7280';
-  const LIGHT_BG = '#FAF8F4';
-  const BORDER = '#E5E1D8';
-  const SUCCESS_GREEN = '#16A34A';
-  const FAIL_RED = '#DC2626';
-
-  // Background
-  ctx.fillStyle = BG;
-  ctx.fillRect(0, 0, W, H);
-
-  // ─── Header Band ───
-  const headerH = 95;
-  ctx.fillStyle = DARK;
-  ctx.fillRect(0, 0, W, headerH);
-
-  // Gold accent line
-  ctx.fillStyle = GOLD;
-  ctx.fillRect(0, headerH, W, 3);
-
-  // Logo text
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 22px Inter, Helvetica, Arial, sans-serif';
-  ctx.fillText('LONDWAY', 40, 42);
-  ctx.fillStyle = GOLD;
-  ctx.fillText(' CAPITAL', 40 + ctx.measureText('LONDWAY').width, 42);
-
-  ctx.fillStyle = 'rgba(196,160,82,0.5)';
-  ctx.font = '8px Inter, Helvetica, Arial, sans-serif';
-  ctx.fillText('PREMIUM PRIVATE BANKING', 40, 58);
-
-  // Receipt label
-  ctx.fillStyle = GOLD;
-  ctx.font = 'bold 10px Inter, Helvetica, Arial, sans-serif';
-  ctx.fillText('TRANSFER RECEIPT', 40, 80);
-
-  // Date on right
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.font = '9px Inter, Helvetica, Arial, sans-serif';
-  const dateStr = formatDate(tx.createdAt);
-  ctx.fillText(dateStr, W - 40 - ctx.measureText(dateStr).width, 42);
-
-  // Reference on right
-  ctx.fillStyle = GOLD;
-  ctx.font = 'bold 10px Inter, Helvetica, Arial, sans-serif';
-  ctx.fillText(tx.reference, W - 40 - ctx.measureText(tx.reference).width, 80);
-
-  let y = headerH + 30;
-
-  // ─── Status banner ───
-  const statusColor = ['completed', 'processing'].includes(tx.status) ? SUCCESS_GREEN
-    : ['failed', 'reversed'].includes(tx.status) ? FAIL_RED : GOLD;
+  const statusColor = ['completed', 'processing'].includes(tx.status) ? '#16A34A'
+    : ['failed', 'reversed'].includes(tx.status) ? '#DC2626' : '#C4A052';
   const statusLabel = tx.status.toUpperCase();
 
-  ctx.fillStyle = statusColor + '12';
-  roundRect(ctx, 40, y, W - 80, 36, 8);
-  ctx.fill();
-  ctx.strokeStyle = statusColor + '40';
-  ctx.lineWidth = 1;
-  roundRect(ctx, 40, y, W - 80, 36, 8);
-  ctx.stroke();
+  const hashData = `${tx.id}|${tx.reference}|${tx.amount}|${tx.senderEmail}|${tx.createdAt}`;
+  const hash = receiptHash(hashData);
 
-  ctx.fillStyle = statusColor;
-  ctx.font = 'bold 11px Inter, Helvetica, Arial, sans-serif';
-  const statusText = `STATUS: ${statusLabel}`;
-  ctx.fillText(statusText, W / 2 - ctx.measureText(statusText).width / 2, y + 22);
-  y += 54;
-
-  // ─── Amount highlight ───
-  ctx.fillStyle = LIGHT_BG;
-  roundRect(ctx, 40, y, W - 80, 70, 10);
-  ctx.fill();
-  ctx.strokeStyle = GOLD + '35';
-  ctx.lineWidth = 1;
-  roundRect(ctx, 40, y, W - 80, 70, 10);
-  ctx.stroke();
-
-  ctx.fillStyle = MUTED;
-  ctx.font = 'bold 9px Inter, Helvetica, Arial, sans-serif';
-  const amtLabel = 'AMOUNT TRANSFERRED';
-  ctx.fillText(amtLabel, W / 2 - ctx.measureText(amtLabel).width / 2, y + 22);
-
-  ctx.fillStyle = DARK;
-  ctx.font = 'bold 28px Inter, Helvetica, Arial, sans-serif';
-  const amtStr = formatCurrency(tx.amount, tx.currency);
-  ctx.fillText(amtStr, W / 2 - ctx.measureText(amtStr).width / 2, y + 52);
-  y += 90;
-
-  // ─── Details Table ───
+  // Build detail rows
   const rows: [string, string][] = [
     ['Transaction ID', tx.id],
     ['Reference', tx.reference],
@@ -134,12 +45,11 @@ export async function downloadReceipt(tx: Transaction): Promise<void> {
     ['Recipient', tx.recipientName],
     ['Recipient Account', tx.recipientAccountName],
   ];
-
   if (tx.iban) rows.push(['IBAN', tx.iban]);
-  if (tx.swift) rows.push(['SWIFT/BIC', tx.swift]);
+  if (tx.swift) rows.push(['SWIFT / BIC', tx.swift]);
   if (tx.routingNumber) rows.push(['Routing Number', tx.routingNumber]);
   if (tx.country) rows.push(['Country', tx.country]);
-  if (tx.recipientBankName) rows.push(['Bank', tx.recipientBankName]);
+  if (tx.recipientBankName) rows.push(['Recipient Bank', tx.recipientBankName]);
   if (tx.fee > 0) rows.push(['Wire Fee', formatCurrency(tx.fee, tx.currency)]);
   if (tx.fxRate) rows.push(['FX Rate', `1 ${tx.fxFromCurrency} = ${tx.fxRate} ${tx.fxToCurrency}`]);
   if (tx.convertedAmount) rows.push(['Converted Amount', formatCurrency(tx.convertedAmount, tx.fxToCurrency || tx.currency)]);
@@ -147,216 +57,257 @@ export async function downloadReceipt(tx: Transaction): Promise<void> {
   if (tx.completedAt) rows.push(['Completed At', formatDate(tx.completedAt)]);
   rows.push(['Status', tx.status.toUpperCase()]);
 
-  // Table header
-  ctx.fillStyle = GOLD + '12';
-  roundRect(ctx, 40, y, W - 80, 28, 6);
-  ctx.fill();
-  ctx.fillStyle = GOLD;
-  ctx.font = 'bold 9px Inter, Helvetica, Arial, sans-serif';
-  ctx.fillText('TRANSFER DETAILS', 54, y + 18);
-  y += 34;
+  const detailRowsHtml = rows.map(([label, value], i) => `
+    <tr style="background:${i % 2 === 0 ? '#FAF8F4' : '#FFFFFF'}">
+      <td style="padding:10px 16px;font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #E5E1D8;width:40%">${escapeHtml(label)}</td>
+      <td style="padding:10px 16px;font-size:11.5px;color:#0D1628;font-weight:600;text-align:right;border-bottom:1px solid #E5E1D8">${escapeHtml(value)}</td>
+    </tr>
+  `).join('');
 
-  // Table rows
-  const rowH = 26;
-  for (let i = 0; i < rows.length; i++) {
-    const [label, value] = rows[i];
-    if (i % 2 === 0) {
-      ctx.fillStyle = LIGHT_BG;
-      ctx.fillRect(40, y, W - 80, rowH);
-    }
-
-    ctx.fillStyle = MUTED;
-    ctx.font = '600 8.5px Inter, Helvetica, Arial, sans-serif';
-    ctx.fillText(label.toUpperCase(), 54, y + 17);
-
-    ctx.fillStyle = DARK;
-    ctx.font = value.length > 30 ? '9px Inter, Helvetica, Arial, sans-serif' : 'bold 9.5px Inter, Helvetica, Arial, sans-serif';
-    const valWidth = ctx.measureText(value).width;
-    ctx.fillText(value, W - 54 - valWidth, y + 17);
-
-    // Row separator
-    ctx.strokeStyle = BORDER;
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(40, y + rowH);
-    ctx.lineTo(W - 40, y + rowH);
-    ctx.stroke();
-
-    y += rowH;
-  }
-
-  y += 20;
-
-  // ─── Audit Trail (condensed) ───
-  if (tx.auditTrail.length > 0 && y + 80 < H - 120) {
-    ctx.fillStyle = GOLD + '12';
-    roundRect(ctx, 40, y, W - 80, 28, 6);
-    ctx.fill();
-    ctx.fillStyle = GOLD;
-    ctx.font = 'bold 9px Inter, Helvetica, Arial, sans-serif';
-    ctx.fillText('AUDIT TRAIL', 54, y + 18);
-    y += 34;
-
-    for (const entry of tx.auditTrail.slice(0, 5)) {
-      if (y + 20 > H - 120) break;
-      ctx.fillStyle = MUTED;
-      ctx.font = '8px Inter, Helvetica, Arial, sans-serif';
+  // Build audit trail HTML
+  let auditHtml = '';
+  if (tx.auditTrail && tx.auditTrail.length > 0) {
+    const auditRows = tx.auditTrail.slice(0, 6).map((entry, i) => {
       const ts = new Date(entry.timestamp).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
-      ctx.fillText(`${ts}  —  ${entry.action}`, 54, y + 12);
-      ctx.fillStyle = '#9CA3AF';
-      ctx.font = '7.5px Inter, Helvetica, Arial, sans-serif';
-      const detail = entry.detail.length > 80 ? entry.detail.slice(0, 77) + '...' : entry.detail;
-      ctx.fillText(detail, 54, y + 23);
-      y += 30;
-    }
+      const detail = entry.detail.length > 90 ? entry.detail.slice(0, 87) + '...' : entry.detail;
+      return `
+        <tr style="background:${i % 2 === 0 ? '#FAF8F4' : '#FFFFFF'}">
+          <td style="padding:8px 16px;font-size:10px;color:#6B7280;border-bottom:1px solid #E5E1D8;white-space:nowrap">${escapeHtml(ts)}</td>
+          <td style="padding:8px 16px;font-size:10px;color:#0D1628;font-weight:600;border-bottom:1px solid #E5E1D8">${escapeHtml(entry.action)}</td>
+          <td style="padding:8px 16px;font-size:10px;color:#9CA3AF;border-bottom:1px solid #E5E1D8">${escapeHtml(detail)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    auditHtml = `
+      <table style="width:100%;border-collapse:collapse;margin-top:28px">
+        <thead>
+          <tr><td colspan="3" style="background:rgba(196,160,82,0.08);padding:10px 16px;border-radius:6px 6px 0 0">
+            <span style="font-size:10px;font-weight:700;color:#C4A052;letter-spacing:1.5px;text-transform:uppercase">Audit Trail</span>
+          </td></tr>
+        </thead>
+        <tbody>${auditRows}</tbody>
+      </table>
+    `;
   }
 
-  // ─── Footer ───
-  const footerY = H - 80;
-
-  // Separator line
-  ctx.strokeStyle = BORDER;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(40, footerY);
-  ctx.lineTo(W - 40, footerY);
-  ctx.stroke();
-
-  // Integrity hash
-  const hashData = `${tx.id}|${tx.reference}|${tx.amount}|${tx.senderEmail}|${tx.createdAt}`;
-  const hash = receiptHash(hashData);
-
-  ctx.fillStyle = MUTED;
-  ctx.font = '7px Inter, Helvetica, Arial, sans-serif';
-  ctx.fillText(`Document Integrity: SHA-${hash}`, 40, footerY + 16);
-  ctx.fillText(`Generated: ${new Date().toISOString()}`, 40, footerY + 28);
-
-  // Compliance disclaimer
-  ctx.fillStyle = '#9CA3AF';
-  ctx.font = '6.5px Inter, Helvetica, Arial, sans-serif';
-  ctx.fillText('This is a computer-generated receipt. No signature is required.', 40, footerY + 44);
-  ctx.fillText('256-bit SSL Encryption  ·  FDIC Insured  ·  SOC 2 Type II Certified', 40, footerY + 56);
-
-  // Londway Capital on right
-  ctx.fillStyle = GOLD;
-  ctx.font = 'bold 8px Inter, Helvetica, Arial, sans-serif';
-  const footerBrand = 'LONDWAY CAPITAL';
-  ctx.fillText(footerBrand, W - 40 - ctx.measureText(footerBrand).width, footerY + 16);
-  ctx.fillStyle = MUTED;
-  ctx.font = '7px Inter, Helvetica, Arial, sans-serif';
-  const footerUrl = 'londwaycapital.com';
-  ctx.fillText(footerUrl, W - 40 - ctx.measureText(footerUrl).width, footerY + 28);
-  const footerEmail = 'support@londwaycapital.com';
-  ctx.fillText(footerEmail, W - 40 - ctx.measureText(footerEmail).width, footerY + 40);
-
-  // ─── Convert canvas to PDF blob and download ───
-  const dataUrl = canvas.toDataURL('image/png', 1.0);
-  const imgData = atob(dataUrl.split(',')[1]);
-  const imgBytes = new Uint8Array(imgData.length);
-  for (let i = 0; i < imgData.length; i++) imgBytes[i] = imgData.charCodeAt(i);
-
-  // Minimal PDF with embedded PNG image
-  const pdf = buildMinimalPDF(imgBytes, W, H);
-  const blob = new Blob([pdf.buffer as ArrayBuffer], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Londway_Receipt_${tx.reference}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-/** Rounded rectangle helper for canvas */
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-/** Build a minimal valid PDF file with an embedded PNG image (no external libs) */
-function buildMinimalPDF(pngBytes: Uint8Array, pageW: number, pageH: number): Uint8Array {
-  const enc = new TextEncoder();
-  const parts: Uint8Array[] = [];
-  const offsets: number[] = [];
-  let offset = 0;
-
-  function write(s: string) {
-    const b = enc.encode(s);
-    parts.push(b);
-    offset += b.length;
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receipt — ${escapeHtml(tx.reference)} — Londway Capital</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html, body { font-family:'Inter',system-ui,-apple-system,sans-serif; background:#E8E4DD; }
+  @page { size:A4 portrait; margin:0; }
+  @media print {
+    html, body { background:#fff; }
+    .no-print { display:none !important; }
+    .receipt-page { box-shadow:none !important; margin:0 !important; }
   }
-
-  function writeBytes(b: Uint8Array) {
-    parts.push(b);
-    offset += b.length;
+  .receipt-page {
+    width:210mm; min-height:297mm; margin:24px auto; background:#FFFFFF;
+    box-shadow:0 4px 40px rgba(0,0,0,0.12); position:relative; overflow:hidden;
   }
-
-  function markObj() {
-    offsets.push(offset);
+  /* ── Header ── */
+  .header {
+    background:linear-gradient(135deg,#0D1628 0%,#162038 60%,#1A2744 100%);
+    padding:36px 48px 32px; position:relative; overflow:hidden;
   }
-
-  // Header
-  write('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
-
-  // Obj 1: Catalog
-  markObj();
-  write('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
-
-  // Obj 2: Pages
-  markObj();
-  write(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`);
-
-  // Obj 3: Page
-  markObj();
-  write(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /XObject << /Img 5 0 R >> >> >>\nendobj\n`);
-
-  // Obj 4: Content stream (draw image full page)
-  const contentStr = `q\n${pageW} 0 0 ${pageH} 0 0 cm\n/Img Do\nQ\n`;
-  const contentBytes = enc.encode(contentStr);
-  markObj();
-  write(`4 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n`);
-  writeBytes(contentBytes);
-  write('\nendstream\nendobj\n');
-
-  // Obj 5: Image XObject (PNG)
-  markObj();
-  write(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pageW * 2} /Height ${pageH * 2} /Filter /FlateDecode /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length ${pngBytes.length} >>\nstream\n`);
-  writeBytes(pngBytes);
-  write('\nendstream\nendobj\n');
-
-  // XRef
-  const xrefOffset = offset;
-  write('xref\n');
-  write(`0 ${offsets.length + 1}\n`);
-  write('0000000000 65535 f \n');
-  for (const o of offsets) {
-    write(String(o).padStart(10, '0') + ' 00000 n \n');
+  .header::after {
+    content:''; position:absolute; top:0; right:0; width:260px; height:100%;
+    background:radial-gradient(ellipse at 80% 50%, rgba(196,160,82,0.08) 0%, transparent 70%);
   }
-
-  // Trailer
-  write(`trailer\n<< /Size ${offsets.length + 1} /Root 1 0 R >>\n`);
-  write(`startxref\n${xrefOffset}\n%%EOF\n`);
-
-  // Combine
-  let total = 0;
-  for (const p of parts) total += p.length;
-  const result = new Uint8Array(total);
-  let pos = 0;
-  for (const p of parts) {
-    result.set(p, pos);
-    pos += p.length;
+  .header-content { display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1; }
+  /* ── LOGO ── */
+  .logo-block { display:flex; align-items:center; gap:14px; }
+  .logo-mark {
+    width:52px; height:52px; border-radius:12px; position:relative;
+    background:linear-gradient(145deg,#C4A052 0%,#D4B76A 45%,#A88B3C 100%);
+    box-shadow:0 2px 12px rgba(196,160,82,0.35); display:flex; align-items:center; justify-content:center;
   }
-  return result;
+  .logo-mark-inner {
+    width:44px; height:44px; border-radius:8px; border:2px solid rgba(255,255,255,0.25);
+    display:flex; align-items:center; justify-content:center; position:relative;
+  }
+  .logo-letter {
+    font-size:24px; font-weight:900; color:#0D1628; letter-spacing:-1px;
+    line-height:1; text-shadow:0 1px 0 rgba(255,255,255,0.2);
+  }
+  .logo-text { display:flex; flex-direction:column; }
+  .logo-name {
+    font-size:22px; font-weight:800; letter-spacing:2px; color:#FFFFFF; line-height:1.1;
+  }
+  .logo-name span { color:#C4A052; }
+  .logo-tagline {
+    font-size:8.5px; font-weight:500; color:rgba(196,160,82,0.55); letter-spacing:3px;
+    text-transform:uppercase; margin-top:4px;
+  }
+  .header-right { text-align:right; }
+  .header-label {
+    font-size:10px; font-weight:700; color:#C4A052; letter-spacing:2px;
+    text-transform:uppercase; margin-bottom:8px;
+  }
+  .header-date { font-size:10px; color:rgba(255,255,255,0.5); margin-bottom:4px; }
+  .header-ref { font-size:11px; color:#C4A052; font-weight:700; font-family:monospace; }
+  /* ── Gold bar ── */
+  .gold-bar { height:3px; background:linear-gradient(90deg,#C4A052,#D4B76A,#C4A052); }
+  /* ── Body ── */
+  .body { padding:32px 48px 40px; }
+  /* Status */
+  .status-bar {
+    text-align:center; padding:12px 24px; border-radius:8px; margin-bottom:28px;
+    font-size:12px; font-weight:700; letter-spacing:1.5px;
+  }
+  /* Amount */
+  .amount-box {
+    background:#FAF8F4; border:1px solid rgba(196,160,82,0.2); border-radius:12px;
+    padding:24px; text-align:center; margin-bottom:28px;
+  }
+  .amount-label {
+    font-size:10px; font-weight:700; color:#6B7280; letter-spacing:2px;
+    text-transform:uppercase; margin-bottom:8px;
+  }
+  .amount-value {
+    font-size:34px; font-weight:800; color:#0D1628; letter-spacing:-0.5px;
+  }
+  .amount-words {
+    font-size:10px; color:#9CA3AF; font-style:italic; margin-top:6px;
+  }
+  /* Details table */
+  .details-table { width:100%; border-collapse:collapse; }
+  .details-table thead td {
+    background:rgba(196,160,82,0.08); padding:10px 16px;
+    border-radius:6px 6px 0 0;
+  }
+  .section-head {
+    font-size:10px; font-weight:700; color:#C4A052; letter-spacing:1.5px;
+    text-transform:uppercase;
+  }
+  /* ── Footer ── */
+  .footer {
+    position:absolute; bottom:0; left:0; right:0; padding:0 48px 32px;
+  }
+  .footer-line { border-top:1px solid #E5E1D8; padding-top:16px; }
+  .footer-grid { display:flex; justify-content:space-between; align-items:flex-end; }
+  .footer-left {}
+  .footer-hash { font-size:8.5px; color:#9CA3AF; font-family:monospace; margin-bottom:3px; }
+  .footer-gen { font-size:8.5px; color:#9CA3AF; margin-bottom:10px; }
+  .footer-disclaimer { font-size:8px; color:#B0ADA6; line-height:1.5; max-width:340px; }
+  .footer-right { text-align:right; }
+  .footer-brand { font-size:10px; font-weight:800; color:#C4A052; letter-spacing:1.5px; margin-bottom:3px; }
+  .footer-url { font-size:8.5px; color:#6B7280; margin-bottom:2px; }
+  .footer-email { font-size:8.5px; color:#6B7280; }
+  .footer-badges {
+    display:flex; gap:8px; justify-content:flex-end; margin-top:8px;
+  }
+  .badge {
+    font-size:7px; font-weight:700; color:#6B7280; letter-spacing:0.5px;
+    border:1px solid #E5E1D8; border-radius:3px; padding:3px 6px;
+    text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+  <!-- Save button -->
+  <div class="no-print" style="text-align:center;padding:18px">
+    <button onclick="window.print()"
+      style="padding:12px 36px;background:linear-gradient(135deg,#C4A052,#D4B76A);color:#0D1628;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:0.5px;box-shadow:0 2px 12px rgba(196,160,82,0.3)">
+      Save as PDF
+    </button>
+  </div>
+
+  <div class="receipt-page">
+    <!-- Header with Logo -->
+    <div class="header">
+      <div class="header-content">
+        <div class="logo-block">
+          <div class="logo-mark">
+            <div class="logo-mark-inner">
+              <span class="logo-letter">LC</span>
+            </div>
+          </div>
+          <div class="logo-text">
+            <div class="logo-name">LONDWAY <span>CAPITAL</span></div>
+            <div class="logo-tagline">Premium Private Banking</div>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="header-label">Transfer Receipt</div>
+          <div class="header-date">${escapeHtml(formatDate(tx.createdAt))}</div>
+          <div class="header-ref">${escapeHtml(tx.reference)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="gold-bar"></div>
+
+    <!-- Body -->
+    <div class="body">
+      <!-- Bank Address -->
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:9px;color:#9CA3AF;letter-spacing:0.5px">Londway Capital Holdings Ltd.&ensp;·&ensp;456 Financial District, Suite 2100&ensp;·&ensp;New York, NY 10005</div>
+      </div>
+
+      <!-- Status -->
+      <div class="status-bar" style="background:${statusColor}10;border:1px solid ${statusColor}30;color:${statusColor}">
+        STATUS: ${escapeHtml(statusLabel)}
+      </div>
+
+      <!-- Amount -->
+      <div class="amount-box">
+        <div class="amount-label">Amount Transferred</div>
+        <div class="amount-value">${escapeHtml(formatCurrency(tx.amount, tx.currency))}</div>
+      </div>
+
+      <!-- Transfer Details -->
+      <table class="details-table">
+        <thead>
+          <tr><td colspan="2"><span class="section-head">Transfer Details</span></td></tr>
+        </thead>
+        <tbody>
+          ${detailRowsHtml}
+        </tbody>
+      </table>
+
+      <!-- Audit Trail -->
+      ${auditHtml}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-line">
+        <div class="footer-grid">
+          <div class="footer-left">
+            <div class="footer-hash">Document Integrity: SHA-${hash}</div>
+            <div class="footer-gen">Generated: ${new Date().toISOString()}</div>
+            <div class="footer-disclaimer">
+              This is a computer-generated receipt. No signature is required.<br>
+              Londway Capital Holdings Ltd. is a registered financial institution.
+            </div>
+          </div>
+          <div class="footer-right">
+            <div class="footer-brand">LONDWAY CAPITAL</div>
+            <div class="footer-url">londwaycapital.com</div>
+            <div class="footer-email">support@londwaycapital.com</div>
+            <div class="footer-badges">
+              <span class="badge">256-bit SSL</span>
+              <span class="badge">FDIC Insured</span>
+              <span class="badge">SOC 2 Type II</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=860,height=1100');
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
 }
 
 /** Quick receipt download from transaction data (for use in history tables) */
