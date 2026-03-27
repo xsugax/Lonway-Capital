@@ -64,6 +64,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
   const [localRecipient, setLocalRecipient] = useState('');
   const [localRouting, setLocalRouting] = useState('');
   const [localAccountNum, setLocalAccountNum] = useState('');
+  const [localBankName, setLocalBankName] = useState('');
   const [localAmount, setLocalAmount] = useState('');
   const [localMemo, setLocalMemo] = useState('');
   // International fields
@@ -249,7 +250,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       accountNumber: isLocal ? localAccountNum : undefined,
       iban: isLocal ? undefined : intlIban,
       swift: isLocal ? undefined : intlSwift,
-      bankName: isLocal ? undefined : intlBankName,
+      bankName: isLocal ? localBankName : intlBankName,
       country: isLocal ? 'United States' : intlCountry,
       amount: amt,
       currency: isLocal ? 'USD' : intlCurrency,
@@ -325,6 +326,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         createdAt: new Date().toISOString(),
         fee: reviewData.fee + (reviewData.fxFee || 0),
         ...(reviewData.country ? { country: reviewData.country } : {}),
+        ...(reviewData.bankName ? { bankName: reviewData.bankName } : {}),
       };
       const all = getTransfers(user?.email);
       all.unshift(legacyTransfer);
@@ -370,7 +372,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       }
 
       setSubmitResult({ ok: true, message: `Transfer submitted successfully. Pending admin review.${reviewData.fee > 0 ? ` Wire fee: $${reviewData.fee.toFixed(2)}` : ''}${reviewData.fxRate ? ` FX Rate: 1 USD = ${reviewData.fxRate} ${reviewData.currency}` : ''}`, ref: ledgerTx.reference });
-      setLocalRecipient(''); setLocalRouting(''); setLocalAccountNum(''); setLocalAmount(''); setLocalMemo('');
+      setLocalRecipient(''); setLocalRouting(''); setLocalAccountNum(''); setLocalBankName(''); setLocalAmount(''); setLocalMemo('');
       setIntlName(''); setIntlIban(''); setIntlSwift(''); setIntlBankName(''); setIntlCountry(''); setIntlCurrency('EUR'); setIntlAmount(''); setIntlMemo('');
       setReviewData(null);
       fetchHistory();
@@ -565,6 +567,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
                     </div>
                     {parseFloat(localAmount) >= 1000 && <div style={{ color: colors.textFaint, fontSize: '0.75rem', marginTop: 6 }}>💡 Wire fee: $15.00 for transfers ≥ $1,000</div>}
                   </div>
+                  <div style={{ marginBottom: 16 }}><label style={lbl}>Bank Name</label><input style={inp} value={localBankName} onChange={e => setLocalBankName(e.target.value)} placeholder="e.g. Chase, Bank of America" /></div>
                   <div style={{ marginBottom: 20 }}><label style={lbl}>Memo (Optional)</label><input style={inp} value={localMemo} onChange={e => setLocalMemo(e.target.value)} placeholder="e.g. Rent for July" /></div>
                 </>
               ) : (

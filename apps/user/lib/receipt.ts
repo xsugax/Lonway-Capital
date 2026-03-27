@@ -323,6 +323,7 @@ export function downloadReceiptFromLegacy(transfer: {
   description?: string;
   createdAt: string;
   country?: string;
+  bankName?: string;
 }, senderName: string, senderEmail: string): void {
   // Convert legacy format to Transaction shape for the PDF generator
   const mockTx: Transaction = {
@@ -340,6 +341,7 @@ export function downloadReceiptFromLegacy(transfer: {
     recipientAccountId: transfer.toAccountId || 'external',
     recipientAccountName: transfer.recipientName,
     recipientName: transfer.recipientName,
+    recipientBankName: transfer.bankName,
     country: transfer.country,
     transferType: transfer.type,
     fee: 0,
