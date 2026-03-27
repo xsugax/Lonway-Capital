@@ -883,14 +883,17 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         {/* ═══ OVERVIEW ═══ */}
         {tab === 'overview' && (
           <>
+            {/* ── Stats Row ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
               <Stat label="Total Clients" value={data.users.length} sub={`${data.users.filter(u => !u.frozen).length} active`} />
               <Stat label="AUM" value={fmtMoney(totalBalance)} />
-              <Stat label="Pending" value={pending.length + flagged.length} sub={`${pending.length} pending · ${flagged.length} flagged`} color={pending.length > 0 ? G : '#50C878'} />
-              <Stat label="Frozen" value={data.users.filter(u => u.frozen).length} color={data.users.some(u => u.frozen) ? '#ff4d4f' : '#50C878'} />
+              <Stat label="Pending Transfers" value={pendingUserTransfers.length} sub={`${pending.length} admin · ${pendingUserTransfers.length} user`} color={pendingUserTransfers.length > 0 ? '#F59E0B' : '#50C878'} />
+              <Stat label="Flagged" value={flagged.length} color={flagged.length > 0 ? '#ff4d4f' : '#50C878'} />
               <Stat label="KYC Verified" value={data.users.filter(u => u.kyc).length} sub={`of ${data.users.length}`} color="#50C878" />
-              <Stat label="Transactions" value={data.transactions.length} color="#A2B2BF" />
+              <Stat label="Total Transactions" value={data.transactions.length + userTransfers.length} sub={`${data.transactions.length} admin · ${userTransfers.length} user`} color="#A2B2BF" />
             </div>
+
+            {/* ── Quick Actions ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: '1.5rem' }}>
               {[
                 { label: '+ Create User', action: () => setNewUserModal(true), c: G },
@@ -921,70 +924,154 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 }}>{a.label}</button>
               ))}
             </div>
+
+            {/* ── Pending Approval — FULL TABLE ── */}
             <div style={cardS({ marginBottom: '1.5rem' })}>
-                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.9rem' }}>🔔 PENDING APPROVAL ({pending.length + pendingUserTransfers.length})</h3>
-                {pending.length === 0 && pendingUserTransfers.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '1.5rem 0', color: SL, fontSize: '0.85rem' }}>
-                    <div style={{ fontSize: '1.6rem', marginBottom: 8 }}>✅</div>
-                    No pending transfers — all clear. New user transfers will appear here automatically.
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ margin: 0, color: G, fontWeight: 700, fontSize: '1rem' }}>🔔 Pending Approval ({pending.length + pendingUserTransfers.length})</h3>
+                <span style={{ fontSize: '0.72rem', color: SL }}>Auto-refreshes every 5s</span>
+              </div>
+              {pending.length === 0 && pendingUserTransfers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem 0', color: SL, fontSize: '0.88rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: 10 }}>✅</div>
+                  No pending transfers — all clear.<br />
+                  <span style={{ fontSize: '0.78rem', color: 'rgba(96,112,126,0.6)' }}>New user transfers will appear here automatically.</span>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 750 }}>
+                    <thead>
+                      <tr>{['Source','Ref','Recipient','Type','Amount','Fee','Date','Actions'].map(h =>
+                        <th key={h} style={{ ...thS, background: 'rgba(196,160,82,0.06)' }}>{h}</th>
+                      )}</tr>
+                    </thead>
+                    <tbody>
+                      {/* Admin-created pending transactions */}
+                      {pending.map(tx => (
+                        <tr key={tx.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)' }}>
+                          <td style={{ ...tdS, fontSize: '0.72rem' }}><span style={{ background: 'rgba(162,178,191,0.1)', color: '#A2B2BF', borderRadius: 5, padding: '2px 8px', fontSize: '0.68rem', fontWeight: 700 }}>ADMIN</span></td>
+                          <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{tx.reference}</td>
+                          <td style={{ ...tdS, fontWeight: 600 }}>{tx.recipientName || tx.userName}</td>
+                          <td style={tdS}><span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
+                          <td style={{ ...tdS, fontWeight: 700, color: G }}>{fmtMoney(tx.amount)}</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.78rem' }}>—</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(tx.createdAt)}</td>
+                          <td style={tdS}>
+                            <div style={{ display: 'flex', gap: 5 }}>
+                              <button style={btnP} onClick={() => changeTransactionStatus(tx, 'completed')}>✓ Approve</button>
+                              <button style={btnD} onClick={() => changeTransactionStatus(tx, 'rejected')}>✕ Reject</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {/* User-submitted transfer requests */}
+                      {pendingUserTransfers.map((tx: any) => (
+                        <tr key={tx.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)', background: 'rgba(245,158,11,0.03)' }}>
+                          <td style={{ ...tdS, fontSize: '0.72rem' }}><span style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', borderRadius: 5, padding: '2px 8px', fontSize: '0.68rem', fontWeight: 700 }}>USER</span></td>
+                          <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{tx.reference}</td>
+                          <td style={{ ...tdS, fontWeight: 600 }}>
+                            {tx.recipientName}
+                            <div style={{ fontSize: '0.7rem', color: SL, marginTop: 1 }}>{tx._userEmail}</div>
+                          </td>
+                          <td style={tdS}><span style={{ background: tx.type === 'international' ? 'rgba(88,166,255,0.08)' : 'rgba(196,160,82,0.08)', color: tx.type === 'international' ? '#58a6ff' : G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
+                          <td style={{ ...tdS, fontWeight: 700, color: G }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.78rem' }}>{tx.fee ? `$${Number(tx.fee).toFixed(2)}` : '—'}</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '—'}</td>
+                          <td style={tdS}>
+                            <div style={{ display: 'flex', gap: 5 }}>
+                              <button style={btnP} onClick={() => {
+                                updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
+                                updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
+                                addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
+                                notify(true, `Transfer approved: ${tx.reference}`);
+                                const approveUser = data.users.find(u => u.email === tx._userEmail);
+                                sendApprovalReceiptEmail(tx._userEmail, approveUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName, tx.type, tx.toAccountId).catch(() => {});
+                                writeUserNotification('londway_notifications', tx._userEmail, {
+                                  id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
+                                  message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
+                                });
+                                setData({ ...data });
+                              }}>✓ Approve</button>
+                              <button style={btnD} onClick={() => {
+                                updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
+                                updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
+                                syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
+                                addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
+                                notify(true, `Transfer rejected & refunded: ${tx.reference}`);
+                                const rejectUser = data.users.find(u => u.email === tx._userEmail);
+                                sendRejectionEmail(tx._userEmail, rejectUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName).catch(() => {});
+                                writeUserNotification('londway_notifications', tx._userEmail, {
+                                  id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
+                                  message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. The amount has been refunded to your account.`,
+                                });
+                                setData({ ...data });
+                              }}>✕ Reject</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* ── Recent Activity Summary ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+              {/* Latest user transfers (all statuses) */}
+              <div style={cardS()}>
+                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.95rem' }}>↗ Recent User Transfers ({userTransfers.length})</h3>
+                {userTransfers.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: SL, padding: '1.5rem 0', fontSize: '0.85rem' }}>No user transfers yet</div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr>{['Ref','Recipient','Amount','Status'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {[...userTransfers].reverse().slice(0, 8).map((tx: any) => (
+                          <tr key={tx.id}>
+                            <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.7rem', color: G }}>{tx.reference}</td>
+                            <td style={{ ...tdS, fontSize: '0.82rem' }}>{tx.recipientName}</td>
+                            <td style={{ ...tdS, fontWeight: 700, fontSize: '0.82rem' }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td style={tdS}><Badge status={tx.status || 'pending'} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {userTransfers.length > 8 && (
+                      <button onClick={() => setTab('transactions')} style={{ display: 'block', width: '100%', marginTop: 10, background: 'transparent', border: `1px solid rgba(196,160,82,0.15)`, color: G, borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'Inter' }}>View all {userTransfers.length} transfers →</button>
+                    )}
                   </div>
-                )}{(pending.length > 0 || pendingUserTransfers.length > 0) && (<>
-                {pending.slice(0, 5).map(tx => (
-                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)', flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <span style={{ color: IV, fontWeight: 600 }}>{tx.userName}</span>
-                      <span style={{ marginLeft: 8, color: SL, fontSize: '0.78rem' }}>{tx.reference} · {tx.type}</span>
-                      <div style={{ color: SL, fontSize: '0.75rem', marginTop: 2 }}>{tx.description}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ color: G, fontWeight: 800 }}>{fmtMoney(tx.amount)}</span>
-                      <button style={btnP} onClick={() => changeTransactionStatus(tx, 'completed')}>✓ Approve</button>
-                      <button style={btnD} onClick={() => changeTransactionStatus(tx, 'rejected')}>✕ Reject</button>
-                    </div>
+                )}
+              </div>
+
+              {/* Frozen / blocked accounts */}
+              <div style={cardS()}>
+                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.95rem' }}>⚠ Account Alerts</h3>
+                {data.users.filter(u => u.frozen || u.blocked || !u.kyc).length === 0 ? (
+                  <div style={{ textAlign: 'center', color: SL, padding: '1.5rem 0', fontSize: '0.85rem' }}>All accounts in good standing</div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr>{['Client','Balance','Status','Action'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {data.users.filter(u => u.frozen || u.blocked || !u.kyc).map(u => (
+                          <tr key={u.id}>
+                            <td style={{ ...tdS, fontWeight: 600 }}>{u.name}</td>
+                            <td style={{ ...tdS, color: G, fontWeight: 700 }}>{fmtMoney(u.balance)}</td>
+                            <td style={tdS}>
+                              {u.frozen && <span style={{ background: 'rgba(255,77,79,0.1)', color: '#ff4d4f', borderRadius: 5, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700 }}>FROZEN</span>}
+                              {u.blocked && <span style={{ background: 'rgba(255,140,0,0.1)', color: '#ff8c00', borderRadius: 5, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700, marginLeft: u.frozen ? 4 : 0 }}>BLOCKED</span>}
+                              {!u.kyc && <span style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B', borderRadius: 5, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700, marginLeft: (u.frozen || u.blocked) ? 4 : 0 }}>NO KYC</span>}
+                            </td>
+                            <td style={tdS}><button style={btnG} onClick={() => setTab('users')}>Manage</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
-                {pendingUserTransfers.slice(0, 5).map((tx: any) => (
-                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)', flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <span style={{ color: IV, fontWeight: 600 }}>{tx.recipientName}</span>
-                      <span style={{ marginLeft: 8, color: SL, fontSize: '0.78rem' }}>{tx.reference} · {tx.type}</span>
-                      <div style={{ color: SL, fontSize: '0.75rem', marginTop: 2 }}>{tx.description || 'User transfer request'}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ color: G, fontWeight: 800 }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <button style={btnP} onClick={() => {
-                        updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
-                        updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
-                        addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
-                        notify(true, `Transfer approved: ${tx.reference}`);
-                        // Send receipt email + in-app notification
-                        const approveUser = data.users.find(u => u.email === tx._userEmail);
-                        sendApprovalReceiptEmail(tx._userEmail, approveUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName, tx.type, tx.toAccountId).catch(() => {});
-                        writeUserNotification('londway_notifications', tx._userEmail, {
-                          id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
-                          message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
-                        });
-                        setData({ ...data });
-                      }}>✓ Approve</button>
-                      <button style={btnD} onClick={() => {
-                        updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
-                        updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
-                        // Refund held amount back to user's checking account
-                        syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
-                        addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
-                        notify(true, `Transfer rejected & refunded: ${tx.reference}`);
-                        const rejectUser = data.users.find(u => u.email === tx._userEmail);
-                        sendRejectionEmail(tx._userEmail, rejectUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName).catch(() => {});
-                        writeUserNotification('londway_notifications', tx._userEmail, {
-                          id: 'notif-' + Date.now(), type: 'error', date: new Date().toISOString(), read: false,
-                          message: `❌ Transfer Rejected — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. The amount has been refunded to your account.`,
-                        });
-                        setData({ ...data });
-                      }}>✕ Reject</button>
-                    </div>
-                  </div>
-                ))}
-            </>)}
+                )}
+              </div>
             </div>
           </>
         )}
@@ -1098,22 +1185,49 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         {/* ═══ TRANSACTIONS ═══ */}
         {tab === 'transactions' && (
           <div style={{ display: 'grid', gap: '1.5rem' }}>
-            {/* User Transfer Requests */}
+            {/* ── Summary Stats Bar ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
+              {[
+                { label: 'User Transfers', value: userTransfers.length, color: G },
+                { label: 'Pending', value: pendingUserTransfers.length, color: pendingUserTransfers.length > 0 ? '#F59E0B' : '#50C878' },
+                { label: 'Admin Transactions', value: filteredTx.length, color: '#A2B2BF' },
+                { label: 'Total Volume', value: fmtMoney([...userTransfers, ...filteredTx].reduce((s: number, t: any) => s + Number(t.amount || 0), 0)), color: G },
+              ].map(s => (
+                <div key={s.label} style={{ background: 'rgba(196,160,82,0.04)', border: '1px solid rgba(196,160,82,0.1)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: '0.68rem', color: SL, marginTop: 3, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── User Transfer Requests ── */}
             <div style={cardS()}>
-              <h2 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '1rem' }}>↗ User Transfer Requests ({userTransfers.length})</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2 style={{ margin: 0, color: G, fontWeight: 700, fontSize: '1rem' }}>↗ User Transfer Requests ({userTransfers.length})</h2>
+                {pendingUserTransfers.length > 0 && (
+                  <span style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', borderRadius: 8, padding: '4px 12px', fontSize: '0.72rem', fontWeight: 700 }}>{pendingUserTransfers.length} AWAITING ACTION</span>
+                )}
+              </div>
               {userTransfers.length === 0 ? (
-                <div style={{ textAlign: 'center', color: SL, padding: '2rem' }}>No transfer requests yet</div>
+                <div style={{ textAlign: 'center', color: SL, padding: '2.5rem 0', fontSize: '0.85rem' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📭</div>
+                  No transfer requests yet. User-submitted transfers will appear here automatically.
+                </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
-                    <thead><tr>{['Ref','Recipient','Type','Amount','Date','Status','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 850 }}>
+                    <thead><tr>{['Sender','Ref','Recipient','Type','Amount','Fee','Date','Status','Actions'].map(h => <th key={h} style={{ ...thS, background: 'rgba(196,160,82,0.04)' }}>{h}</th>)}</tr></thead>
                     <tbody>
                       {[...userTransfers].reverse().map((tx: any) => (
-                        <tr key={tx.id}>
+                        <tr key={tx.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)', background: tx.status === 'pending' ? 'rgba(245,158,11,0.02)' : 'transparent' }}>
+                          <td style={{ ...tdS, fontSize: '0.78rem' }}>
+                            <div style={{ fontWeight: 600 }}>{tx._userEmail}</div>
+                          </td>
                           <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{tx.reference}</td>
                           <td style={{ ...tdS, fontWeight: 600 }}>{tx.recipientName}</td>
-                          <td style={tdS}><span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
+                          <td style={tdS}><span style={{ background: tx.type === 'international' ? 'rgba(88,166,255,0.08)' : 'rgba(196,160,82,0.08)', color: tx.type === 'international' ? '#58a6ff' : G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
                           <td style={{ ...tdS, fontWeight: 700, color: '#ff7875' }}>-{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.78rem' }}>{tx.fee ? `$${Number(tx.fee).toFixed(2)}` : '—'}</td>
                           <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '—'}</td>
                           <td style={tdS}><Badge status={tx.status || 'pending'} /></td>
                           <td style={tdS}>
@@ -1136,7 +1250,6 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                   <button style={btnD} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                     updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
-                                    // Refund held amount back to user's checking account
                                     syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                                     notify(true, `Transfer rejected & refunded: ${tx.reference}`);
@@ -1166,92 +1279,101 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 </div>
               )}
             </div>
-            {/* Admin Transactions */}
+
+            {/* ── Admin Transactions ── */}
             <div style={cardS()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>All Transactions ({filteredTx.length})</h2>
-              <button onClick={() => setNewTxModal(true)} style={{ ...btnP, padding: '8px 16px', fontSize: '0.85rem' }}>+ Create Transaction</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>📊 Admin Transactions ({filteredTx.length})</h2>
+                <button onClick={() => setNewTxModal(true)} style={{ ...btnP, padding: '8px 16px', fontSize: '0.85rem' }}>+ Create Transaction</button>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                  <thead><tr>{['Ref','User','Type','Amount','Description','Date','Status','Actions'].map(h => <th key={h} style={{ ...thS, background: 'rgba(196,160,82,0.04)' }}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {filteredTx.length === 0 ? (
+                      <tr><td colSpan={8} style={{ ...tdS, textAlign: 'center', color: SL, padding: '2.5rem' }}>No admin transactions</td></tr>
+                    ) : [...filteredTx].reverse().map(tx => (
+                      <tr key={tx.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)' }}>
+                        <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{tx.reference}</td>
+                        <td style={{ ...tdS, fontWeight: 600 }}>{tx.userName}</td>
+                        <td style={tdS}><span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
+                        <td style={{ ...tdS, fontWeight: 700, color: ['credit','interest'].includes(tx.type) ? '#50C878' : '#ff7875' }}>
+                          {['credit','interest'].includes(tx.type) ? '+' : '-'}{fmtMoney(tx.amount)}
+                        </td>
+                        <td style={{ ...tdS, color: SL, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</td>
+                        <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(tx.createdAt)}</td>
+                        <td style={tdS}>
+                          <select value={tx.status} onChange={e => changeTransactionStatus(tx, e.target.value)} style={{ background: S2, border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 8px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                            {['pending','completed','approved','flagged','rejected','failed','reversed','cancelled'].map(s => <option key={s}>{s}</option>)}
+                          </select>
+                        </td>
+                        <td style={tdS}>
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            <button style={btnG} onClick={() => setEditTxModal(tx)}>✏</button>
+                            {tx.status === 'pending' && <button style={btnP} onClick={() => changeTransactionStatus(tx, 'completed')}>✓</button>}
+                            <button style={btnD} onClick={() => deleteTransaction(tx)}>🗑</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-                <thead><tr>{['Ref','User','Type','Amount','Description','Date','Status','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
-                <tbody>
-                  {filteredTx.length === 0 ? (
-                    <tr><td colSpan={8} style={{ ...tdS, textAlign: 'center', color: SL, padding: '2rem' }}>No transactions</td></tr>
-                  ) : [...filteredTx].reverse().map(tx => (
-                    <tr key={tx.id}>
-                      <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{tx.reference}</td>
-                      <td style={{ ...tdS, fontWeight: 600 }}>{tx.userName}</td>
-                      <td style={tdS}><span style={{ background: 'rgba(196,160,82,0.08)', color: G, borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
-                      <td style={{ ...tdS, fontWeight: 700, color: ['credit','interest'].includes(tx.type) ? '#50C878' : '#ff7875' }}>
-                        {['credit','interest'].includes(tx.type) ? '+' : '-'}{fmtMoney(tx.amount)}
-                      </td>
-                      <td style={{ ...tdS, color: SL, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</td>
-                      <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(tx.createdAt)}</td>
-                      <td style={tdS}>
-                        <select value={tx.status} onChange={e => changeTransactionStatus(tx, e.target.value)} style={{ background: S2, border: '1px solid rgba(196,160,82,0.2)', color: G, borderRadius: 6, padding: '3px 8px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
-                          {['pending','completed','approved','flagged','rejected','failed','reversed','cancelled'].map(s => <option key={s}>{s}</option>)}
-                        </select>
-                      </td>
-                      <td style={tdS}>
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          <button style={btnG} onClick={() => setEditTxModal(tx)}>✏</button>
-                          {tx.status === 'pending' && <button style={btnP} onClick={() => changeTransactionStatus(tx, 'completed')}>✓</button>}
-                          <button style={btnD} onClick={() => deleteTransaction(tx)}>🗑</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
           </div>
         )}
 
         {/* ═══ FUNDING ═══ */}
         {tab === 'funding' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
             <div style={cardS()}>
-              <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>💰 Quick Fund / Debit</h2>
-              <p style={{ color: SL, fontSize: '0.82rem', lineHeight: 1.7, marginBottom: 20 }}>Credit or debit any account. Backdate optional.</p>
-              <div style={{ display: 'grid', gap: 12 }}>
-                {data.users.map(u => (
-                  <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(196,160,82,0.06)', flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.name}</div>
-                      <div style={{ color: SL, fontSize: '0.75rem' }}>{fmtMoney(u.balance)}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button style={btnP} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>+ Credit</button>
-                      <button style={btnG} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>− Debit</button>
-                    </div>
-                  </div>
-                ))}
+              <h2 style={{ margin: '0 0 16px', color: G, fontWeight: 700, fontSize: '1rem' }}>💰 Quick Fund / Debit</h2>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr>{['Client','Balance','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {data.users.map(u => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)' }}>
+                        <td style={{ ...tdS, fontWeight: 600 }}>{u.name}</td>
+                        <td style={{ ...tdS, color: G, fontWeight: 700 }}>{fmtMoney(u.balance)}</td>
+                        <td style={tdS}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button style={btnP} onClick={() => { setFundModal({ userId: u.id, mode: 'credit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>+ Credit</button>
+                            <button style={btnG} onClick={() => { setFundModal({ userId: u.id, mode: 'debit' }); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate(''); }}>− Debit</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
             <div style={cardS()}>
-              <h2 style={{ margin: '0 0 18px', color: G, fontWeight: 700, fontSize: '1rem' }}>🕐 Backdate Account Creation</h2>
-              <p style={{ color: SL, fontSize: '0.82rem', lineHeight: 1.7, marginBottom: 20 }}>Change when an account was created.</p>
-              <div style={{ display: 'grid', gap: 12 }}>
-                {data.users.map(u => (
-                  <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(196,160,82,0.06)', flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.name}</div>
-                      <div style={{ color: SL, fontSize: '0.75rem' }}>Created: {fmtDate(u.createdAt)}</div>
-                    </div>
-                    <input type="datetime-local" defaultValue={u.createdAt.slice(0, 16)}
-                      onBlur={e => {
-                        if (!e.target.value) return;
-                        const nd = new Date(e.target.value).toISOString();
-                        if (nd === u.createdAt) return;
-                        persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, createdAt: nd } : x) });
-                        addAudit('account_backdated', u.email, `New date: ${fmtDate(nd)}`);
-                        notify(true, `${u.name} creation date updated`);
-                      }}
-                      style={{ ...inp, width: 200, padding: '6px 10px', fontSize: '0.8rem' }} />
-                  </div>
-                ))}
+              <h2 style={{ margin: '0 0 16px', color: G, fontWeight: 700, fontSize: '1rem' }}>🕐 Backdate Account Creation</h2>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr>{['Client','Created','New Date'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {data.users.map(u => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)' }}>
+                        <td style={{ ...tdS, fontWeight: 600 }}>{u.name}</td>
+                        <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(u.createdAt)}</td>
+                        <td style={tdS}>
+                          <input type="datetime-local" defaultValue={u.createdAt.slice(0, 16)}
+                            onBlur={e => {
+                              if (!e.target.value) return;
+                              const nd = new Date(e.target.value).toISOString();
+                              if (nd === u.createdAt) return;
+                              persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, createdAt: nd } : x) });
+                              addAudit('account_backdated', u.email, `New date: ${fmtDate(nd)}`);
+                              notify(true, `${u.name} creation date updated`);
+                            }}
+                            style={{ ...inp, width: 190, padding: '5px 8px', fontSize: '0.78rem' }} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1322,27 +1444,30 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         {tab === 'audit' && (
           <div style={cardS()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>Audit Log ({data.audit.length})</h2>
+              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>📋 Audit Log ({data.audit.length})</h2>
               <button onClick={() => { if (confirm('Clear all audit logs?')) persist({ ...data, audit: [] }); }} style={btnD}>Clear</button>
             </div>
             {data.audit.length === 0 ? (
-              <div style={{ textAlign: 'center', color: SL, padding: '2rem' }}>No audit events</div>
+              <div style={{ textAlign: 'center', color: SL, padding: '2.5rem' }}>No audit events</div>
             ) : (
-              <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
-                {[...data.audit].reverse().map(a => {
-                  const hi = a.action.includes('frozen') || a.action.includes('deleted') || a.action.includes('debit');
-                  return (
-                    <div key={a.id} style={{ padding: '10px 14px', borderBottom: '1px solid rgba(196,160,82,0.05)', display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                      <div style={{ color: SL, fontSize: '0.72rem', whiteSpace: 'nowrap', minWidth: 130, fontFamily: 'monospace' }}>{fmtDate(a.timestamp)}</div>
-                      <div style={{ flex: 1, minWidth: 200 }}>
-                        <span style={{ color: hi ? '#ff7875' : G, fontWeight: 700, fontSize: '0.8rem' }}>[{a.action}]</span>
-                        {a.target && <span style={{ color: IV, fontSize: '0.8rem', marginLeft: 8 }}>{a.target}</span>}
-                        {a.details && <div style={{ color: SL, fontSize: '0.75rem', marginTop: 2 }}>{a.details}</div>}
-                        <div style={{ color: 'rgba(162,178,191,0.5)', fontSize: '0.7rem', marginTop: 2 }}>by {a.admin}</div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div style={{ overflowX: 'auto', maxHeight: '65vh', overflowY: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}><tr>{['Timestamp','Action','Target','Details','Admin'].map(h => <th key={h} style={{ ...thS, background: S2 }}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {[...data.audit].reverse().map(a => {
+                      const hi = a.action.includes('frozen') || a.action.includes('deleted') || a.action.includes('debit') || a.action.includes('rejected');
+                      return (
+                        <tr key={a.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)' }}>
+                          <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: SL, whiteSpace: 'nowrap', minWidth: 135 }}>{fmtDate(a.timestamp)}</td>
+                          <td style={tdS}><span style={{ background: hi ? 'rgba(255,77,79,0.08)' : 'rgba(196,160,82,0.06)', color: hi ? '#ff7875' : G, borderRadius: 5, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700 }}>{a.action}</span></td>
+                          <td style={{ ...tdS, fontWeight: 600, color: IV }}>{a.target || '—'}</td>
+                          <td style={{ ...tdS, color: SL, fontSize: '0.78rem', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.details || '—'}</td>
+                          <td style={{ ...tdS, color: 'rgba(162,178,191,0.6)', fontSize: '0.72rem' }}>{a.admin}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
