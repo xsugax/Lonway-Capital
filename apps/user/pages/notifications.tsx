@@ -2,7 +2,7 @@ import Notifications from '../components/Notifications';
 import Head from 'next/head';
 import React from 'react';
 
-export default function NotificationsPage({ user }: { user: { token: string } }) {
+export default function NotificationsPage({ user }: { user: { token: string; email?: string; name?: string } }) {
   return (
     <>
       <Head>

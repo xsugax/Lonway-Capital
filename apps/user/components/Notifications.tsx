@@ -2,6 +2,21 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getNotifications as loadNotifications, saveNotifications } from '../lib/store';
+import { downloadReceiptFromLegacy } from '../lib/receipt';
+
+interface TransferData {
+  id: string;
+  reference: string;
+  recipientName: string;
+  toAccountId?: string;
+  amount: number;
+  currency: string;
+  type: 'local' | 'international';
+  status: string;
+  description?: string;
+  createdAt: string;
+  country?: string;
+}
 
 interface Notification {
   id: string;
@@ -9,6 +24,7 @@ interface Notification {
   type: string;
   date: string;
   read: boolean;
+  transferData?: TransferData;
 }
 
 function timeAgo(dateStr: string): string {
@@ -27,10 +43,11 @@ const TYPE_ICON: Record<string, string> = {
   success: '✅', error: '❌', warning: '⚠️', info: '🔔',
 };
 
-export default function Notifications({ user }: { user: { token: string; email?: string } }) {
+export default function Notifications({ user }: { user: { token: string; email?: string; name?: string } }) {
   const { colors } = useTheme();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setNotifications(loadNotifications(user?.email));
@@ -60,6 +77,35 @@ export default function Notifications({ user }: { user: { token: string; email?:
 
   const clearAll = () => {
     persist([]);
+  };
+
+  const handleReceiptDownload = (n: Notification) => {
+    setDownloadingId(n.id);
+    try {
+      if (n.transferData) {
+        downloadReceiptFromLegacy(n.transferData, user?.name || 'Account Holder', user?.email || '');
+      } else {
+        // Fallback: extract reference from message and find in transfers store
+        const refMatch = n.message.match(/Ref:\s*([A-Z0-9-]+)/i);
+        if (refMatch) {
+          const { getTransfers } = require('../lib/store');
+          const transfers = getTransfers(user?.email);
+          const found = transfers.find((t: any) => t.reference === refMatch[1]);
+          if (found) {
+            downloadReceiptFromLegacy(found, user?.name || 'Account Holder', user?.email || '');
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Receipt download failed:', e);
+    } finally {
+      setTimeout(() => setDownloadingId(null), 1500);
+    }
+  };
+
+  /** Check if notification is an approved transfer receipt */
+  const isApprovedTransfer = (n: Notification): boolean => {
+    return (n.type === 'success' && n.message.includes('Transfer Approved')) || !!n.transferData;
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -118,6 +164,24 @@ export default function Notifications({ user }: { user: { token: string; email?:
                     fontSize: '0.85rem', lineHeight: 1.45,
                     color: colors.text, fontWeight: n.read ? 400 : 600,
                   }}>{n.message}</div>
+                  {isApprovedTransfer(n) && (
+                    <button
+                      onClick={() => handleReceiptDownload(n)}
+                      disabled={downloadingId === n.id}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        marginTop: 8, background: colors.goldBg || 'rgba(196,160,82,0.08)',
+                        border: `1px solid ${colors.gold}44`, color: colors.gold,
+                        borderRadius: 8, padding: '6px 14px', fontSize: '0.75rem',
+                        fontWeight: 700, cursor: downloadingId === n.id ? 'wait' : 'pointer',
+                        fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+                        opacity: downloadingId === n.id ? 0.6 : 1,
+                      }}
+                    >
+                      <span style={{ fontSize: '0.85rem' }}>{downloadingId === n.id ? '⏳' : '📄'}</span>
+                      {downloadingId === n.id ? 'Generating...' : 'Download Receipt (PDF)'}
+                    </button>
+                  )}
                   <div style={{ fontSize: '0.7rem', color: colors.textMuted, marginTop: 4 }}>
                     {timeAgo(n.date)}
                   </div>

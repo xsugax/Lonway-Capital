@@ -989,6 +989,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                 writeUserNotification('londway_notifications', tx._userEmail, {
                                   id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
                                   message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
+                                  transferData: { id: tx.id, reference: tx.reference, recipientName: tx.recipientName, toAccountId: tx.toAccountId, amount: Number(tx.amount), currency: tx.currency, type: tx.type, status: 'completed', description: tx.description || `${tx.type} transfer`, createdAt: tx.createdAt, country: tx.country },
                                 });
                                 setData({ ...data });
                               }}>✓ Approve</button>
@@ -1244,6 +1245,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                     writeUserNotification('londway_notifications', tx._userEmail, {
                                       id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
                                       message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
+                                      transferData: { id: tx.id, reference: tx.reference, recipientName: tx.recipientName, toAccountId: tx.toAccountId, amount: Number(tx.amount), currency: tx.currency, type: tx.type, status: 'completed', description: tx.description || `${tx.type} transfer`, createdAt: tx.createdAt, country: tx.country },
                                     });
                                     setData({ ...data });
                                   }}>✓ Approve</button>
