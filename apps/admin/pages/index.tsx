@@ -456,6 +456,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   // Settings state
   const [settingsForm, setSettingsForm] = useState(data.settings);
 
+  // Auto-refresh: poll localStorage every 5s so new user transfers appear without manual reload
+  const [, setRefreshTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setRefreshTick(t => t + 1), 5000);
+    return () => clearInterval(iv);
+  }, []);
+
   const aName = adminName || 'God Admin';
   const persist = useCallback((d: typeof data) => { setData(d); saveData(d); }, []);
   const notify = (ok: boolean, msg: string) => { setToast({ ok, msg }); setTimeout(() => setToast(null), 4000); };
@@ -914,9 +921,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 }}>{a.label}</button>
               ))}
             </div>
-            {(pending.length > 0 || pendingUserTransfers.length > 0) && (
-              <div style={cardS({ marginBottom: '1.5rem' })}>
+            <div style={cardS({ marginBottom: '1.5rem' })}>
                 <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.9rem' }}>🔔 PENDING APPROVAL ({pending.length + pendingUserTransfers.length})</h3>
+                {pending.length === 0 && pendingUserTransfers.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '1.5rem 0', color: SL, fontSize: '0.85rem' }}>
+                    <div style={{ fontSize: '1.6rem', marginBottom: 8 }}>✅</div>
+                    No pending transfers — all clear. New user transfers will appear here automatically.
+                  </div>
+                )}{(pending.length > 0 || pendingUserTransfers.length > 0) && (<>
                 {pending.slice(0, 5).map(tx => (
                   <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(196,160,82,0.05)', flexWrap: 'wrap', gap: 8 }}>
                     <div>
@@ -972,8 +984,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
+            </>)}
+            </div>
           </>
         )}
 
