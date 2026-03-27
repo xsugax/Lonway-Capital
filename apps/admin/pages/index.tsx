@@ -6,21 +6,87 @@ const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
 const EJS_TID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME || '';
 const EJS_PK  = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || '';
 
-const LOGO_SVG_ADMIN = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="15.5" stroke="#C4A052" stroke-width="1.3" fill="none"/><path d="M11,27 V15 C11,6.5 25,6.5 25,15 V27" stroke="#C4A052" stroke-width="2" fill="none"/><line x1="7.5" y1="27" x2="28.5" y2="27" stroke="#C4A052" stroke-width="1"/></svg>`;
+// ── LC Monogram Logo (inline HTML, no SVG text — maximum compatibility) ──
+const LC_LOGO_ADMIN = `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
+<td style="width:46px;height:46px;border:2px solid rgba(196,160,82,0.5);border-radius:12px;background:rgba(196,160,82,0.06);text-align:center;vertical-align:middle;font-size:19px;font-weight:bold;color:#C4A052;font-family:Georgia,'Times New Roman',serif;letter-spacing:2px;line-height:46px;">LC</td>
+</tr></table>`;
 
 function receiptEmailHtml(headerLabel: string, body: string) {
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f0eff4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0eff4;padding:40px 16px;"><tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-<tr><td style="background:linear-gradient(135deg,#060913,#0d1628);border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;">
-<table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="vertical-align:middle;padding-right:12px;">${LOGO_SVG_ADMIN}</td><td style="vertical-align:middle;text-align:left;"><div style="font-size:18px;font-weight:800;letter-spacing:0.08em;color:#fff;">LONDWAY <span style="color:#C4A052;">CAPITAL</span></div><div style="font-size:9px;color:rgba(196,160,82,0.55);letter-spacing:0.18em;margin-top:2px;">PREMIUM PRIVATE BANKING</div></td></tr></table>
-<div style="margin-top:16px;display:inline-block;background:rgba(196,160,82,0.12);border:1px solid rgba(196,160,82,0.22);border-radius:20px;padding:4px 16px;font-size:10px;font-weight:700;color:#C4A052;letter-spacing:0.12em;text-transform:uppercase;">${headerLabel}</div>
-</td></tr><tr><td style="background:#fff;padding:36px 40px;">${body}</td></tr>
-<tr><td style="background:#f8f7f4;border-radius:0 0 12px 12px;border-top:1px solid #ede9e0;padding:20px 40px;text-align:center;">
-<p style="margin:0 0 6px;font-size:11px;color:#9ca3af;">&#128274; 256-bit SSL &middot; FDIC Insured &middot; SOC 2 Type II</p>
-<p style="margin:0;font-size:11px;color:#9ca3af;">&copy; 2026 Londway Capital, Inc. &middot; <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a></p>
-</td></tr></table></td></tr></table></body></html>`;
+  const yr = new Date().getFullYear();
+  return `<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/xhtml"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+<title>Londway Capital</title>
+<style>body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0;mso-table-rspace:0;}img{border:0;height:auto;line-height:100%;outline:none;text-decoration:none;}body{height:100%!important;margin:0!important;padding:0!important;width:100%!important;}a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important;}</style></head>
+<body style="margin:0;padding:0;background:#EEEDF2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EEEDF2;">
+<tr><td align="center" style="padding:32px 16px 40px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 2px 24px rgba(0,0,0,0.06);">
+
+  <!-- HEADER -->
+  <tr><td style="background:#0D1628;padding:32px 44px 28px;text-align:center;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
+      <td style="vertical-align:middle;padding-right:14px;">${LC_LOGO_ADMIN}</td>
+      <td style="vertical-align:middle;text-align:left;">
+        <div style="font-size:20px;font-weight:800;letter-spacing:0.06em;color:#FFFFFF;line-height:1.2;">LONDWAY <span style="color:#C4A052;">CAPITAL</span></div>
+        <div style="font-size:8px;color:rgba(196,160,82,0.5);letter-spacing:3.5px;text-transform:uppercase;margin-top:3px;font-weight:700;">PREMIUM PRIVATE BANKING</div>
+      </td>
+    </tr></table>
+    <div style="margin-top:18px;">
+      <span style="display:inline-block;background:rgba(196,160,82,0.1);border:1px solid rgba(196,160,82,0.2);border-radius:20px;padding:5px 18px;font-size:9px;font-weight:800;color:#C4A052;letter-spacing:1.5px;text-transform:uppercase;">${headerLabel}</span>
+    </div>
+  </td></tr>
+
+  <!-- GOLD ACCENT BAR -->
+  <tr><td style="background:linear-gradient(90deg,#C4A052,#D4B76A,#C4A052);height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+  <!-- BODY -->
+  <tr><td style="background:#FFFFFF;padding:40px 44px;">${body}</td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#F8F7F4;border-top:1px solid #EDE9E0;padding:28px 44px 20px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#128274; 256-bit SSL</td>
+        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#127970; FDIC Insured</td>
+        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#9989; SOC 2 Type II</td>
+        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#128737; PCI DSS</td>
+      </tr></table>
+    </td></tr></table>
+    <div style="height:1px;background:#E5E1D8;margin-bottom:16px;"></div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td style="vertical-align:top;width:50%;padding-right:16px;">
+        <div style="font-size:11px;font-weight:800;color:#374151;letter-spacing:0.03em;margin-bottom:5px;">Londway Capital Holdings Ltd.</div>
+        <div style="font-size:10px;color:#9CA3AF;line-height:1.7;">456 Financial District, Suite 2100<br>New York, NY 10005, United States</div>
+      </td>
+      <td style="vertical-align:top;width:50%;text-align:right;">
+        <div style="font-size:10px;color:#9CA3AF;line-height:1.7;">
+          Tel: <a href="tel:+12125550180" style="color:#9CA3AF;text-decoration:none;">+1 (212) 555-0180</a><br>
+          <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a><br>
+          <a href="https://londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">londwaycapital.com</a>
+        </div>
+      </td>
+    </tr></table>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #E5E1D8;">
+      <p style="margin:0 0 8px;font-size:9px;color:#B0ADA6;line-height:1.7;text-align:center;">This email and any attachments are confidential and intended solely for the named recipient. Londway Capital will never ask for your password, PIN, or full card number via email.</p>
+      <p style="margin:0;font-size:9px;color:#B0ADA6;line-height:1.7;text-align:center;">
+        &copy; ${yr} Londway Capital Holdings Ltd. &middot; Member FDIC &middot; Equal Housing Lender &#127968;<br>
+        <a href="https://londwaycapital.com/privacy" style="color:#C4A052;text-decoration:none;font-size:9px;">Privacy Policy</a> &nbsp;&middot;&nbsp;
+        <a href="https://londwaycapital.com/terms" style="color:#C4A052;text-decoration:none;font-size:9px;">Terms of Service</a> &nbsp;&middot;&nbsp;
+        <a href="https://londwaycapital.com/security" style="color:#C4A052;text-decoration:none;font-size:9px;">Security Center</a>
+      </p>
+    </div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
 }
 
 async function sendApprovalReceiptEmail(email: string, userName: string, ref: string, amount: number, currency: string, recipient: string, type: string, account?: string) {
@@ -30,32 +96,49 @@ async function sendApprovalReceiptEmail(email: string, userName: string, ref: st
   }
   const firstName = userName.split(' ')[0];
   const amtFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const typeLabel = type === 'international' ? 'International Wire Transfer' : 'Domestic Transfer';
+  const typeLabel = type === 'international' ? 'International Wire Transfer' : 'Domestic ACH Transfer';
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
   const receiptNo = `RCT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
   const body = `
-<div style="text-align:center;margin-bottom:28px;"><div style="display:inline-block;background:#ecfdf5;border:1.5px solid #86efac;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:26px;margin-bottom:12px;">&#10003;</div>
-<p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#0d1628;">Transfer Approved</p>
-<p style="margin:0;font-size:13px;color:#6b7280;">Your transfer has been reviewed and approved by our compliance team.</p></div>
-<div style="text-align:center;background:linear-gradient(135deg,#faf8f4,#fdf9f0);border:1.5px solid rgba(196,160,82,0.3);border-radius:14px;padding:24px 20px;margin-bottom:28px;">
-<div style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Amount Transferred</div>
-<div style="font-size:36px;font-weight:900;color:#0d1628;line-height:1;">${amtFmt}</div>
-<div style="margin-top:8px;font-size:12px;color:#6b7280;">${typeLabel}</div></div>
-<div style="background:#faf8f4;border:1px solid rgba(196,160,82,0.25);border-radius:10px;overflow:hidden;margin-bottom:24px;">
-<div style="background:rgba(196,160,82,0.08);padding:14px 20px;border-bottom:1px solid rgba(196,160,82,0.15);"><span style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#C4A052;text-transform:uppercase;">Transfer Receipt</span><span style="float:right;font-size:11px;color:#9ca3af;">${dateStr}</span></div>
-<table width="100%" cellpadding="0" cellspacing="0">
-<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;width:40%;border-bottom:1px solid #f0ece4;">Receipt No.</td><td style="padding:12px 20px;font-size:13px;font-weight:700;color:#0d1628;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${receiptNo}</td></tr>
-<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Reference</td><td style="padding:12px 20px;font-size:13px;font-weight:800;color:#C4A052;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${ref}</td></tr>
-<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Sender</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${userName}</td></tr>
-<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Recipient</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${recipient}</td></tr>
-${account ? `<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Account</td><td style="padding:12px 20px;font-size:13px;color:#6b7280;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${account}</td></tr>` : ''}
-<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Amount</td><td style="padding:12px 20px;font-size:15px;font-weight:800;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${amtFmt}</td></tr>
-<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;">Status</td><td style="padding:12px 20px;text-align:right;"><span style="display:inline-block;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:#16a34a;">&#10003; APPROVED</span></td></tr>
-</table></div>
-<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-<p style="margin:0;font-size:13px;color:#15803d;line-height:1.6;">Hello ${firstName}, this confirms your transfer of <strong>${amtFmt}</strong> to <strong>${recipient}</strong> has been approved and is being processed. Please retain this receipt for your records.</p></div>
-<div style="text-align:center;margin-bottom:20px;"><a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#a8873e);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:8px;padding:12px 28px;">View Transfer History &rarr;</a></div>
-<p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">If you have questions about this transfer, contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
+<div style="text-align:center;margin-bottom:28px;">
+  <div style="display:inline-block;background:#ECFDF5;border:2px solid #86EFAC;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:28px;margin-bottom:14px;">&#10003;</div>
+  <p style="margin:0 0 4px;font-size:24px;font-weight:900;color:#0D1628;">Transfer Approved</p>
+  <p style="margin:0;font-size:14px;color:#6B7280;">Your transfer has been reviewed and approved by our compliance team.</p>
+</div>
+
+<div style="text-align:center;background:#FAF8F4;border:2px solid rgba(196,160,82,0.25);border-radius:14px;padding:26px 20px;margin-bottom:28px;">
+  <div style="font-size:9px;font-weight:800;color:#9CA3AF;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Amount Transferred</div>
+  <div style="font-size:38px;font-weight:900;color:#0D1628;letter-spacing:0.02em;line-height:1;">${amtFmt}</div>
+  <div style="margin-top:10px;font-size:12px;color:#6B7280;font-weight:600;">${typeLabel}</div>
+</div>
+
+<div style="background:#FAF8F4;border:1px solid #E5E1D8;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+  <div style="background:#0D1628;padding:12px 24px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="font-size:10px;font-weight:800;letter-spacing:2px;color:#C4A052;text-transform:uppercase;">Transfer Receipt</td>
+      <td style="font-size:10px;color:rgba(255,255,255,0.4);text-align:right;">${dateStr}</td>
+    </tr></table>
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;width:40%;border-bottom:1px solid #EDE9E0;">Receipt No.</td><td style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #EDE9E0;">${receiptNo}</td></tr>
+    <tr style="background:#FDFBF6;"><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Reference</td><td style="padding:14px 24px;font-size:14px;font-weight:800;color:#C4A052;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #EDE9E0;">${ref}</td></tr>
+    <tr><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Sender</td><td style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${userName}</td></tr>
+    <tr style="background:#FDFBF6;"><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Recipient</td><td style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${recipient}</td></tr>
+    ${account ? `<tr><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Account</td><td style="padding:14px 24px;font-size:13px;color:#6B7280;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #EDE9E0;">${account}</td></tr>` : ''}
+    <tr${account ? ' style="background:#FDFBF6;"' : ''}><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Amount</td><td style="padding:14px 24px;font-size:16px;font-weight:800;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${amtFmt}</td></tr>
+    <tr style="background:#FDFBF6;"><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Status</td><td style="padding:14px 24px;text-align:right;"><span style="display:inline-block;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:5px 14px;font-size:10px;font-weight:800;color:#16A34A;letter-spacing:0.5px;">&#10003; APPROVED</span></td></tr>
+  </table>
+</div>
+
+<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+  <p style="margin:0;font-size:13px;color:#15803D;line-height:1.7;">Dear ${firstName}, this confirms your transfer of <strong>${amtFmt}</strong> to <strong>${recipient}</strong> has been approved and is being processed. Please retain this receipt for your records.</p>
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">
+  <a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#A8873E);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:10px;padding:13px 32px;letter-spacing:0.04em;box-shadow:0 2px 8px rgba(196,160,82,0.3);">View Transfer History &rarr;</a>
+</td></tr></table>
+
+<p style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated receipt from Londway Capital. For questions about this transfer, contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a>.</p>`;
   const html = receiptEmailHtml('Transfer Receipt', body);
   try {
     const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -79,21 +162,42 @@ async function sendRejectionEmail(email: string, userName: string, ref: string, 
   const amtFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
   const body = `
-<div style="text-align:center;margin-bottom:28px;"><div style="display:inline-block;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:26px;margin-bottom:12px;">&#10007;</div>
-<p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#0d1628;">Transfer Declined</p>
-<p style="margin:0;font-size:13px;color:#6b7280;">Your transfer request has been reviewed and could not be processed at this time.</p></div>
-<div style="background:#faf8f4;border:1px solid rgba(196,160,82,0.25);border-radius:10px;overflow:hidden;margin-bottom:24px;">
-<div style="background:rgba(196,160,82,0.08);padding:14px 20px;border-bottom:1px solid rgba(196,160,82,0.15);"><span style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#C4A052;text-transform:uppercase;">Transfer Details</span><span style="float:right;font-size:11px;color:#9ca3af;">${dateStr}</span></div>
-<table width="100%" cellpadding="0" cellspacing="0">
-<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;width:40%;border-bottom:1px solid #f0ece4;">Reference</td><td style="padding:12px 20px;font-size:13px;font-weight:800;color:#C4A052;text-align:right;font-family:monospace;border-bottom:1px solid #f0ece4;">${ref}</td></tr>
-<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Recipient</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${recipient}</td></tr>
-<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Amount</td><td style="padding:12px 20px;font-size:15px;font-weight:800;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${amtFmt}</td></tr>
-<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;">Status</td><td style="padding:12px 20px;text-align:right;"><span style="display:inline-block;background:rgba(255,77,79,0.1);border:1px solid rgba(255,77,79,0.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:#ff4d4f;">&#10007; REJECTED</span></td></tr>
-</table></div>
-<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-<p style="margin:0;font-size:13px;color:#991b1b;line-height:1.6;">Hello ${firstName}, your transfer of <strong>${amtFmt}</strong> to <strong>${recipient}</strong> has been declined. The held amount has been fully refunded to your checking account. If you believe this is an error, please contact our support team.</p></div>
-<div style="text-align:center;margin-bottom:20px;"><a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#a8873e);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:8px;padding:12px 28px;">View Transfer History &rarr;</a></div>
-<p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
+<div style="text-align:center;margin-bottom:28px;">
+  <div style="display:inline-block;background:#FEF2F2;border:2px solid #FCA5A5;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:28px;margin-bottom:14px;">&#10007;</div>
+  <p style="margin:0 0 4px;font-size:24px;font-weight:900;color:#0D1628;">Transfer Declined</p>
+  <p style="margin:0;font-size:14px;color:#6B7280;">Your transfer request has been reviewed and could not be processed at this time.</p>
+</div>
+
+<div style="background:#FAF8F4;border:1px solid #E5E1D8;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+  <div style="background:#0D1628;padding:12px 24px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="font-size:10px;font-weight:800;letter-spacing:2px;color:#C4A052;text-transform:uppercase;">Transfer Details</td>
+      <td style="font-size:10px;color:rgba(255,255,255,0.4);text-align:right;">${dateStr}</td>
+    </tr></table>
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;width:40%;border-bottom:1px solid #EDE9E0;">Reference</td><td style="padding:14px 24px;font-size:14px;font-weight:800;color:#C4A052;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #EDE9E0;">${ref}</td></tr>
+    <tr style="background:#FDFBF6;"><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Recipient</td><td style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${recipient}</td></tr>
+    <tr><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Amount</td><td style="padding:14px 24px;font-size:16px;font-weight:800;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${amtFmt}</td></tr>
+    <tr style="background:#FDFBF6;"><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Status</td><td style="padding:14px 24px;text-align:right;"><span style="display:inline-block;background:rgba(255,77,79,0.08);border:1px solid rgba(255,77,79,0.3);border-radius:20px;padding:5px 14px;font-size:10px;font-weight:800;color:#EF4444;letter-spacing:0.5px;">&#10007; DECLINED</span></td></tr>
+  </table>
+</div>
+
+<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:18px 22px;margin-bottom:24px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="vertical-align:top;padding-right:10px;font-size:16px;">&#128337;</td>
+    <td>
+      <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:#991B1B;letter-spacing:0.3px;">Refund Information</p>
+      <p style="margin:0;font-size:12px;color:#991B1B;line-height:1.7;">Dear ${firstName}, your transfer of <strong>${amtFmt}</strong> to <strong>${recipient}</strong> has been declined. The held amount has been <strong>fully refunded</strong> to your checking account. If you believe this is an error, please contact our support team.</p>
+    </td>
+  </tr></table>
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">
+  <a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#A8873E);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:10px;padding:13px 32px;letter-spacing:0.04em;box-shadow:0 2px 8px rgba(196,160,82,0.3);">View Transfer History &rarr;</a>
+</td></tr></table>
+
+<p style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or call <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
   const html = receiptEmailHtml('Transfer Update', body);
   try {
     await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -112,27 +216,49 @@ async function sendFundingEmail(email: string, userName: string, amount: number,
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
   const verb = isCredit ? 'credited to' : 'debited from';
   const icon = isCredit ? '&#10003;' : '&#8595;';
-  const colorBg = isCredit ? '#ecfdf5' : '#fef2f2';
-  const colorBorder = isCredit ? '#86efac' : '#fca5a5';
-  const colorText = isCredit ? '#16a34a' : '#ff4d4f';
+  const colorBg = isCredit ? '#ECFDF5' : '#FEF2F2';
+  const colorBorder = isCredit ? '#86EFAC' : '#FCA5A5';
+  const colorText = isCredit ? '#16A34A' : '#EF4444';
+  const noteBg = isCredit ? '#F0FDF4' : '#FEF2F2';
+  const noteBorder = isCredit ? '#BBF7D0' : '#FECACA';
+  const noteText = isCredit ? '#15803D' : '#991B1B';
   const body = `
-<div style="text-align:center;margin-bottom:28px;"><div style="display:inline-block;background:${colorBg};border:1.5px solid ${colorBorder};border-radius:50%;width:52px;height:52px;line-height:52px;font-size:26px;margin-bottom:12px;">${icon}</div>
-<p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#0d1628;">Account ${isCredit ? 'Credited' : 'Debited'}</p>
-<p style="margin:0;font-size:13px;color:#6b7280;">${amtFmt} has been ${verb} your account.</p></div>
-<div style="text-align:center;background:linear-gradient(135deg,#faf8f4,#fdf9f0);border:1.5px solid rgba(196,160,82,0.3);border-radius:14px;padding:24px 20px;margin-bottom:28px;">
-<div style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">${isCredit ? 'Amount Received' : 'Amount Debited'}</div>
-<div style="font-size:36px;font-weight:900;color:#0d1628;line-height:1;">${amtFmt}</div>
-<div style="margin-top:8px;font-size:12px;color:#6b7280;">${description}</div></div>
-<div style="background:#faf8f4;border:1px solid rgba(196,160,82,0.25);border-radius:10px;overflow:hidden;margin-bottom:24px;">
-<table width="100%" cellpadding="0" cellspacing="0">
-<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;width:40%;border-bottom:1px solid #f0ece4;">Date</td><td style="padding:12px 20px;font-size:13px;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${dateStr}</td></tr>
-<tr style="background:#fdf9f3;"><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;border-bottom:1px solid #f0ece4;">Description</td><td style="padding:12px 20px;font-size:13px;font-weight:600;color:#0d1628;text-align:right;border-bottom:1px solid #f0ece4;">${description}</td></tr>
-<tr><td style="padding:12px 20px;font-size:12px;color:#9ca3af;font-weight:600;text-transform:uppercase;">Status</td><td style="padding:12px 20px;text-align:right;"><span style="display:inline-block;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:${colorText};">COMPLETED</span></td></tr>
-</table></div>
-<div style="background:${isCredit ? '#f0fdf4' : '#fef2f2'};border:1px solid ${isCredit ? '#bbf7d0' : '#fecaca'};border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-<p style="margin:0;font-size:13px;color:${isCredit ? '#15803d' : '#991b1b'};line-height:1.6;">Hello ${firstName}, this email confirms that <strong>${amtFmt}</strong> has been ${verb} your Londway Capital account. Description: <strong>${description}</strong>.</p></div>
-<div style="text-align:center;margin-bottom:20px;"><a href="https://londwaycapital.com/accounts" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#a8873e);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:8px;padding:12px 28px;">View Your Account &rarr;</a></div>
-<p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;">support@londwaycapital.com</a>.</p>`;
+<div style="text-align:center;margin-bottom:28px;">
+  <div style="display:inline-block;background:${colorBg};border:2px solid ${colorBorder};border-radius:50%;width:56px;height:56px;line-height:56px;font-size:28px;margin-bottom:14px;">${icon}</div>
+  <p style="margin:0 0 4px;font-size:24px;font-weight:900;color:#0D1628;">Account ${isCredit ? 'Credited' : 'Debited'}</p>
+  <p style="margin:0;font-size:14px;color:#6B7280;">${amtFmt} has been ${verb} your account.</p>
+</div>
+
+<div style="text-align:center;background:#FAF8F4;border:2px solid rgba(196,160,82,0.25);border-radius:14px;padding:26px 20px;margin-bottom:28px;">
+  <div style="font-size:9px;font-weight:800;color:#9CA3AF;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">${isCredit ? 'Amount Received' : 'Amount Debited'}</div>
+  <div style="font-size:38px;font-weight:900;color:#0D1628;letter-spacing:0.02em;line-height:1;">${amtFmt}</div>
+  <div style="margin-top:10px;font-size:12px;color:#6B7280;font-weight:600;">${description}</div>
+</div>
+
+<div style="background:#FAF8F4;border:1px solid #E5E1D8;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+  <div style="background:#0D1628;padding:12px 24px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="font-size:10px;font-weight:800;letter-spacing:2px;color:#C4A052;text-transform:uppercase;">Transaction Details</td>
+      <td style="font-size:10px;color:rgba(255,255,255,0.4);text-align:right;">${dateStr}</td>
+    </tr></table>
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;width:40%;border-bottom:1px solid #EDE9E0;">Date &amp; Time</td><td style="padding:14px 24px;font-size:13px;color:#0D1628;font-weight:600;text-align:right;border-bottom:1px solid #EDE9E0;">${dateStr}</td></tr>
+    <tr style="background:#FDFBF6;"><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Description</td><td style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${description}</td></tr>
+    <tr><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Amount</td><td style="padding:14px 24px;font-size:16px;font-weight:800;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${amtFmt}</td></tr>
+    <tr style="background:#FDFBF6;"><td style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Status</td><td style="padding:14px 24px;text-align:right;"><span style="display:inline-block;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:5px 14px;font-size:10px;font-weight:800;color:${colorText};letter-spacing:0.5px;">&#10003; COMPLETED</span></td></tr>
+  </table>
+</div>
+
+<div style="background:${noteBg};border:1px solid ${noteBorder};border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+  <p style="margin:0;font-size:13px;color:${noteText};line-height:1.7;">Dear ${firstName}, this email confirms that <strong>${amtFmt}</strong> has been ${verb} your Londway Capital account. Description: <strong>${description}</strong>.</p>
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">
+  <a href="https://londwaycapital.com/accounts" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#A8873E);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:10px;padding:13px 32px;letter-spacing:0.04em;box-shadow:0 2px 8px rgba(196,160,82,0.3);">View Your Account &rarr;</a>
+</td></tr></table>
+
+<p style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or call <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
   const html = receiptEmailHtml(isCredit ? 'Funds Received' : 'Account Update', body);
   try {
     await fetch('https://api.emailjs.com/api/v1.0/email/send', {
