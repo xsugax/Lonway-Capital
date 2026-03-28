@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#060913"/><stop offset="100%" stop-color="#0d1628"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C4A052"/><stop offset="100%" stop-color="#D4B76A"/></linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#bg)"/>
+  <!-- LC Monogram -->
+  <rect x="80" y="100" width="200" height="200" rx="20" fill="none" stroke="#C4A052" stroke-width="2" opacity="0.3"/>
+  <text x="180" y="225" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="100" font-weight="bold" fill="url(#gold)" letter-spacing="8">LC</text>
+  <!-- Full name -->
+  <text x="340" y="195" font-family="Helvetica,Arial,sans-serif" font-size="60" font-weight="bold" fill="#fff" letter-spacing="8">LONDWAY</text>
+  <text x="340" y="260" font-family="Helvetica,Arial,sans-serif" font-size="60" font-weight="300" fill="#fff" letter-spacing="12">CAPITAL</text>
+  <!-- Accent line -->
+  <rect x="340" y="280" width="200" height="3" rx="1.5" fill="url(#gold)" opacity="0.5"/>
+  <!-- Tagline -->
+  <text x="340" y="320" font-family="Helvetica,Arial,sans-serif" font-size="16" fill="#C4A052" letter-spacing="4">PREMIUM PRIVATE BANKING</text>
+</svg>

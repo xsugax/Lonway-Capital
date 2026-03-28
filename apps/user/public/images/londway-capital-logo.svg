@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#060913"/><stop offset="100%" stop-color="#0d1628"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C4A052"/><stop offset="100%" stop-color="#D4B76A"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="64" fill="url(#bg)"/>
+  <!-- Outer ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#C4A052" stroke-width="2" opacity="0.15"/>
+  <!-- Inner ring -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#C4A052" stroke-width="1" opacity="0.1"/>
+  <!-- LC Monogram -->
+  <text x="256" y="280" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="140" font-weight="bold" fill="url(#gold)" letter-spacing="12">LC</text>
+  <!-- Bottom accent line -->
+  <rect x="176" y="310" width="160" height="3" rx="1.5" fill="url(#gold)" opacity="0.4"/>
+</svg>

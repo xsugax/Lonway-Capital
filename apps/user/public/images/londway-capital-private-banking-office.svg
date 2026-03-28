@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#060913"/><stop offset="100%" stop-color="#0d1628"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C4A052"/><stop offset="100%" stop-color="#D4B76A"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Decorative arch motif (top) -->
+  <path d="M570,0 Q570,30 600,30 Q630,30 630,0" fill="none" stroke="#C4A052" stroke-width="1" opacity="0.15"/>
+  <path d="M540,0 Q540,50 600,50 Q660,50 660,0" fill="none" stroke="#C4A052" stroke-width="1" opacity="0.1"/>
+  <!-- Title -->
+  <text x="600" y="75" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#C4A052" letter-spacing="4">LONDWAY CAPITAL</text>
+  <text x="600" y="112" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="32" font-weight="bold" fill="#fff">Private Banking Office</text>
+  <rect x="520" y="126" width="160" height="3" rx="1.5" fill="url(#gold)" opacity="0.5"/>
+  <!-- Interior scene -->
+  <!-- Floor -->
+  <rect x="0" y="440" width="1200" height="190" fill="#0a0e1a"/>
+  <rect x="0" y="440" width="1200" height="1" fill="#C4A052" opacity="0.1"/>
+  <!-- Floor reflection lines -->
+  <g opacity="0.03" stroke="#C4A052" stroke-width="0.5">
+    <line x1="0" y1="480" x2="1200" y2="480"/>
+    <line x1="0" y1="520" x2="1200" y2="520"/>
+    <line x1="0" y1="560" x2="1200" y2="560"/>
+  </g>
+  <!-- Back wall panels -->
+  <rect x="80" y="160" width="1040" height="280" rx="4" fill="#0d1117" stroke="#C4A052" stroke-width="0.5" opacity="0.3"/>
+  <!-- Window panels with city view -->
+  <g transform="translate(100,170)">
+    <!-- Window 1 -->
+    <rect width="300" height="260" rx="3" fill="#060913" stroke="#C4A052" stroke-width="0.5" opacity="0.4"/>
+    <!-- City silhouette through window -->
+    <g opacity="0.15">
+      <rect x="20" y="140" width="30" height="120" fill="#C4A052"/>
+      <rect x="60" y="100" width="25" height="160" fill="#C4A052"/>
+      <rect x="95" y="160" width="35" height="100" fill="#C4A052"/>
+      <rect x="140" y="80" width="28" height="180" fill="#C4A052"/>
+      <rect x="178" y="130" width="22" height="130" fill="#C4A052"/>
+      <rect x="210" y="110" width="32" height="150" fill="#C4A052"/>
+      <rect x="252" y="150" width="28" height="110" fill="#C4A052"/>
+    </g>
+    <!-- Window pane dividers -->
+    <line x1="150" y1="0" x2="150" y2="260" stroke="#C4A052" stroke-width="0.5" opacity="0.2"/>
+    <line x1="0" y1="130" x2="300" y2="130" stroke="#C4A052" stroke-width="0.5" opacity="0.2"/>
+  </g>
+  <!-- Window 2 -->
+  <g transform="translate(450,170)">
+    <rect width="300" height="260" rx="3" fill="#060913" stroke="#C4A052" stroke-width="0.5" opacity="0.4"/>
+    <g opacity="0.15">
+      <rect x="15" y="120" width="35" height="140" fill="#C4A052"/>
+      <rect x="60" y="90" width="28" height="170" fill="#C4A052"/>
+      <rect x="100" y="150" width="25" height="110" fill="#C4A052"/>
+      <rect x="135" y="70" width="40" height="190" fill="#C4A052"/>
+      <rect x="185" y="130" width="30" height="130" fill="#C4A052"/>
+      <rect x="225" y="100" width="25" height="160" fill="#C4A052"/>
+      <rect x="260" y="140" width="25" height="120" fill="#C4A052"/>
+    </g>
+    <line x1="150" y1="0" x2="150" y2="260" stroke="#C4A052" stroke-width="0.5" opacity="0.2"/>
+    <line x1="0" y1="130" x2="300" y2="130" stroke="#C4A052" stroke-width="0.5" opacity="0.2"/>
+  </g>
+  <!-- Window 3 -->
+  <g transform="translate(800,170)">
+    <rect width="300" height="260" rx="3" fill="#060913" stroke="#C4A052" stroke-width="0.5" opacity="0.4"/>
+    <g opacity="0.15">
+      <rect x="20" y="100" width="30" height="160" fill="#C4A052"/>
+      <rect x="60" y="140" width="25" height="120" fill="#C4A052"/>
+      <rect x="95" y="80" width="35" height="180" fill="#C4A052"/>
+      <rect x="140" y="120" width="28" height="140" fill="#C4A052"/>
+      <rect x="178" y="90" width="32" height="170" fill="#C4A052"/>
+      <rect x="220" y="150" width="25" height="110" fill="#C4A052"/>
+      <rect x="255" y="110" width="30" height="150" fill="#C4A052"/>
+    </g>
+    <line x1="150" y1="0" x2="150" y2="260" stroke="#C4A052" stroke-width="0.5" opacity="0.2"/>
+    <line x1="0" y1="130" x2="300" y2="130" stroke="#C4A052" stroke-width="0.5" opacity="0.2"/>
+  </g>
+  <!-- Meeting table (oval) -->
+  <ellipse cx="600" cy="460" rx="280" ry="40" fill="#1a1a2e" stroke="#C4A052" stroke-width="1" opacity="0.5"/>
+  <ellipse cx="600" cy="458" rx="260" ry="32" fill="#16213e" stroke="#C4A052" stroke-width="0.5" opacity="0.3"/>
+  <!-- Table surface detail -->
+  <ellipse cx="600" cy="456" rx="200" ry="22" fill="none" stroke="#C4A052" stroke-width="0.3" opacity="0.15"/>
+  <!-- Chairs (suggested) -->
+  <g opacity="0.3">
+    <!-- Left chairs -->
+    <rect x="350" y="440" width="30" height="40" rx="5" fill="#1a1a2e" stroke="#C4A052" stroke-width="0.5"/>
+    <rect x="420" y="435" width="30" height="40" rx="5" fill="#1a1a2e" stroke="#C4A052" stroke-width="0.5"/>
+    <!-- Right chairs -->
+    <rect x="740" y="435" width="30" height="40" rx="5" fill="#1a1a2e" stroke="#C4A052" stroke-width="0.5"/>
+    <rect x="810" y="440" width="30" height="40" rx="5" fill="#1a1a2e" stroke="#C4A052" stroke-width="0.5"/>
+    <!-- Far side chairs -->
+    <rect x="545" y="425" width="28" height="30" rx="5" fill="#1a1a2e" stroke="#C4A052" stroke-width="0.5"/>
+    <rect x="625" y="425" width="28" height="30" rx="5" fill="#1a1a2e" stroke="#C4A052" stroke-width="0.5"/>
+  </g>
+  <!-- Chandelier / pendant lights -->
+  <g transform="translate(400,148)">
+    <line x1="0" y1="0" x2="0" y2="30" stroke="#C4A052" stroke-width="1" opacity="0.3"/>
+    <circle cx="0" cy="35" r="8" fill="none" stroke="#C4A052" stroke-width="1" opacity="0.3"/>
+    <circle cx="0" cy="35" r="3" fill="#C4A052" opacity="0.4"/>
+  </g>
+  <g transform="translate(600,148)">
+    <line x1="0" y1="0" x2="0" y2="25" stroke="#C4A052" stroke-width="1" opacity="0.3"/>
+    <circle cx="0" cy="30" r="10" fill="none" stroke="#C4A052" stroke-width="1" opacity="0.3"/>
+    <circle cx="0" cy="30" r="4" fill="#C4A052" opacity="0.4"/>
+  </g>
+  <g transform="translate(800,148)">
+    <line x1="0" y1="0" x2="0" y2="30" stroke="#C4A052" stroke-width="1" opacity="0.3"/>
+    <circle cx="0" cy="35" r="8" fill="none" stroke="#C4A052" stroke-width="1" opacity="0.3"/>
+    <circle cx="0" cy="35" r="3" fill="#C4A052" opacity="0.4"/>
+  </g>
+  <!-- LC logo on back wall -->
+  <g transform="translate(555,290)">
+    <rect width="90" height="45" rx="8" fill="none" stroke="#C4A052" stroke-width="1.5" opacity="0.4"/>
+    <text x="45" y="30" text-anchor="middle" font-family="Georgia,serif" font-size="22" font-weight="bold" fill="#C4A052" opacity="0.5" letter-spacing="4">LC</text>
+  </g>
+  <!-- Bottom info bar -->
+  <rect x="0" y="560" width="1200" height="70" fill="rgba(196,160,82,0.03)"/>
+  <rect x="0" y="560" width="1200" height="1" fill="#C4A052" opacity="0.1"/>
+  <text x="200" y="595" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="13" fill="#C4A052" font-weight="bold">Private Consultation Rooms</text>
+  <text x="200" y="615" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="11" fill="#6B7280">Discreet, elegantly appointed spaces</text>
+  <text x="600" y="595" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="13" fill="#C4A052" font-weight="bold">Panoramic City Views</text>
+  <text x="600" y="615" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="11" fill="#6B7280">Premium locations in financial districts</text>
+  <text x="1000" y="595" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="13" fill="#C4A052" font-weight="bold">Dedicated Relationship Managers</text>
+  <text x="1000" y="615" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="11" fill="#6B7280">Personalized wealth advisory services</text>
+</svg>

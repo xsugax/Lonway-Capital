@@ -136,10 +136,13 @@ export default function App({ Component, pageProps }: AppProps) {
         {/* Fallback for crawlers that don't execute JS */}
         <noscript>
           <div style={{ maxWidth: 800, margin: '80px auto', padding: '2rem', fontFamily: 'Inter, sans-serif', color: '#0D1628' }}>
+            <img src="/images/londway-capital-logo-full.svg" alt="Londway Capital — Premium Private Banking Logo" width="600" height="200" style={{ display: 'block', margin: '0 auto 2rem', maxWidth: '100%' }} />
             <h1>Londway Capital — Premium Private Banking & Wealth Management</h1>
             <p>Londway Capital is the private bank for founders, executives, and families who demand more — combining institutional-grade security with the intelligence of modern technology. Trusted by 2.4 million members across 195 countries.</p>
+            <img src="/images/londway-capital-headquarters.svg" alt="Londway Capital headquarters building in the Financial District — a modern glass tower with gold-illuminated windows and the LC logo prominently displayed" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
             <h2>Why Choose Londway Capital</h2>
             <p>Londway Capital delivers an unparalleled private banking experience. Our platform combines centuries of financial wisdom with cutting-edge technology to serve the world&apos;s most discerning clients.</p>
+            <img src="/images/londway-capital-private-banking-office.svg" alt="Londway Capital private banking consultation office — an elegant boardroom with panoramic city views, pendant lighting, and the LC monogram on the wall" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
             <h2>Londway Capital Banking Services</h2>
             <ul>
               <li><strong>Private Banking Accounts</strong> — Premium checking and savings with no monthly fees</li>
@@ -151,8 +154,26 @@ export default function App({ Component, pageProps }: AppProps) {
               <li><strong>Financial Intelligence</strong> — Personalized insights, health scores, and analytics</li>
               <li><strong>Institutional Security</strong> — Military-grade AES-256 encryption, biometric authentication</li>
             </ul>
+            <img src="/images/londway-capital-premium-cards.svg" alt="Londway Capital premium card collection — Standard, Gold Elite, and Black World Elite debit and credit cards with chip, contactless payment, and the LC emblem" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
+            <h2>Mobile Banking &amp; Investment Dashboard</h2>
+            <p>Manage your wealth from anywhere with Londway Capital's award-winning mobile banking app and institutional-grade investment dashboard. Real-time portfolio analytics, instant transfers, and AI-powered insights — all in the palm of your hand.</p>
+            <img src="/images/londway-capital-mobile-banking-app.svg" alt="Londway Capital mobile banking app interface showing account balance, transaction history, quick actions for send and invest, and premium banking features" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
+            <img src="/images/londway-capital-investment-dashboard.svg" alt="Londway Capital investment dashboard with real-time portfolio performance chart, asset allocation breakdown, top holdings list, and dividend income tracking" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
+            <h2>Wealth Management &amp; Global Banking</h2>
+            <p>Londway Capital's wealth management platform has delivered an 18.7% average annual return, consistently outperforming the S&amp;P 500 benchmark. With presence in 12 global offices and support for 32 currencies, we bring institutional-grade wealth management to every corner of the world.</p>
+            <img src="/images/londway-capital-wealth-management.svg" alt="Londway Capital wealth management portfolio analytics showing 5-year growth chart outperforming S&P 500 benchmark with asset allocation — equities, fixed income, real estate, and alternatives" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
+            <img src="/images/londway-capital-global-banking.svg" alt="Londway Capital global banking network map showing 12 offices across New York, London, Dubai, Singapore, Hong Kong, Tokyo, São Paulo, Sydney, Mumbai, and Zurich with 180+ countries served" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
+            <h2>Bank-Grade Security</h2>
+            <p>Your assets are protected by the most advanced security infrastructure in digital banking — AES-256 encryption, multi-factor authentication, 24/7 AI-powered fraud monitoring, SOC 2 Type II certification, PCI DSS Level 1 compliance, and FDIC insurance up to $250,000 per depositor.</p>
+            <img src="/images/londway-capital-security.svg" alt="Londway Capital bank-grade security infrastructure — vault door with AES-256 encryption, multi-factor authentication, 24/7 fraud monitoring, SOC 2 certification, PCI DSS Level 1, and FDIC insurance" width="1200" height="630" style={{ width: '100%', height: 'auto', margin: '1.5rem 0', borderRadius: '8px' }} />
             <h2>About Londway Capital</h2>
             <p>Founded in 2020, Londway Capital has grown to serve over 2.4 million members globally. Londway Capital is FDIC Insured, SOC 2 Type II Certified, regulated by OCC, and a FINRA &amp; SIPC member. Londway Capital offers banking in 8 languages across 195 countries.</p>
+            <h2>Client Reviews</h2>
+            <p><strong>★★★★★ James Wellington:</strong> "Londway Capital has completely transformed how I manage my wealth. The AI-driven investment tools are exceptional, and my portfolio has outperformed the S&amp;P 500 by 12% this year."</p>
+            <p><strong>★★★★★ Alexandra Chen-Morrison:</strong> "As a tech founder, I need banking that moves at the speed of business. Londway Capital delivers — instant global transfers, multi-currency accounts, and the Black World Elite card has been invaluable."</p>
+            <p><strong>★★★★★ Richard Blackstone III:</strong> "I've banked with major institutions for decades, but Londway Capital offers a level of sophistication and technology that traditional banks simply cannot match."</p>
+            <p><strong>★★★★★ Sarah Mitchell-Okonkwo:</strong> "The mobile banking experience is absolutely world-class. Every detail has been carefully considered — from the intuitive dashboard to the real-time investment analytics."</p>
+            <p><strong>★★★★★ Marcus Thornton:</strong> "Londway Capital's Gold Elite account has been a game-changer for our family office. The portfolio analytics are institutional-grade and the 4.8% APY on savings vaults is unmatched."</p>
             <p>Open your free Londway Capital account today at <a href="https://londwaycapital.com">londwaycapital.com</a> — No credit check, no monthly fees, 5-minute setup.</p>
           </div>
         </noscript>
