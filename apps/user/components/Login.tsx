@@ -396,26 +396,40 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         if (rememberMe) localStorage.setItem('londway_remembered_email', lEmail);
         else localStorage.removeItem('londway_remembered_email');
       }
-      // Skip PIN step when no PIN is configured (e.g. admin-provisioned accounts)
-      if (!m.pin) {
-        if (m.faceData) { setLoginStep(2); setTimeout(() => startCam(), 300); }
-        else { onLogin({ name: m.name, token: 'token-' + Date.now(), role: m.role, email: m.email }); }
+      // Send email verification code
+      const code = generateSecureCode();
+      setLGenCode(code);
+      setSending(true);
+      sendVerificationCode(lEmail, code, m.name).then(res => {
+        setSending(false);
+        if (res.success) { setCodeSentMsg(`Code sent to ${lEmail}`); setLoginCodeFallback(false); }
+        else { setLoginCodeFallback(true); setCodeSentMsg(''); }
+        setLoginStep(1); // go to email code step
+      }).catch(() => { setSending(false); setLoginCodeFallback(true); setLoginStep(1); });
+    } else if (loginStep === 1) {
+      // Step 1: Email code verification
+      if (lCode.length !== 6) { setError('Enter the 6-digit code'); return; }
+      if (lCode !== lGenCode) { setError('Incorrect code. Check your email or use the code displayed below.'); return; }
+      // Skip PIN step when no PIN is configured
+      if (!matched?.pin) {
+        if (matched?.faceData) { setLoginStep(3); setTimeout(() => startCam(), 300); }
+        else { onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email }); }
         return;
       }
-      setLoginStep(1); // go to PIN step
-    } else if (loginStep === 1) {
-      // Step 1: PIN verification
+      setLoginStep(2); // go to PIN step
+    } else if (loginStep === 2) {
+      // Step 2: PIN verification
       if (lPin.length !== 4) { setError('Enter your 4-digit PIN'); return; }
       if (matched?.pin && matched.pin !== lPin) { setError('Incorrect PIN'); return; }
       // If account has face data enrolled, proceed to face scan; otherwise login
       if (matched?.faceData) {
-        setLoginStep(2);
+        setLoginStep(3);
         setTimeout(() => startCam(), 300);
       } else {
         onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
       }
-    } else if (loginStep === 2) {
-      // Step 2: Face scan (always succeeds — presence check only)
+    } else if (loginStep === 3) {
+      // Step 3: Face scan (always succeeds — presence check only)
       setScanning(true);
       setTimeout(() => {
         stopCam();
@@ -426,8 +440,9 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   };
 
   const loginBack = () => {
-    if (loginStep === 2) stopCam();
+    if (loginStep === 3) stopCam();
     setError(null);
+    if (loginStep === 1) { setLCode(''); setCodeSentMsg(''); setLoginCodeFallback(false); }
     setLoginStep(Math.max(0, loginStep - 1));
   };
 
@@ -724,7 +739,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       <Err />
       <PinPad pin={lPin} setPin={setLPin} />
       <div style={{ marginTop: 8 }}>
-        <BtnRow onBack={loginBack} onNext={() => { if (lPin.length === 4) loginNext(); else setError('Enter your 4-digit PIN'); }} nextLabel="Verify PIN →" />
+        <BtnRow onBack={loginBack} onNext={() => { if (lPin.length === 4) loginNext(); else setError('Enter your 4-digit PIN'); }} nextLabel={matched?.faceData ? 'Continue →' : 'Sign In →'} />
       </div>
     </div>
   );
@@ -894,7 +909,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           {sending ? 'Sending...' : 'Didn\'t receive it? Resend code →'}
         </span>
       </div>
-      <BtnRow onBack={loginBack} onNext={loginNext} nextLabel={matched?.faceData ? 'Continue →' : 'Sign In →'} />
+      <BtnRow onBack={loginBack} onNext={loginNext} nextLabel={matched?.pin ? 'Continue →' : (matched?.faceData ? 'Continue →' : 'Sign In →')} />
     </div>
   );
 
@@ -947,7 +962,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Main ───
   const REG_LABELS = ['Details', 'Password', 'ID Check', 'Face Scan', 'Verify', 'Set PIN'];
   const LOGIN_LABELS = (() => {
-    const steps = ['Sign In', 'PIN'];
+    const steps = ['Sign In', 'Verify'];
+    if (matched?.pin) steps.push('PIN');
     if (matched?.faceData) steps.push('Face ID');
     return steps;
   })();
@@ -972,8 +988,9 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       <>
         <StepBar steps={LOGIN_LABELS} cur={loginStep} />
         {loginStep === 0 && loginCredentials()}
-        {loginStep === 1 && loginPinStep()}
-        {loginStep === 2 && loginFaceStep()}
+        {loginStep === 1 && loginCodeStep()}
+        {loginStep === 2 && loginPinStep()}
+        {loginStep === 3 && loginFaceStep()}
       </>
     );
   };
