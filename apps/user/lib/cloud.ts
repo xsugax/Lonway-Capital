@@ -159,6 +159,19 @@ export async function cloudGetAllTransfers(): Promise<CloudTransfer[]> {
   } catch { return []; }
 }
 
+/** Get transfers for a specific user by email (for status sync) */
+export async function cloudGetUserTransfers(email: string): Promise<CloudTransfer[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/transfers?sender_email=eq.${encodeURIComponent(email.toLowerCase())}&order=created_at.desc`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
 /** Update a transfer status in Supabase */
 export async function cloudUpdateTransferStatus(id: string, status: string): Promise<boolean> {
   if (!isCloudEnabled()) return false;

@@ -3,14 +3,14 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { getTransfers, saveTransfers, getTierLimits, getDailyUsage, addDailyUsage, getBankAccounts, saveBankAccounts, getNotifications, saveNotifications } from '../lib/store';
-import { sendTransferNotification, sendTransferReceipt } from '../lib/email';
+import { sendTransferNotification } from '../lib/email';
 import {
   createTransaction, migrateLegacyTransfers,
   validateIBAN, validateSWIFT, validateRoutingNumber, validateAccountNumber,
   convertAmount,
 } from '../lib/ledger';
 import { downloadReceiptFromLegacy } from '../lib/receipt';
-import { cloudSaveTransfer } from '../lib/cloud';
+import { cloudSaveTransfer, cloudGetUserTransfers } from '../lib/cloud';
 import type { TierLimits } from '../lib/store';
 
 type TransferType = 'local' | 'international';
@@ -119,6 +119,9 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       } catch {}
       setDailyUsed(getDailyUsage(user.email));
     }
+    // Auto-poll cloud for status updates every 10s
+    const pollId = setInterval(() => { fetchHistory(); }, 10000);
+    return () => clearInterval(pollId);
   }, [user?.email]);
 
   // Real-time FX calculation for international
@@ -170,8 +173,35 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
 
   function fetchHistory() {
     setHistoryLoading(true);
-    setHistory(getTransfers(user?.email));
-    setHistoryLoading(false);
+    const local = getTransfers(user?.email);
+    // Merge cloud statuses: if admin approved/rejected via Supabase, update local
+    if (user?.email) {
+      cloudGetUserTransfers(user.email).then(cloudTxs => {
+        if (cloudTxs.length > 0) {
+          let changed = false;
+          const updated = local.map((lt: any) => {
+            const ct = cloudTxs.find((c: any) => c.id === lt.id);
+            if (ct && ct.status !== lt.status) {
+              changed = true;
+              return { ...lt, status: ct.status };
+            }
+            return lt;
+          });
+          if (changed) {
+            saveTransfers(updated, user?.email);
+            setHistory(updated);
+          } else {
+            setHistory(local);
+          }
+        } else {
+          setHistory(local);
+        }
+        setHistoryLoading(false);
+      }).catch(() => { setHistory(local); setHistoryLoading(false); });
+    } else {
+      setHistory(local);
+      setHistoryLoading(false);
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -334,7 +364,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       saveTransfers(all, user?.email);
 
       // ─── Sync to Supabase for cross-device admin access ───
-      cloudSaveTransfer({
+      const cloudOk = await cloudSaveTransfer({
         id: ledgerTx.id,
         reference: ledgerTx.reference,
         sender_email: user?.email || '',
@@ -350,7 +380,10 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         country: reviewData.country || '',
         bank_name: reviewData.bankName || '',
         created_at: new Date().toISOString(),
-      }).catch(() => {});
+      });
+      if (!cloudOk) {
+        console.warn('[transfer] Cloud sync failed — transfer saved locally only');
+      }
 
       // Deduct from checking
       if (user?.email) {
@@ -369,15 +402,12 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         setDailyUsed(d => d + reviewData.amount);
       }
 
-      // Send emails
+      // Send notification email (receipt is only sent after admin approval)
       let emailSent = false;
       if (user?.email) {
         try {
-          const [notifRes, receiptRes] = await Promise.all([
-            sendTransferNotification(user.email, user.name || 'Valued Client', ledgerTx.reference, reviewData.amount, reviewData.currency, reviewData.recipientName, reviewData.type),
-            sendTransferReceipt(user.email, user.name || 'Valued Client', ledgerTx.reference, reviewData.amount, reviewData.currency, reviewData.recipientName, reviewData.type, reviewData.iban || reviewData.accountNumber),
-          ]);
-          emailSent = notifRes.success || receiptRes.success;
+          const notifRes = await sendTransferNotification(user.email, user.name || 'Valued Client', ledgerTx.reference, reviewData.amount, reviewData.currency, reviewData.recipientName, reviewData.type);
+          emailSent = notifRes.success;
         } catch { emailSent = false; }
 
         const notifs = getNotifications(user.email);
@@ -391,7 +421,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         saveNotifications(notifs, user.email);
       }
 
-      setSubmitResult({ ok: true, message: `Transfer submitted successfully. Pending admin review.${reviewData.fee > 0 ? ` Wire fee: $${reviewData.fee.toFixed(2)}` : ''}${reviewData.fxRate ? ` FX Rate: 1 USD = ${reviewData.fxRate} ${reviewData.currency}` : ''}`, ref: ledgerTx.reference });
+      setSubmitResult({ ok: true, message: `Transfer submitted — awaiting admin approval. You will be notified once approved.${reviewData.fee > 0 ? ` Wire fee: $${reviewData.fee.toFixed(2)}` : ''}${reviewData.fxRate ? ` FX Rate: 1 USD = ${reviewData.fxRate} ${reviewData.currency}` : ''}`, ref: ledgerTx.reference });
       setLocalRecipient(''); setLocalRouting(''); setLocalAccountNum(''); setLocalBankName(''); setLocalAmount(''); setLocalMemo('');
       setIntlName(''); setIntlIban(''); setIntlSwift(''); setIntlBankName(''); setIntlCountry(''); setIntlCurrency('EUR'); setIntlAmount(''); setIntlMemo('');
       setReviewData(null);
