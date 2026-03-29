@@ -792,6 +792,14 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
             if (forgotPw.length < 6) { setError('Password must be at least 6 characters'); return; }
             if (forgotPw !== forgotPwC) { setError('Passwords do not match'); return; }
             updateAccountPassword(forgotEmail, forgotPw);
+            // Send password change security alert email
+            const accounts = getAccounts();
+            const acct = accounts.find(a => a.email === forgotEmail);
+            if (acct) {
+              import('../lib/email').then(({ sendPasswordChangeAlert }) => {
+                sendPasswordChangeAlert(forgotEmail, acct.name || 'Valued Client').catch(() => {});
+              }).catch(() => {});
+            }
             setForgotStep(3);
           }}>Update Password →</button>
         </div>

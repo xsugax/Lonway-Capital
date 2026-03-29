@@ -18,14 +18,43 @@ function receiptEmailHtml(headerLabel: string, body: string) {
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="x-apple-disable-message-reformatting">
 <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>Londway Capital</title>
-<style>body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0;mso-table-rspace:0;}img{border:0;height:auto;line-height:100%;outline:none;text-decoration:none;}body{height:100%!important;margin:0!important;padding:0!important;width:100%!important;}a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important;}</style></head>
-<body style="margin:0;padding:0;background:#EEEDF2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+<style>
+:root{color-scheme:light dark;supported-color-schemes:light dark;}
+body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0;mso-table-rspace:0;}img{border:0;height:auto;line-height:100%;outline:none;text-decoration:none;}body{height:100%!important;margin:0!important;padding:0!important;width:100%!important;}a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important;}
+@keyframes goldShimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+@-webkit-keyframes goldShimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+.lc-accent-bar{background:linear-gradient(90deg,#C4A052 0%,#D4B76A 25%,#F5E6B8 50%,#D4B76A 75%,#C4A052 100%);background-size:200% 100%;-webkit-animation:goldShimmer 3s ease-in-out infinite;animation:goldShimmer 3s ease-in-out infinite;}
+@keyframes subtlePulse{0%,100%{opacity:1;}50%{opacity:0.7;}}.lc-live-badge{-webkit-animation:subtlePulse 2s ease-in-out infinite;animation:subtlePulse 2s ease-in-out infinite;}
+@media (prefers-color-scheme:dark){
+  .lc-body-bg{background:#0B0F1A!important;}
+  .lc-card-bg{background:#111827!important;}
+  .lc-card-body{background:#1A1F2E!important;color:#E5E7EB!important;}
+  .lc-footer-bg{background:#0F1420!important;border-color:#1F2937!important;}
+  .lc-text-primary{color:#F3F4F6!important;}
+  .lc-text-secondary{color:#9CA3AF!important;}
+  .lc-text-muted{color:#6B7280!important;}
+  .lc-info-card{background:#1E293B!important;border-color:#334155!important;}
+  .lc-detail-row{border-color:#1F2937!important;}
+  .lc-detail-alt{background:#111827!important;}
+  .lc-detail-header{background:#060A14!important;}
+  .lc-divider{background:#1F2937!important;}
+  .lc-warn-card{background:#422006!important;border-color:#78350F!important;}
+  .lc-warn-text{color:#FCD34D!important;}
+  .lc-success-card{background:#052E16!important;border-color:#14532D!important;}
+  .lc-success-text{color:#86EFAC!important;}
+  .lc-disclaimer{color:#4B5563!important;}
+  .lc-badge-text{color:#6B7280!important;}
+}
+</style></head>
+<body class="lc-body-bg" style="margin:0;padding:0;background:#EEEDF2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EEEDF2;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lc-body-bg" style="background:#EEEDF2;">
 <tr><td align="center" style="padding:32px 16px 40px;">
 
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 2px 24px rgba(0,0,0,0.06);">
+<table role="presentation" class="lc-card-bg" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);background:#FFFFFF;">
 
   <!-- HEADER -->
   <tr><td style="background:#0D1628;padding:32px 44px 28px;text-align:center;">
@@ -41,41 +70,41 @@ function receiptEmailHtml(headerLabel: string, body: string) {
     </div>
   </td></tr>
 
-  <!-- GOLD ACCENT BAR -->
-  <tr><td style="background:linear-gradient(90deg,#C4A052,#D4B76A,#C4A052);height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+  <!-- ANIMATED GOLD ACCENT BAR -->
+  <tr><td class="lc-accent-bar" style="background:linear-gradient(90deg,#C4A052,#D4B76A,#C4A052);height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
 
   <!-- BODY -->
-  <tr><td style="background:#FFFFFF;padding:40px 44px;">${body}</td></tr>
+  <tr><td class="lc-card-body" style="background:#FFFFFF;padding:40px 44px;">${body}</td></tr>
 
   <!-- FOOTER -->
-  <tr><td style="background:#F8F7F4;border-top:1px solid #EDE9E0;padding:28px 44px 20px;">
+  <tr><td class="lc-footer-bg" style="background:#F8F7F4;border-top:1px solid #EDE9E0;padding:28px 44px 20px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
     <tr><td align="center">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#128274; 256-bit SSL</td>
-        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#127970; FDIC Insured</td>
-        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#9989; SOC 2 Type II</td>
-        <td style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#128737; PCI DSS</td>
+        <td class="lc-badge-text" style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#128274; 256-bit SSL</td>
+        <td class="lc-badge-text" style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#127970; FDIC Insured</td>
+        <td class="lc-badge-text" style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#9989; SOC 2 Type II</td>
+        <td class="lc-badge-text" style="padding:0 10px;font-size:10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">&#128737; PCI DSS</td>
       </tr></table>
     </td></tr></table>
-    <div style="height:1px;background:#E5E1D8;margin-bottom:16px;"></div>
+    <div class="lc-divider" style="height:1px;background:#E5E1D8;margin-bottom:16px;"></div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr>
       <td style="vertical-align:top;width:50%;padding-right:16px;">
-        <div style="font-size:11px;font-weight:800;color:#374151;letter-spacing:0.03em;margin-bottom:5px;">Londway Capital Holdings Ltd.</div>
-        <div style="font-size:10px;color:#9CA3AF;line-height:1.7;">456 Financial District, Suite 2100<br>New York, NY 10005, United States</div>
+        <div class="lc-text-primary" style="font-size:11px;font-weight:800;color:#374151;letter-spacing:0.03em;margin-bottom:5px;">Londway Capital Holdings Ltd.</div>
+        <div class="lc-text-muted" style="font-size:10px;color:#9CA3AF;line-height:1.7;">456 Financial District, Suite 2100<br>New York, NY 10005, United States</div>
       </td>
       <td style="vertical-align:top;width:50%;text-align:right;">
-        <div style="font-size:10px;color:#9CA3AF;line-height:1.7;">
+        <div class="lc-text-muted" style="font-size:10px;color:#9CA3AF;line-height:1.7;">
           Tel: <a href="tel:+12125550180" style="color:#9CA3AF;text-decoration:none;">+1 (212) 555-0180</a><br>
           <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a><br>
           <a href="https://londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">londwaycapital.com</a>
         </div>
       </td>
     </tr></table>
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #E5E1D8;">
-      <p style="margin:0 0 8px;font-size:9px;color:#B0ADA6;line-height:1.7;text-align:center;">This email and any attachments are confidential and intended solely for the named recipient. Londway Capital will never ask for your password, PIN, or full card number via email.</p>
-      <p style="margin:0;font-size:9px;color:#B0ADA6;line-height:1.7;text-align:center;">
+    <div class="lc-divider" style="margin-top:16px;padding-top:14px;border-top:1px solid #E5E1D8;">
+      <p class="lc-disclaimer" style="margin:0 0 8px;font-size:9px;color:#B0ADA6;line-height:1.7;text-align:center;">This email and any attachments are confidential and intended solely for the named recipient. Londway Capital will never ask for your password, PIN, or full card number via email.</p>
+      <p class="lc-disclaimer" style="margin:0;font-size:9px;color:#B0ADA6;line-height:1.7;text-align:center;">
         &copy; ${yr} Londway Capital Holdings Ltd. &middot; Member FDIC &middot; Equal Housing Lender &#127968;<br>
         <a href="https://londwaycapital.com/privacy" style="color:#C4A052;text-decoration:none;font-size:9px;">Privacy Policy</a> &nbsp;&middot;&nbsp;
         <a href="https://londwaycapital.com/terms" style="color:#C4A052;text-decoration:none;font-size:9px;">Terms of Service</a> &nbsp;&middot;&nbsp;
@@ -268,6 +297,152 @@ async function sendFundingEmail(email: string, userName: string, amount: number,
       }),
     });
   } catch {}
+}
+
+// ── Admin-initiated security notification emails ──
+function adminSecurityHash(): string {
+  const arr = new Uint8Array(6);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+async function sendPinChangeAlertAdmin(email: string, userName: string) {
+  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  const firstName = userName.split(' ')[0];
+  const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  const changeId = adminSecurityHash();
+  const body = `
+<div style="text-align:center;margin-bottom:28px;">
+  <div style="display:inline-block;background:rgba(168,85,247,0.08);border:2px solid rgba(168,85,247,0.25);border-radius:50%;width:56px;height:56px;line-height:56px;font-size:24px;margin-bottom:14px;">&#128273;</div>
+  <p class="lc-text-primary" style="margin:0 0 4px;font-size:22px;font-weight:900;color:#0D1628;">PIN Updated</p>
+  <p class="lc-text-secondary" style="margin:0;font-size:14px;color:#6B7280;">Your account PIN has been changed.</p>
+</div>
+<p class="lc-text-primary" style="margin:0 0 24px;font-size:14px;color:#374151;line-height:1.7;">Dear ${firstName}, the security PIN for your Londway Capital account has been updated by a bank administrator. Please use your new PIN for all future authentication.</p>
+<div class="lc-info-card" style="background:#FAF8F4;border:1px solid #E5E1D8;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+  <div class="lc-detail-header" style="background:#0D1628;padding:12px 24px;">
+    <span style="font-size:10px;font-weight:800;letter-spacing:2px;color:#C4A052;text-transform:uppercase;">PIN Change Details</span>
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;width:40%;border-bottom:1px solid #EDE9E0;">Event</td><td class="lc-text-primary lc-detail-row" style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">PIN Changed</td></tr>
+    <tr class="lc-detail-alt" style="background:#FDFBF6;"><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Date &amp; Time</td><td class="lc-text-primary lc-detail-row" style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${dateStr}</td></tr>
+    <tr><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Changed By</td><td class="lc-text-secondary lc-detail-row" style="padding:14px 24px;font-size:13px;font-weight:600;color:#6B7280;text-align:right;border-bottom:1px solid #EDE9E0;">Bank Administrator</td></tr>
+    <tr class="lc-detail-alt" style="background:#FDFBF6;"><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Change ID</td><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;font-weight:800;color:#C4A052;text-align:right;font-family:'Courier New',monospace;letter-spacing:1px;">${changeId}</td></tr>
+  </table>
+</div>
+<div class="lc-warn-card" style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="vertical-align:top;padding-right:10px;font-size:16px;">&#128274;</td>
+    <td>
+      <p class="lc-warn-text" style="margin:0 0 4px;font-size:12px;font-weight:700;color:#92400E;">Important</p>
+      <p class="lc-warn-text" style="margin:0;font-size:12px;color:#92400E;line-height:1.6;">If you did not request this PIN change, contact our security team immediately. Never share your PIN with anyone.</p>
+    </td>
+  </tr></table>
+</div>
+<p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated security notification from Londway Capital.</p>`;
+  const html = receiptEmailHtml('Security Alert', body);
+  try {
+    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
+        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Security Alert: Account PIN Changed | Londway Capital`, html_content: html, reply_to: 'support@londwaycapital.com' },
+      }),
+    });
+    console.info(`[Admin Email] ✓ PIN change alert sent → ${email}`);
+  } catch (err) { console.error('[Admin Email] ✗ PIN change alert failed:', err); }
+}
+
+async function sendAccountFrozenEmailAdmin(email: string, userName: string) {
+  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  const firstName = userName.split(' ')[0];
+  const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  const caseId = `FRZ-${adminSecurityHash()}`;
+  const body = `
+<div style="text-align:center;margin-bottom:28px;">
+  <div style="display:inline-block;background:rgba(239,68,68,0.08);border:2px solid rgba(239,68,68,0.25);border-radius:50%;width:56px;height:56px;line-height:56px;font-size:24px;margin-bottom:14px;">&#10060;</div>
+  <p class="lc-text-primary" style="margin:0 0 4px;font-size:22px;font-weight:900;color:#0D1628;">Account Frozen</p>
+  <p class="lc-text-secondary" style="margin:0;font-size:14px;color:#6B7280;">Your account has been temporarily restricted.</p>
+</div>
+<p class="lc-text-primary" style="margin:0 0 24px;font-size:14px;color:#374151;line-height:1.7;">Dear ${firstName}, your Londway Capital account has been frozen as of <strong class="lc-text-primary" style="color:#0D1628;">${dateStr}</strong>. During this period, all transactions, transfers, and card usage will be suspended.</p>
+<div style="text-align:center;background:#FEF2F2;border:2px solid #FECACA;border-radius:14px;padding:24px 20px;margin-bottom:24px;">
+  <div style="font-size:9px;font-weight:800;color:#DC2626;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Account Status</div>
+  <div style="font-size:28px;font-weight:900;color:#DC2626;letter-spacing:0.04em;line-height:1;">&#128683; FROZEN</div>
+  <div style="margin-top:10px;font-size:11px;color:#991B1B;font-weight:600;">All account activity has been suspended</div>
+</div>
+<div class="lc-info-card" style="background:#FAF8F4;border:1px solid #E5E1D8;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+  <div class="lc-detail-header" style="background:#0D1628;padding:12px 24px;">
+    <span style="font-size:10px;font-weight:800;letter-spacing:2px;color:#C4A052;text-transform:uppercase;">Freeze Details</span>
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;width:40%;border-bottom:1px solid #EDE9E0;">Case Reference</td><td class="lc-detail-row" style="padding:14px 24px;font-size:13px;font-weight:800;color:#C4A052;text-align:right;font-family:'Courier New',monospace;border-bottom:1px solid #EDE9E0;">${caseId}</td></tr>
+    <tr class="lc-detail-alt" style="background:#FDFBF6;"><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #EDE9E0;">Effective Date</td><td class="lc-text-primary lc-detail-row" style="padding:14px 24px;font-size:13px;font-weight:700;color:#0D1628;text-align:right;border-bottom:1px solid #EDE9E0;">${dateStr}</td></tr>
+    <tr><td class="lc-detail-row" style="padding:14px 24px;font-size:12px;color:#9CA3AF;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Restrictions</td><td class="lc-text-primary lc-detail-row" style="padding:14px 24px;font-size:13px;font-weight:700;color:#DC2626;text-align:right;">All Activity Suspended</td></tr>
+  </table>
+</div>
+<div class="lc-info-card" style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:18px 22px;margin-bottom:24px;">
+  <p style="margin:0 0 6px;font-size:11px;font-weight:800;color:#0369A1;letter-spacing:0.5px;text-transform:uppercase;">What Should I Do?</p>
+  <p style="margin:0;font-size:12px;color:#075985;line-height:1.8;">
+    &#8226; Contact your private banker to discuss this restriction<br>
+    &#8226; Provide any requested identity verification documents<br>
+    &#8226; Your funds remain safe and fully protected<br>
+    &#8226; Existing scheduled payments may be temporarily paused
+  </p>
+</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">
+  <a href="mailto:support@londwaycapital.com?subject=Account%20Frozen%20-%20Case%20${encodeURIComponent(caseId)}" style="display:inline-block;background:linear-gradient(135deg,#DC2626,#B91C1C);color:#FFFFFF;font-size:13px;font-weight:800;text-decoration:none;border-radius:10px;padding:13px 32px;letter-spacing:0.04em;box-shadow:0 2px 8px rgba(220,38,38,0.3);">Contact Support Now &rarr;</a>
+</td></tr></table>
+<p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">Reference this case ID when contacting support: <strong style="color:#C4A052;">${caseId}</strong></p>`;
+  const html = receiptEmailHtml('Account Notice', body);
+  try {
+    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
+        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Important: Your Account Has Been Frozen — Case ${caseId} | Londway Capital`, html_content: html, reply_to: 'support@londwaycapital.com' },
+      }),
+    });
+    console.info(`[Admin Email] ✓ Account frozen alert sent → ${email}`);
+  } catch (err) { console.error('[Admin Email] ✗ Account frozen alert failed:', err); }
+}
+
+async function sendAccountUnfrozenEmailAdmin(email: string, userName: string) {
+  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  const firstName = userName.split(' ')[0];
+  const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  const body = `
+<div style="text-align:center;margin-bottom:28px;">
+  <div style="display:inline-block;background:#ECFDF5;border:2px solid #86EFAC;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:28px;margin-bottom:14px;">&#10003;</div>
+  <p class="lc-text-primary" style="margin:0 0 4px;font-size:22px;font-weight:900;color:#0D1628;">Account Restored</p>
+  <p class="lc-text-secondary" style="margin:0;font-size:14px;color:#6B7280;">Your account is now fully active again.</p>
+</div>
+<p class="lc-text-primary" style="margin:0 0 24px;font-size:14px;color:#374151;line-height:1.7;">Dear ${firstName}, we're pleased to inform you that the restrictions on your Londway Capital account have been lifted. Your account is now fully active and all services have been restored.</p>
+<div class="lc-success-card" style="text-align:center;background:#F0FDF4;border:2px solid #86EFAC;border-radius:14px;padding:24px 20px;margin-bottom:24px;">
+  <div class="lc-success-text" style="font-size:9px;font-weight:800;color:#16A34A;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Account Status</div>
+  <div class="lc-success-text" style="font-size:28px;font-weight:900;color:#16A34A;letter-spacing:0.04em;line-height:1;">&#10003; ACTIVE</div>
+  <div class="lc-success-text" style="margin-top:10px;font-size:11px;color:#15803D;font-weight:600;">All services have been restored — ${dateStr}</div>
+</div>
+<div class="lc-success-card" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:18px 22px;margin-bottom:24px;">
+  <p class="lc-success-text" style="margin:0 0 6px;font-size:11px;font-weight:800;color:#15803D;letter-spacing:0.5px;text-transform:uppercase;">Restored Services</p>
+  <p class="lc-success-text" style="margin:0;font-size:12px;color:#15803D;line-height:1.8;">
+    &#10003; Domestic &amp; international transfers<br>
+    &#10003; Card payments and ATM withdrawals<br>
+    &#10003; Online &amp; mobile banking access<br>
+    &#10003; Investment and vault management<br>
+    &#10003; Scheduled &amp; recurring payments resumed
+  </p>
+</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:24px;">
+  <a href="https://londwaycapital.com" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#A8873E);color:#060913;font-size:14px;font-weight:800;text-decoration:none;border-radius:10px;padding:14px 36px;letter-spacing:0.04em;box-shadow:0 2px 8px rgba(196,160,82,0.3);">Access Your Dashboard &rarr;</a>
+</td></tr></table>
+<p class="lc-text-muted" style="margin:0;font-size:11px;color:#9CA3AF;line-height:1.6;text-align:center;">Thank you for your patience. If you have any questions, contact us at <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
+  const html = receiptEmailHtml('Account Restored', body);
+  try {
+    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
+        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Your Account Has Been Restored — Welcome Back | Londway Capital`, html_content: html, reply_to: 'support@londwaycapital.com' },
+      }),
+    });
+    console.info(`[Admin Email] ✓ Account unfrozen alert sent → ${email}`);
+  } catch (err) { console.error('[Admin Email] ✗ Account unfrozen alert failed:', err); }
 }
 
 // ── Types ──────────────────────────────────────────────────────
@@ -761,6 +936,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     notify(true, `PIN updated for ${updated.name}`);
     setPinModal(null);
     setPinValue('');
+    // Send PIN change security alert email to customer
+    sendPinChangeAlertAdmin(updated.email, updated.name).catch(() => {});
     // Sync PIN to cloud
     cloudSaveUser({ email: updated.email, pin }).catch(() => {});
   }
@@ -779,6 +956,12 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     } catch {}
     addAudit(u.frozen ? 'account_unfrozen' : 'account_frozen', u.email);
     notify(true, `${u.name} ${u.frozen ? 'unfrozen' : 'frozen'}`);
+    // Send freeze/unfreeze security alert email to customer
+    if (newFrozen) {
+      sendAccountFrozenEmailAdmin(u.email, u.name).catch(() => {});
+    } else {
+      sendAccountUnfrozenEmailAdmin(u.email, u.name).catch(() => {});
+    }
   }
 
   function toggleKyc(u: User) {

@@ -86,6 +86,10 @@ export default function App({ Component, pageProps }: AppProps) {
     try { localStorage.setItem('londway_session', JSON.stringify(session)); } catch {}
     setShowLogin(false);
     setShowRegister(false);
+    // Send real-time login security alert email (fire-and-forget)
+    import('../lib/email').then(({ sendLoginAlert, getDeviceInfo }) => {
+      sendLoginAlert(u.email, u.name, getDeviceInfo()).catch(() => {});
+    }).catch(() => {});
   }
   function handleLogout() {
     setUser(null);
