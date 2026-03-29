@@ -235,12 +235,25 @@ async function sendViaEmailJS(
   }
   try {
     emailjs.init(EMAILJS_PUBLIC_KEY);
+    // Generate plain text fallback for better deliverability
+    const textContent = htmlContent
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&middot;/g, '·')
+      .replace(/&copy;/g, '©')
+      .replace(/&rarr;/g, '→')
+      .replace(/&#\d+;/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+      .substring(0, 2000);
     await emailjs.send(EMAILJS_SERVICE_ID, templateId, {
       to_email: to,
       to_name: toName,
       from_name: 'Londway Capital',
       subject,
       html_content: htmlContent,
+      text_content: textContent,
       reply_to: 'support@londwaycapital.com',
     });
     console.info(`[Londway Email] ✓ Sent "${subject}" → ${to}`);
@@ -299,7 +312,7 @@ export async function sendVerificationCode(
     <p class="lc-text-muted" style="margin:20px 0 0;font-size:11px;color:#9CA3AF;line-height:1.6;text-align:center;">Didn't request this code? <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">Contact our security team</a> immediately.</p>`;
 
   const html = emailWrapper('Security Verification', body, `${code} is your Londway Capital verification code. Do not share this code.`);
-  const subject = `${code} — Your Londway Capital Verification Code`;
+  const subject = `${code} is your Londway Capital verification code`;
   return sendViaEmailJS(to, userName || '', subject, html, EMAILJS_TEMPLATE_OTP);
 }
 
@@ -362,7 +375,7 @@ export async function sendWelcomeEmail(
     <p class="lc-text-muted" style="margin:0;font-size:11px;color:#9CA3AF;line-height:1.6;text-align:center;">Your dedicated private banking team is available 24/7 at <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
 
   const html = emailWrapper('Account Confirmed', body, `Welcome to Londway Capital, ${firstName}. Your account ${accNo} is now active and verified.`);
-  const subject = `Welcome to Londway Capital — Your Account is Ready`;
+  const subject = `Welcome to Londway Capital — your account is ready`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
@@ -430,13 +443,13 @@ export async function sendTransferNotification(
 
     <!-- CTA -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">
-      <a href="https://londwaycapital.com/transfer" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#A8873E);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:10px;padding:13px 32px;letter-spacing:0.04em;box-shadow:0 2px 8px rgba(196,160,82,0.3);">Track Your Transfer &rarr;</a>
+      <a href="https://londwaycapital.com/transfer#history" style="display:inline-block;background:linear-gradient(135deg,#C4A052,#A8873E);color:#060913;font-size:13px;font-weight:800;text-decoration:none;border-radius:10px;padding:13px 32px;letter-spacing:0.04em;box-shadow:0 2px 8px rgba(196,160,82,0.3);">Track Your Transfer &rarr;</a>
     </td></tr></table>
 
     <p class="lc-text-muted" style="margin:0;font-size:11px;color:#9CA3AF;line-height:1.6;text-align:center;">If you did not initiate this transfer, contact us immediately at <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or call <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
 
   const html = emailWrapper('Transfer Notice', body, `Transfer ${ref} for ${amountFmt} to ${recipient} is pending compliance review.`);
-  const subject = `Transfer ${ref} Received — Pending Review | Londway Capital`;
+  const subject = `Transfer ${ref} received — pending review`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
@@ -515,7 +528,7 @@ export async function sendTransferReceipt(
     <p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated receipt from Londway Capital. For questions about this transfer, contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a>.</p>`;
 
   const html = emailWrapper('Transfer Receipt', body, `Receipt: ${amountFmt} to ${recipient}. Ref: ${ref}. Transfer processed successfully.`);
-  const subject = `Receipt: ${amountFmt} to ${recipient} — ${ref} | Londway Capital`;
+  const subject = `Transfer receipt: ${amountFmt} to ${recipient} (${ref})`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
@@ -591,7 +604,7 @@ export async function sendLoginAlert(
     <p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated security notification from Londway Capital. You receive this email each time someone signs in to your account.</p>`;
 
   const html = emailWrapper('Security Alert', body, `New sign-in to your Londway Capital account from ${device.summary} on ${dateStr}.`);
-  const subject = `Security Alert: New Sign-In to Your Account | Londway Capital`;
+  const subject = `New sign-in to your Londway Capital account`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
@@ -644,7 +657,7 @@ export async function sendPasswordChangeAlert(
     <p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated security notification. You will receive an alert whenever your account credentials are changed.</p>`;
 
   const html = emailWrapper('Security Alert', body, `Your Londway Capital password was changed on ${dateStr}. If this wasn't you, contact support immediately.`);
-  const subject = `Security Alert: Password Changed — Action Required If Not You | Londway Capital`;
+  const subject = `Your Londway Capital password was changed`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
@@ -698,7 +711,7 @@ export async function sendPinChangeAlert(
     <p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated security notification from Londway Capital.</p>`;
 
   const html = emailWrapper('Security Alert', body, `Your Londway Capital PIN was changed on ${dateStr} by ${initiator.toLowerCase()}.`);
-  const subject = `Security Alert: Account PIN Changed | Londway Capital`;
+  const subject = `Your Londway Capital PIN was updated`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
@@ -761,7 +774,7 @@ export async function sendAccountFrozenEmail(
     <p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">Reference this case ID when contacting support: <strong style="color:#C4A052;">${caseId}</strong></p>`;
 
   const html = emailWrapper('Account Notice', body, `Your Londway Capital account has been frozen. Case: ${caseId}. Contact support for assistance.`);
-  const subject = `Important: Your Account Has Been Frozen — Case ${caseId} | Londway Capital`;
+  const subject = `Your Londway Capital account requires attention (${caseId})`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }
 
@@ -813,6 +826,6 @@ export async function sendAccountUnfrozenEmail(
     <p class="lc-text-muted" style="margin:0;font-size:11px;color:#9CA3AF;line-height:1.6;text-align:center;">Thank you for your patience. If you have any questions, contact us at <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
 
   const html = emailWrapper('Account Restored', body, `Great news, ${firstName}! Your Londway Capital account has been fully restored and is now active.`);
-  const subject = `Your Account Has Been Restored — Welcome Back | Londway Capital`;
+  const subject = `Your Londway Capital account has been restored`;
   return sendViaEmailJS(to, userName, subject, html, EMAILJS_TEMPLATE_WELCOME);
 }

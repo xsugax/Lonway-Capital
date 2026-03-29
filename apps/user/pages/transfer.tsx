@@ -10,6 +10,7 @@ import {
   convertAmount,
 } from '../lib/ledger';
 import { downloadReceiptFromLegacy } from '../lib/receipt';
+import { cloudSaveTransfer } from '../lib/cloud';
 import type { TierLimits } from '../lib/store';
 
 type TransferType = 'local' | 'international';
@@ -331,6 +332,25 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       const all = getTransfers(user?.email);
       all.unshift(legacyTransfer);
       saveTransfers(all, user?.email);
+
+      // ─── Sync to Supabase for cross-device admin access ───
+      cloudSaveTransfer({
+        id: ledgerTx.id,
+        reference: ledgerTx.reference,
+        sender_email: user?.email || '',
+        sender_name: user?.name || '',
+        recipient_name: reviewData.recipientName,
+        recipient_account: reviewData.iban || reviewData.accountNumber || '',
+        amount: reviewData.amount,
+        currency: reviewData.currency,
+        fee: reviewData.fee + (reviewData.fxFee || 0),
+        type: reviewData.type,
+        status: 'pending',
+        description: reviewData.memo || (isLocal ? 'Local Transfer' : 'International Wire'),
+        country: reviewData.country || '',
+        bank_name: reviewData.bankName || '',
+        created_at: new Date().toISOString(),
+      }).catch(() => {});
 
       // Deduct from checking
       if (user?.email) {
@@ -696,7 +716,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         </div>
 
         {/* History */}
-        <div style={{ background: colors.surface, borderRadius: 20, border: `1px solid ${colors.border}`, padding: '2rem', marginTop: '2rem' }}>
+        <div id="history" style={{ background: colors.surface, borderRadius: 20, border: `1px solid ${colors.border}`, padding: '2rem', marginTop: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <h2 style={{ color: colors.text, fontWeight: 700, fontSize: '1.1rem', margin: 0 }}>Transfer History</h2>
             <button onClick={fetchHistory} style={{ background: 'transparent', border: `1px solid ${colors.border}`, color: colors.gold, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>↻ Refresh</button>

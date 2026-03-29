@@ -69,3 +69,39 @@ export async function cloudDeleteUser(email: string) {
     );
   } catch (err) { console.error('[cloud] Delete error:', err); }
 }
+
+// ── Transfer cloud functions ──
+
+export async function cloudGetPendingTransfers(): Promise<any[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/transfers?status=eq.pending&order=created_at.desc`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+export async function cloudGetAllTransfers(): Promise<any[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/transfers?order=created_at.desc&limit=500`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+export async function cloudUpdateTransferStatus(id: string, status: string): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/transfers?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify({ status, updated_at: new Date().toISOString() }) }
+    );
+  } catch (err) { console.error('[cloud] Transfer status update error:', err); }
+}

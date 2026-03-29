@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled } from '../lib/cloud';
+import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus } from '../lib/cloud';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -759,8 +759,22 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
   // Auto-refresh: poll localStorage every 5s so new user transfers appear without manual reload
   const [, setRefreshTick] = useState(0);
+  const [cloudTransfers, setCloudTransfers] = useState<any[]>([]);
   useEffect(() => {
-    const iv = setInterval(() => setRefreshTick(t => t + 1), 5000);
+    // Load cloud transfers immediately and on interval
+    const loadCloud = () => {
+      cloudGetPendingTransfers().then(txs => {
+        setCloudTransfers(txs.map(t => ({
+          id: t.id, reference: t.reference, recipientName: t.recipient_name,
+          toAccountId: t.recipient_account, amount: t.amount, currency: t.currency,
+          type: t.type, status: t.status, description: t.description,
+          createdAt: t.created_at, fee: t.fee, country: t.country, bankName: t.bank_name,
+          _userEmail: t.sender_email, _userName: t.sender_name, _source: 'cloud',
+        })));
+      }).catch(() => {});
+    };
+    loadCloud();
+    const iv = setInterval(() => { setRefreshTick(t => t + 1); loadCloud(); }, 5000);
     return () => clearInterval(iv);
   }, []);
 
@@ -1128,7 +1142,10 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const userNotifs = typeof window !== 'undefined' ? getAllUserData('londway_notifications', data.users) : [];
   const pendingCards = userCards.filter((c: any) => c.status === 'pending');
   const userTransfers: any[] = typeof window !== 'undefined' ? getAllUserData('londway_transfers', data.users) : [];
-  const pendingUserTransfers = userTransfers.filter((t: any) => t.status === 'pending');
+  // Merge cloud transfers (Supabase) with localStorage, deduplicate by id
+  const localIds = new Set(userTransfers.map((t: any) => t.id));
+  const mergedTransfers = [...userTransfers, ...cloudTransfers.filter(ct => !localIds.has(ct.id))];
+  const pendingUserTransfers = mergedTransfers.filter((t: any) => t.status === 'pending');
   const linkClicks: any[] = typeof window !== 'undefined' ? (() => { try { const r = localStorage.getItem('londway_link_clicks'); return r ? JSON.parse(r) : []; } catch { return []; } })() : [];
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
@@ -1199,7 +1216,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               <Stat label="Pending Transfers" value={pendingUserTransfers.length} sub={`${pending.length} admin · ${pendingUserTransfers.length} user`} color={pendingUserTransfers.length > 0 ? '#F59E0B' : '#50C878'} />
               <Stat label="Flagged" value={flagged.length} color={flagged.length > 0 ? '#ff4d4f' : '#50C878'} />
               <Stat label="KYC Verified" value={data.users.filter(u => u.kyc).length} sub={`of ${data.users.length}`} color="#50C878" />
-              <Stat label="Total Transactions" value={data.transactions.length + userTransfers.length} sub={`${data.transactions.length} admin · ${userTransfers.length} user`} color="#A2B2BF" />
+              <Stat label="Total Transactions" value={data.transactions.length + mergedTransfers.length} sub={`${data.transactions.length} admin · ${mergedTransfers.length} user`} color="#A2B2BF" />
             </div>
 
             {/* ── Quick Actions ── */}
@@ -1291,6 +1308,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                               <button style={btnP} onClick={() => {
                                 updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
                                 updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
+                                cloudUpdateTransferStatus(tx.id, 'completed').catch(() => {});
                                 addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                 notify(true, `Transfer approved: ${tx.reference}`);
                                 const approveUser = data.users.find(u => u.email === tx._userEmail);
@@ -1305,6 +1323,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                               <button style={btnD} onClick={() => {
                                 updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                 updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
+                                cloudUpdateTransferStatus(tx.id, 'rejected').catch(() => {});
                                 syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                                 addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                                 notify(true, `Transfer rejected & refunded: ${tx.reference}`);
@@ -1330,15 +1349,15 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
               {/* Latest user transfers (all statuses) */}
               <div style={cardS()}>
-                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.95rem' }}>↗ Recent User Transfers ({userTransfers.length})</h3>
-                {userTransfers.length === 0 ? (
+                <h3 style={{ margin: '0 0 14px', color: G, fontWeight: 700, fontSize: '0.95rem' }}>↗ Recent User Transfers ({mergedTransfers.length})</h3>
+                {mergedTransfers.length === 0 ? (
                   <div style={{ textAlign: 'center', color: SL, padding: '1.5rem 0', fontSize: '0.85rem' }}>No user transfers yet</div>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead><tr>{['Ref','Recipient','Amount','Status'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
                       <tbody>
-                        {[...userTransfers].reverse().slice(0, 8).map((tx: any) => (
+                        {[...mergedTransfers].reverse().slice(0, 8).map((tx: any) => (
                           <tr key={tx.id}>
                             <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.7rem', color: G }}>{tx.reference}</td>
                             <td style={{ ...tdS, fontSize: '0.82rem' }}>{tx.recipientName}</td>
@@ -1348,8 +1367,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                         ))}
                       </tbody>
                     </table>
-                    {userTransfers.length > 8 && (
-                      <button onClick={() => setTab('transactions')} style={{ display: 'block', width: '100%', marginTop: 10, background: 'transparent', border: `1px solid rgba(196,160,82,0.15)`, color: G, borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'Inter' }}>View all {userTransfers.length} transfers →</button>
+                    {mergedTransfers.length > 8 && (
+                      <button onClick={() => setTab('transactions')} style={{ display: 'block', width: '100%', marginTop: 10, background: 'transparent', border: `1px solid rgba(196,160,82,0.15)`, color: G, borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'Inter' }}>View all {mergedTransfers.length} transfers →</button>
                     )}
                   </div>
                 )}
@@ -1498,10 +1517,10 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             {/* ── Summary Stats Bar ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
               {[
-                { label: 'User Transfers', value: userTransfers.length, color: G },
+                { label: 'User Transfers', value: mergedTransfers.length, color: G },
                 { label: 'Pending', value: pendingUserTransfers.length, color: pendingUserTransfers.length > 0 ? '#F59E0B' : '#50C878' },
                 { label: 'Admin Transactions', value: filteredTx.length, color: '#A2B2BF' },
-                { label: 'Total Volume', value: fmtMoney([...userTransfers, ...filteredTx].reduce((s: number, t: any) => s + Number(t.amount || 0), 0)), color: G },
+                { label: 'Total Volume', value: fmtMoney([...mergedTransfers, ...filteredTx].reduce((s: number, t: any) => s + Number(t.amount || 0), 0)), color: G },
               ].map(s => (
                 <div key={s.label} style={{ background: 'rgba(196,160,82,0.04)', border: '1px solid rgba(196,160,82,0.1)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -1513,12 +1532,12 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             {/* ── User Transfer Requests ── */}
             <div style={cardS()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h2 style={{ margin: 0, color: G, fontWeight: 700, fontSize: '1rem' }}>↗ User Transfer Requests ({userTransfers.length})</h2>
+                <h2 style={{ margin: 0, color: G, fontWeight: 700, fontSize: '1rem' }}>↗ User Transfer Requests ({mergedTransfers.length})</h2>
                 {pendingUserTransfers.length > 0 && (
                   <span style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', borderRadius: 8, padding: '4px 12px', fontSize: '0.72rem', fontWeight: 700 }}>{pendingUserTransfers.length} AWAITING ACTION</span>
                 )}
               </div>
-              {userTransfers.length === 0 ? (
+              {mergedTransfers.length === 0 ? (
                 <div style={{ textAlign: 'center', color: SL, padding: '2.5rem 0', fontSize: '0.85rem' }}>
                   <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📭</div>
                   No transfer requests yet. User-submitted transfers will appear here automatically.
@@ -1528,7 +1547,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 850 }}>
                     <thead><tr>{['Sender','Ref','Recipient','Type','Amount','Fee','Date','Status','Actions'].map(h => <th key={h} style={{ ...thS, background: 'rgba(196,160,82,0.04)' }}>{h}</th>)}</tr></thead>
                     <tbody>
-                      {[...userTransfers].reverse().map((tx: any) => (
+                      {[...mergedTransfers].reverse().map((tx: any) => (
                         <tr key={tx.id} style={{ borderBottom: '1px solid rgba(196,160,82,0.06)', background: tx.status === 'pending' ? 'rgba(245,158,11,0.02)' : 'transparent' }}>
                           <td style={{ ...tdS, fontSize: '0.78rem' }}>
                             <div style={{ fontWeight: 600 }}>{tx._userEmail}</div>
@@ -1547,6 +1566,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                   <button style={btnP} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
                                     updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
+                                    cloudUpdateTransferStatus(tx.id, 'completed').catch(() => {});
                                     addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
                                     notify(true, `Transfer approved: ${tx.reference}`);
                                     const approveUser2 = data.users.find(u => u.email === tx._userEmail);
@@ -1561,6 +1581,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                   <button style={btnD} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                     updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
+                                    cloudUpdateTransferStatus(tx.id, 'rejected').catch(() => {});
                                     syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                                     notify(true, `Transfer rejected & refunded: ${tx.reference}`);
@@ -1577,6 +1598,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                               <button style={btnD} onClick={() => {
                                 if (!confirm(`Delete transfer ${tx.reference}?`)) return;
                                 deleteUserItem('londway_transfers', tx._userEmail, tx.id);
+                                cloudUpdateTransferStatus(tx.id, 'deleted').catch(() => {});
                                 addAudit('transfer_deleted', tx.recipientName, tx.reference);
                                 notify(true, 'Transfer deleted');
                                 setData({ ...data });

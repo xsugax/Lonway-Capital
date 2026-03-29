@@ -95,3 +95,79 @@ export async function cloudDeleteUser(email: string) {
     );
   } catch (err) { console.error('[cloud] Delete error:', err); }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CLOUD TRANSFERS — Supabase-synced transfer requests
+// ═══════════════════════════════════════════════════════════════
+
+export interface CloudTransfer {
+  id: string;
+  reference: string;
+  sender_email: string;
+  sender_name: string;
+  recipient_name: string;
+  recipient_account: string;
+  amount: number;
+  currency: string;
+  fee: number;
+  type: string;
+  status: string;
+  description: string;
+  country: string;
+  bank_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Save a new transfer to Supabase */
+export async function cloudSaveTransfer(tx: Omit<CloudTransfer, 'updated_at'>): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transfers`, {
+      method: 'POST',
+      headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(tx),
+    });
+    if (!res.ok) { console.error('[cloud] Save transfer failed:', res.status); return false; }
+    return true;
+  } catch (err) { console.error('[cloud] Save transfer error:', err); return false; }
+}
+
+/** Get all pending transfers from Supabase */
+export async function cloudGetPendingTransfers(): Promise<CloudTransfer[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/transfers?status=eq.pending&order=created_at.desc`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+/** Get all transfers from Supabase */
+export async function cloudGetAllTransfers(): Promise<CloudTransfer[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/transfers?order=created_at.desc&limit=500`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+/** Update a transfer status in Supabase */
+export async function cloudUpdateTransferStatus(id: string, status: string): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/transfers?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify({ status, updated_at: new Date().toISOString() }) }
+    );
+    if (!res.ok) { console.error('[cloud] Update transfer failed:', res.status); return false; }
+    return true;
+  } catch (err) { console.error('[cloud] Update transfer error:', err); return false; }
+}
