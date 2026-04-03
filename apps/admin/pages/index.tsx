@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus } from '../lib/cloud';
+import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus } from '../lib/cloud';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -760,6 +760,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   // Auto-refresh: poll localStorage every 5s so new user transfers appear without manual reload
   const [, setRefreshTick] = useState(0);
   const [cloudTransfers, setCloudTransfers] = useState<any[]>([]);
+  const [cloudCards, setCloudCards] = useState<any[]>([]);
   useEffect(() => {
     // Load cloud transfers immediately and on interval
     const loadCloud = () => {
@@ -770,6 +771,17 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
           type: t.type, status: t.status, description: t.description,
           createdAt: t.created_at, fee: t.fee, country: t.country, bankName: t.bank_name,
           _userEmail: t.sender_email, _userName: t.sender_name, _source: 'cloud',
+        })));
+      }).catch(() => {});
+      // Load cloud cards
+      cloudGetAllCards().then(cards => {
+        setCloudCards(cards.map((c: any) => ({
+          id: c.id, holderName: c.holder_name, network: c.network,
+          tier: c.tier, deliveryAddress: c.delivery_address, city: c.city,
+          country: c.country, status: c.status, cardNumber: c.card_number,
+          cvv: c.cvv, expiry: c.expiry, requestedAt: c.requested_at,
+          approvedAt: c.approved_at, estimatedDelivery: c.estimated_delivery,
+          _userEmail: c.user_email, _source: 'cloud',
         })));
       }).catch(() => {});
     };
@@ -1139,8 +1151,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const totalBalance = data.users.reduce((s, u) => s + u.balance, 0);
 
   const userCards = typeof window !== 'undefined' ? getAllUserData('londway_cards', data.users) : [];
+  // Merge cloud cards with localStorage cards, deduplicate by id
+  const localCardIds = new Set(userCards.map((c: any) => c.id));
+  const mergedCards = [...userCards, ...cloudCards.filter(cc => !localCardIds.has(cc.id))];
   const userNotifs = typeof window !== 'undefined' ? getAllUserData('londway_notifications', data.users) : [];
-  const pendingCards = userCards.filter((c: any) => c.status === 'pending');
+  const pendingCards = mergedCards.filter((c: any) => c.status === 'pending');
   const userTransfers: any[] = typeof window !== 'undefined' ? getAllUserData('londway_transfers', data.users) : [];
   // Merge cloud transfers (Supabase) with localStorage, deduplicate by id
   const localIds = new Set(userTransfers.map((t: any) => t.id));
@@ -1810,20 +1825,20 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         {tab === 'cards' && (
           <div style={cardS()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>Card Requests ({userCards.length})</h2>
+              <h2 style={{ margin: 0, color: IV, fontWeight: 700, fontSize: '1rem' }}>Card Requests ({mergedCards.length})</h2>
               <div style={{ display: 'flex', gap: 8 }}>
                 <Badge status={`${pendingCards.length} pending`} />
-                <Badge status={`${userCards.filter((c: any) => c.status === 'approved').length} approved`} />
+                <Badge status={`${mergedCards.filter((c: any) => c.status === 'approved').length} approved`} />
               </div>
             </div>
-            {userCards.length === 0 ? (
+            {mergedCards.length === 0 ? (
               <div style={{ textAlign: 'center', color: SL, padding: '3rem' }}>No card requests yet. Users can request cards from their Cards page.</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                   <thead><tr>{['Card ID','Holder','Network','Tier','Status','Requested','Actions'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {userCards.map((card: any) => (
+                    {mergedCards.map((card: any) => (
                       <tr key={card.id}>
                         <td style={{ ...tdS, fontFamily: 'monospace', fontSize: '0.72rem', color: G }}>{card.id}</td>
                         <td style={{ ...tdS, fontWeight: 600 }}>{card.holderName || '—'}</td>
@@ -1836,13 +1851,30 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                             {card.status === 'pending' && (
                               <>
                                 <button style={btnP} onClick={() => {
-                                  updateUserItem('londway_cards', card._userEmail, card.id, { status: 'approved', approvedAt: new Date().toISOString(), estimatedDelivery: new Date(Date.now() + 7 * 86400000).toISOString() });
+                                  // Generate real card details
+                                  const cardNum = '4' + Array.from({ length: 15 }, () => Math.floor(Math.random() * 10)).join('');
+                                  const cvv = String(Math.floor(100 + Math.random() * 900));
+                                  const exp = new Date(Date.now() + 730 * 86400000);
+                                  const expiry = `${String(exp.getMonth() + 1).padStart(2, '0')}/${String(exp.getFullYear()).slice(-2)}`;
+                                  const updates = {
+                                    status: 'approved', approvedAt: new Date().toISOString(),
+                                    estimatedDelivery: new Date(Date.now() + 7 * 86400000).toISOString(),
+                                    cardNumber: cardNum, cvv, expiry,
+                                  };
+                                  updateUserItem('londway_cards', card._userEmail, card.id, updates);
+                                  // Sync to cloud
+                                  cloudUpdateCardStatus(card.id, {
+                                    status: 'approved', approved_at: updates.approvedAt,
+                                    estimated_delivery: updates.estimatedDelivery,
+                                    card_number: cardNum, cvv, expiry,
+                                  }).catch(() => {});
                                   addAudit('card_approved', card.holderName, `${card.network} ${card.tier}`);
                                   notify(true, `Card approved for ${card.holderName}`);
                                   setData({ ...data });
                                 }}>✓ Approve</button>
                                 <button style={btnD} onClick={() => {
                                   updateUserItem('londway_cards', card._userEmail, card.id, { status: 'rejected' });
+                                  cloudUpdateCardStatus(card.id, { status: 'rejected' }).catch(() => {});
                                   addAudit('card_rejected', card.holderName, `${card.network} ${card.tier}`);
                                   notify(true, `Card rejected for ${card.holderName}`);
                                   setData({ ...data });
@@ -1852,6 +1884,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                             <button style={btnD} onClick={() => {
                               if (!confirm(`Delete card ${card.id}?`)) return;
                               deleteUserItem('londway_cards', card._userEmail, card.id);
+                              cloudUpdateCardStatus(card.id, { status: 'deleted' }).catch(() => {});
                               addAudit('card_deleted', card.holderName, card.id);
                               notify(true, 'Card deleted');
                               setData({ ...data });

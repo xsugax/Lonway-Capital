@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getCards, saveCards } from '../lib/store';
+import { cloudSaveCard, cloudGetUserCards } from '../lib/cloud';
 
 type Network = 'debit' | 'mastercard';
 type Tier = 'standard' | 'platinum' | 'gold' | 'black' | 'black_world_elite';
@@ -165,8 +166,9 @@ function PatternCircles({ accent }: { accent: string }) {
 }
 
 // ─── Card SVG Renderer ───────────────────────────────────────────────────────
-function CardSvg({ def, network, holderName, animated }: {
+function CardSvg({ def, network, holderName, animated, cardNumber, expiry }: {
   def: CardDef; network: Network; holderName?: string; animated?: boolean;
+  cardNumber?: string; expiry?: string;
 }) {
   const W = 340, H = 214;
   const isMC = network === 'mastercard';
@@ -299,10 +301,10 @@ function CardSvg({ def, network, holderName, animated }: {
           opacity={0.35 + i * 0.12} strokeLinecap="round"/>
       ))}
 
-      {/* ── Card number (masked) ── */}
+      {/* ── Card number ── */}
       <text x="20" y={H - 52} fill={def.accent} fontSize="13" fontWeight="600"
         fontFamily="'Courier New', monospace" letterSpacing="2.5">
-        •••• •••• •••• ••••
+        {cardNumber ? cardNumber.replace(/(.{4})/g, '$1 ').trim() : '•••• •••• •••• ••••'}
       </text>
 
       {/* ── Valid thru ── */}
@@ -314,7 +316,7 @@ function CardSvg({ def, network, holderName, animated }: {
       <text x={W - 20} y={H - 34} fill={def.labelColor} fontSize="6.5" fontFamily="Inter"
         textAnchor="end" opacity="0.45" letterSpacing="0.8">EXPIRES</text>
       <text x={W - 20} y={H - 20} fill={def.labelColor} fontSize="11" fontFamily="Inter"
-        textAnchor="end" fontWeight="600" letterSpacing="1">03/31</text>
+        textAnchor="end" fontWeight="600" letterSpacing="1">{expiry || '03/31'}</text>
 
       {/* ── MC Circles (right-mid area) ── */}
       {isMC && (
@@ -395,26 +397,241 @@ function Field({ label, value, onChange, placeholder, colors }: {
   );
 }
 
+// ─── Card Back SVG Renderer ──────────────────────────────────────────────────
+function CardBackSvg({ def, network, holderName, cardNumber, cvv, expiry }: {
+  def: CardDef; network: Network; holderName?: string; cardNumber?: string; cvv?: string; expiry?: string;
+}) {
+  const W = 340, H = 214;
+  const isMC = network === 'mastercard';
+  const isElite = def.tier === 'black_world_elite';
+  const isBlack = def.tier === 'black';
+  const isGold = def.tier === 'gold';
+  const isPlatinum = def.tier === 'platinum';
+
+  const gradId = `cb-${network}-${def.tier}`;
+
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}
+      style={{ borderRadius: 18, display: 'block', userSelect: 'none' }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+          {isElite && <><stop offset="0%" stopColor="#020208"/><stop offset="50%" stopColor="#06060F"/><stop offset="100%" stopColor="#020208"/></>}
+          {isBlack && !isMC && <><stop offset="0%" stopColor="#060606"/><stop offset="45%" stopColor="#141414"/><stop offset="100%" stopColor="#0A0A0A"/></>}
+          {isGold && !isMC && <><stop offset="0%" stopColor="#1A1000"/><stop offset="35%" stopColor="#3E2400"/><stop offset="65%" stopColor="#7A5500"/><stop offset="100%" stopColor="#3D2600"/></>}
+          {isPlatinum && !isMC && <><stop offset="0%" stopColor="#1E2B38"/><stop offset="40%" stopColor="#2E3F52"/><stop offset="70%" stopColor="#1A2535"/><stop offset="100%" stopColor="#141E2A"/></>}
+          {!isElite && !isBlack && !isGold && !isPlatinum && !isMC && <><stop offset="0%" stopColor="#0D1628"/><stop offset="55%" stopColor="#1a2444"/><stop offset="100%" stopColor="#0D1628"/></>}
+          {isMC && isPlatinum && <><stop offset="0%" stopColor="#22223A"/><stop offset="45%" stopColor="#2A2A4A"/><stop offset="100%" stopColor="#1A1A2E"/></>}
+          {isMC && isGold && <><stop offset="0%" stopColor="#2A1500"/><stop offset="40%" stopColor="#6B3F00"/><stop offset="70%" stopColor="#A06000"/><stop offset="100%" stopColor="#6B3F00"/></>}
+          {isMC && isBlack && !isElite && <><stop offset="0%" stopColor="#030310"/><stop offset="50%" stopColor="#080820"/><stop offset="100%" stopColor="#050515"/></>}
+        </linearGradient>
+        <clipPath id={`clip-${gradId}`}><rect width={W} height={H} rx="18"/></clipPath>
+      </defs>
+
+      {/* Background */}
+      <rect width={W} height={H} rx="18" fill={`url(#${gradId})`}/>
+
+      {/* Magnetic stripe */}
+      <g clipPath={`url(#clip-${gradId})`}>
+        <rect x="0" y="22" width={W} height="42" fill="#1a1a1a" opacity="0.9"/>
+        <rect x="0" y="22" width={W} height="1" fill={def.accent} opacity="0.15"/>
+        <rect x="0" y="63" width={W} height="1" fill={def.accent} opacity="0.15"/>
+        {/* Subtle stripe lines */}
+        {[28, 34, 40, 46, 52, 58].map(y => (
+          <rect key={y} x="0" y={y} width={W} height="0.5" fill="rgba(255,255,255,0.03)"/>
+        ))}
+      </g>
+
+      {/* Signature panel */}
+      <rect x="18" y="82" width="200" height="36" rx="4" fill="rgba(255,255,255,0.92)"/>
+      <text x="28" y="96" fill="#666" fontSize="5.5" fontFamily="Inter" letterSpacing="0.5" fontWeight="600">AUTHORIZED SIGNATURE</text>
+      <text x="28" y="110" fill="#333" fontSize="10" fontFamily="'Courier New', monospace" fontWeight="600" letterSpacing="0.8">
+        {(holderName || 'CARD HOLDER').toUpperCase().slice(0, 22)}
+      </text>
+
+      {/* CVV panel */}
+      <rect x="228" y="82" width="94" height="36" rx="4" fill="rgba(255,255,255,0.95)"/>
+      <text x="240" y="96" fill="#666" fontSize="5.5" fontFamily="Inter" letterSpacing="0.5" fontWeight="600">CVV</text>
+      <text x="262" y="112" fill="#333" fontSize="16" fontFamily="'Courier New', monospace" fontWeight="800" letterSpacing="3" textAnchor="middle">
+        {cvv || '•••'}
+      </text>
+
+      {/* Hologram circle */}
+      <circle cx="50" cy="148" r="16" fill="none" stroke={def.accent} strokeWidth="0.8" opacity="0.3"/>
+      <circle cx="50" cy="148" r="10" fill="none" stroke={def.accent} strokeWidth="0.5" opacity="0.25"/>
+      <circle cx="50" cy="148" r="5" fill={def.accent} opacity="0.15"/>
+      <text x="50" y="151" fill={def.accent} fontSize="4.5" fontFamily="Inter" fontWeight="800" textAnchor="middle" opacity="0.5">SECURE</text>
+
+      {/* Card number (small print) */}
+      <text x="80" y="145" fill={def.labelColor} fontSize="7" fontFamily="'Courier New', monospace" letterSpacing="1" opacity="0.5">
+        {cardNumber ? cardNumber.replace(/(.{4})/g, '$1  ').trim() : '•••• •••• •••• ••••'}
+      </text>
+
+      {/* Expiry */}
+      <text x="80" y="158" fill={def.labelColor} fontSize="6" fontFamily="Inter" opacity="0.4">
+        VALID THRU: {expiry || '••/••'}
+      </text>
+
+      {/* Bank info */}
+      <text x="18" y={H - 18} fill={def.accent} fontSize="6" fontFamily="Inter" fontWeight="600" letterSpacing="1" opacity="0.4">
+        LONDWAY CAPITAL · MEMBER FDIC
+      </text>
+      <text x={W - 18} y={H - 18} fill={def.labelColor} fontSize="5.5" fontFamily="Inter" textAnchor="end" opacity="0.35">
+        24/7 SUPPORT: +1 (800) 555-BANK
+      </text>
+
+      {/* Network logo bottom right */}
+      {isMC && <McCircles x={W - 55} y={H - 40} c1={def.accent} c2={`${def.accent}80`} r={12}/>}
+      {!isMC && <text x={W - 18} y={H - 32} fill={def.accent} fontSize="7" fontFamily="Inter" fontWeight="800" textAnchor="end" letterSpacing="1.5" opacity="0.5">◢ LONDWAY</text>}
+
+      {/* Security text */}
+      <text x={W / 2} y={H - 6} fill={def.labelColor} fontSize="4" fontFamily="Inter" textAnchor="middle" opacity="0.25">
+        This card is property of Londway Capital. If found, please return to the nearest branch.
+      </text>
+    </svg>
+  );
+}
+
 // ─── Existing Card Row ────────────────────────────────────────────────────────
 function ExistingCard({ card, colors }: { card: any; colors: any }) {
+  const [flipped, setFlipped] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const tierLabel: Record<string, string> = {
     standard: 'Standard', platinum: 'Platinum', gold: 'Gold',
     black: 'Black', black_world_elite: 'World Elite',
   };
   const statusColor: Record<string, string> = {
-    active: colors.success, pending: colors.gold, processing: '#9b8fbf',
-    shipped: '#4A90D9', blocked: colors.danger,
+    active: colors.success, approved: colors.success, pending: colors.gold, processing: '#9b8fbf',
+    shipped: '#4A90D9', blocked: colors.danger, rejected: colors.danger,
   };
+
+  const isApproved = card.status === 'approved' || card.status === 'active';
+  const network: Network = card.network === 'mastercard' ? 'mastercard' : 'debit';
+
+  // Find the card definition for rendering
+  const cardList = network === 'debit' ? DEBIT_CARDS : MC_CARDS;
+  const def = cardList.find(c => c.tier === card.tier) ?? cardList[0];
+
+  const maskedNumber = card.cardNumber
+    ? `•••• •••• •••• ${card.cardNumber.slice(-4)}`
+    : (card.maskedNumber || '•••• •••• •••• ••••');
+
+  if (!isApproved) {
+    // Simple row for non-approved cards
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '1rem 1.2rem', background: colors.surface, borderRadius: 16, border: `1px solid ${colors.border}`, marginBottom: 10 }}>
+        <div style={{ width: 48, height: 30, borderRadius: 6, background: card.network === 'mastercard' ? 'linear-gradient(135deg,#2A1500,#6B3F00)' : 'linear-gradient(135deg,#0D1628,#1a2444)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.48rem', color: '#C4A052', fontWeight: 800, letterSpacing: 1, flexShrink: 0 }}>⬡</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: colors.text, fontWeight: 700, fontSize: '0.88rem' }}>{card.network === 'mastercard' ? 'Mastercard' : 'Debit'} · {tierLabel[card.tier] ?? card.tier}</div>
+          <div style={{ color: colors.textFaint, fontSize: '0.72rem', marginTop: 1 }}>{card.holderName}</div>
+        </div>
+        <div style={{ background: `${statusColor[card.status] ?? colors.textFaint}18`, border: `1px solid ${statusColor[card.status] ?? colors.textFaint}30`, borderRadius: 6, padding: '2px 9px', fontSize: '0.65rem', color: statusColor[card.status] ?? colors.textFaint, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          {card.status}
+        </div>
+      </div>
+    );
+  }
+
+  // Full card display for approved cards  
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '1rem 1.2rem', background: colors.surface, borderRadius: 16, border: `1px solid ${colors.border}`, marginBottom: 10 }}>
-      <div style={{ width: 48, height: 30, borderRadius: 6, background: card.network === 'mastercard' ? 'linear-gradient(135deg,#2A1500,#6B3F00)' : 'linear-gradient(135deg,#0D1628,#1a2444)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.48rem', color: '#C4A052', fontWeight: 800, letterSpacing: 1, flexShrink: 0 }}>⬡</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ color: colors.text, fontWeight: 700, fontSize: '0.88rem' }}>{card.network === 'mastercard' ? 'Mastercard' : 'Debit'} · {tierLabel[card.tier] ?? card.tier}</div>
-        <div style={{ color: colors.textFaint, fontSize: '0.72rem', marginTop: 1 }}>{card.maskedNumber} · {card.holderName}</div>
+    <div style={{ background: colors.surface, borderRadius: 20, border: `1px solid ${colors.borderStrong}`, padding: '1.5rem', marginBottom: 16 }}>
+      {/* Card header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div>
+          <div style={{ color: colors.text, fontWeight: 800, fontSize: '1rem' }}>
+            {card.network === 'mastercard' ? 'Mastercard' : 'Debit'} · {tierLabel[card.tier] ?? card.tier}
+          </div>
+          <div style={{ color: colors.textFaint, fontSize: '0.72rem', marginTop: 2 }}>{card.holderName}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ background: `${colors.success}18`, border: `1px solid ${colors.success}30`, borderRadius: 6, padding: '3px 10px', fontSize: '0.65rem', color: colors.success, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            ● ACTIVE
+          </div>
+          <button onClick={() => setFlipped(!flipped)} style={{
+            background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 8,
+            padding: '5px 12px', color: colors.gold, fontSize: '0.68rem', fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'Inter', letterSpacing: '0.04em',
+          }}>
+            {flipped ? '← Front' : 'Back →'}
+          </button>
+        </div>
       </div>
-      <div style={{ background: `${statusColor[card.status] ?? colors.textFaint}18`, border: `1px solid ${statusColor[card.status] ?? colors.textFaint}30`, borderRadius: 6, padding: '2px 9px', fontSize: '0.65rem', color: statusColor[card.status] ?? colors.textFaint, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-        {card.status}
+
+      {/* Card visual with flip */}
+      <div style={{ perspective: '1000px', display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }}>
+        <div style={{
+          width: 340, height: 214, position: 'relative',
+          transition: 'transform 0.6s cubic-bezier(.34,1.56,.64,1)',
+          transformStyle: 'preserve-3d',
+          transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          filter: `drop-shadow(0 16px 40px ${def.accent}25)`,
+        }}>
+          {/* Front */}
+          <div style={{ position: 'absolute', width: '100%', height: '100%', backfaceVisibility: 'hidden' }}>
+            <CardSvg def={def} network={network} holderName={card.holderName} animated={def.tier === 'black_world_elite'}
+              cardNumber={card.cardNumber} expiry={card.expiry}/>
+          </div>
+          {/* Back */}
+          <div style={{ position: 'absolute', width: '100%', height: '100%', backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+            <CardBackSvg def={def} network={network} holderName={card.holderName}
+              cardNumber={card.cardNumber} cvv={card.cvv} expiry={card.expiry}/>
+          </div>
+        </div>
       </div>
+
+      {/* Card details panel */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: '0.8rem' }}>
+        <button onClick={() => setShowDetails(!showDetails)} style={{
+          flex: 1, padding: '0.6rem', background: showDetails ? colors.goldBg : 'transparent',
+          border: `1px solid ${colors.borderStrong}`, borderRadius: 10, color: colors.gold,
+          fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter',
+          letterSpacing: '0.04em', transition: 'all 0.2s',
+        }}>
+          {showDetails ? '🔒 Hide Details' : '👁 View Details'}
+        </button>
+      </div>
+
+      {showDetails && (
+        <div style={{
+          background: `${colors.gold}06`, border: `1px solid ${colors.borderStrong}`,
+          borderRadius: 14, padding: '1rem 1.2rem',
+          animation: 'fadeIn 0.3s ease',
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+            <div>
+              <div style={{ fontSize: '0.58rem', color: colors.textFaint, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>CARD NUMBER</div>
+              <div style={{ color: colors.text, fontWeight: 700, fontSize: '0.92rem', fontFamily: "'Courier New', monospace", letterSpacing: '1.5px' }}>
+                {card.cardNumber ? card.cardNumber.replace(/(.{4})/g, '$1 ').trim() : maskedNumber}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.58rem', color: colors.textFaint, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>CARD HOLDER</div>
+              <div style={{ color: colors.text, fontWeight: 700, fontSize: '0.92rem' }}>{card.holderName?.toUpperCase()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.58rem', color: colors.textFaint, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>EXPIRY</div>
+              <div style={{ color: colors.text, fontWeight: 700, fontSize: '0.92rem', fontFamily: "'Courier New', monospace" }}>{card.expiry || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.58rem', color: colors.textFaint, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>CVV</div>
+              <div style={{ color: colors.text, fontWeight: 700, fontSize: '0.92rem', fontFamily: "'Courier New', monospace" }}>{card.cvv || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.58rem', color: colors.textFaint, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>NETWORK</div>
+              <div style={{ color: colors.gold, fontWeight: 700, fontSize: '0.82rem' }}>{card.network === 'mastercard' ? 'Mastercard' : 'Londway Debit'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.58rem', color: colors.textFaint, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>TIER</div>
+              <div style={{ color: colors.gold, fontWeight: 700, fontSize: '0.82rem' }}>{tierLabel[card.tier] ?? card.tier}</div>
+            </div>
+          </div>
+          {card.approvedAt && (
+            <div style={{ marginTop: '0.8rem', paddingTop: '0.7rem', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: 16, fontSize: '0.7rem', color: colors.textFaint }}>
+              <span>Approved: {new Date(card.approvedAt).toLocaleDateString()}</span>
+              {card.estimatedDelivery && <span>Est. Delivery: {new Date(card.estimatedDelivery).toLocaleDateString()}</span>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -439,8 +656,41 @@ export default function Cards({ user }: { user: { token: string; email?: string 
   const cards = network === 'debit' ? DEBIT_CARDS : MC_CARDS;
   const def = cards.find(c => c.tier === selectedTier) ?? cards[0];
 
-  const fetchCards = useCallback(() => {
-    setExistingCards(getCards(user?.email));
+  const fetchCards = useCallback(async () => {
+    let local = getCards(user?.email);
+    // Sync from cloud — merge cloud cards into local
+    if (user?.email) {
+      try {
+        const cloud = await cloudGetUserCards(user.email);
+        if (cloud.length > 0) {
+          const localIds = new Set(local.map((c: any) => c.id));
+          for (const cc of cloud) {
+            if (!localIds.has(cc.id)) {
+              local.push({
+                id: cc.id, network: cc.network, tier: cc.tier,
+                holderName: cc.holder_name, deliveryAddress: cc.delivery_address,
+                city: cc.city, country: cc.country, status: cc.status,
+                cardNumber: cc.card_number, cvv: cc.cvv, expiry: cc.expiry,
+                requestedAt: cc.requested_at, approvedAt: cc.approved_at,
+                estimatedDelivery: cc.estimated_delivery,
+              });
+            } else {
+              // Update local with cloud status (admin may have approved)
+              local = local.map((c: any) => c.id === cc.id ? {
+                ...c, status: cc.status,
+                cardNumber: cc.card_number || c.cardNumber,
+                cvv: cc.cvv || c.cvv,
+                expiry: cc.expiry || c.expiry,
+                approvedAt: cc.approved_at || c.approvedAt,
+                estimatedDelivery: cc.estimated_delivery || c.estimatedDelivery,
+              } : c);
+            }
+          }
+          saveCards(local, user.email);
+        }
+      } catch {}
+    }
+    setExistingCards(local);
   }, [user?.email]);
 
   useEffect(() => { fetchCards(); }, [fetchCards]);
@@ -471,6 +721,19 @@ export default function Cards({ user }: { user: { token: string; email?: string 
     const all = getCards(user?.email);
     all.push(card);
     saveCards(all, user?.email);
+    // Save to Supabase cloud so admin can see it from any device
+    cloudSaveCard({
+      id: card.id,
+      user_email: (user?.email || '').toLowerCase(),
+      holder_name: fullName,
+      network: card.network,
+      tier: card.tier,
+      delivery_address: address,
+      city,
+      country,
+      status: 'pending',
+      requested_at: card.requestedAt,
+    }).catch(() => {});
     setResult(card);
     setStep('success');
     fetchCards();
@@ -721,6 +984,7 @@ export default function Cards({ user }: { user: { token: string; email?: string 
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         button:hover { opacity: 0.92; }
         @media (max-width: 768px) {
           .cards-pick-grid { grid-template-columns: 1fr !important; }

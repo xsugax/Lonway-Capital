@@ -105,3 +105,27 @@ export async function cloudUpdateTransferStatus(id: string, status: string): Pro
     );
   } catch (err) { console.error('[cloud] Transfer status update error:', err); }
 }
+
+// ── Card cloud functions ──
+
+export async function cloudGetAllCards(): Promise<any[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/cards?order=requested_at.desc`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+export async function cloudUpdateCardStatus(id: string, updates: Record<string, any>): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/cards?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify(updates) }
+    );
+  } catch (err) { console.error('[cloud] Card status update error:', err); }
+}

@@ -8,7 +8,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTheme } from '../contexts/ThemeContext';
-import { getBankAccounts } from '../lib/store';
+import { getBankAccounts, saveBankAccounts, getTransfers } from '../lib/store';
+import { cloudLookup, cloudGetUserTransfers } from '../lib/cloud';
 import { useLang } from '../contexts/LanguageContext';
 import { exportCSV, exportPDF } from '../lib/exportData';
 import { DashboardSkeleton } from '../components/LoadingSkeleton';
@@ -209,25 +210,77 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
   }, [t]);
 
   React.useEffect(() => {
-    const accounts = getBankAccounts(user?.email);
-    const totalBalance = accounts.reduce((sum: number, acc: any) => sum + (acc.balance ?? 0), 0);
-    const allTx: any[] = [];
-    accounts.forEach((acc: any) => {
-      (acc.transactions ?? []).forEach((tx: any) => allTx.push({ ...tx, accountType: acc.type }));
-    });
-    allTx.sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
-    setData({
-      totalBalance,
-      netWorth: totalBalance,
-      todayChange: 0,
-      monthlyGrowth: 0,
-      chartData: [0, 0, 0, 0, 0, 0, Math.round(totalBalance)],
-      chartLabels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
-      accounts,
-      recentTx: allTx.slice(0, 6),
-      insight: 'Your spending is on track this month. Consider increasing your vault contribution by 5% to reach your goal faster.',
-    });
-    setLoading(false);
+    async function loadDashboard() {
+      // 1. Re-sync bank accounts from cloud to get latest admin debits/credits
+      if (user?.email) {
+        try {
+          const cloud = await cloudLookup(user.email);
+          if (cloud?.bank_accounts && cloud.bank_accounts.length > 0) {
+            saveBankAccounts(cloud.bank_accounts, cloud.email);
+          }
+        } catch {}
+      }
+
+      // 2. Read bank accounts (now includes admin debits from cloud sync)
+      const accounts = getBankAccounts(user?.email);
+      const totalBalance = accounts.reduce((sum: number, acc: any) => sum + (acc.balance ?? 0), 0);
+
+      // 3. Gather transactions from bank accounts (admin debits/credits)
+      const allTx: any[] = [];
+      const seenIds = new Set<string>();
+      accounts.forEach((acc: any) => {
+        (acc.transactions ?? []).forEach((tx: any) => {
+          if (tx.id && seenIds.has(tx.id)) return;
+          if (tx.id) seenIds.add(tx.id);
+          allTx.push({ ...tx, accountType: acc.type });
+        });
+      });
+
+      // 4. Merge user-submitted transfers (local + cloud) into transaction history
+      if (user?.email) {
+        try {
+          const localTransfers = getTransfers(user.email);
+          let cloudTransfers: any[] = [];
+          try { cloudTransfers = await cloudGetUserTransfers(user.email); } catch {}
+          // Deduplicate local + cloud transfers
+          const txIds = new Set(localTransfers.map((t: any) => t.id));
+          const merged = [...localTransfers, ...cloudTransfers.filter((ct: any) => !txIds.has(ct.id))];
+          // Add completed/pending transfers as transaction entries
+          merged.forEach((t: any) => {
+            const tid = t.id || `tf-${t.reference}`;
+            if (seenIds.has(tid)) return;
+            seenIds.add(tid);
+            const isPending = t.status === 'pending';
+            allTx.push({
+              id: tid,
+              type: 'debit',
+              description: isPending
+                ? `Transfer to ${t.recipientName || t.recipient_name} (Pending)`
+                : `Transfer to ${t.recipientName || t.recipient_name}`,
+              amount: Number(t.amount),
+              date: t.createdAt || t.created_at,
+              status: t.status || 'completed',
+              accountType: 'Checking',
+            });
+          });
+        } catch {}
+      }
+
+      allTx.sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
+      setData({
+        totalBalance,
+        netWorth: totalBalance,
+        todayChange: 0,
+        monthlyGrowth: 0,
+        chartData: [0, 0, 0, 0, 0, 0, Math.round(totalBalance)],
+        chartLabels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
+        accounts,
+        recentTx: allTx.slice(0, 6),
+        insight: 'Your spending is on track this month. Consider increasing your vault contribution by 5% to reach your goal faster.',
+      });
+      setLoading(false);
+    }
+    loadDashboard();
   }, []);
 
   if (loading) return (
@@ -464,16 +517,20 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               data.recentTx.map((tx: any, i: number) => {
                 const debit = (tx.type ?? tx.kind ?? '').toLowerCase().includes('debit') || (tx.amount ?? 0) < 0;
                 const amt = Math.abs(tx.amount ?? 0);
+                const isPending = tx.status === 'pending';
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0.7rem 0', borderBottom: i < data.recentTx.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 11, background: debit ? `${colors.danger}12` : `${colors.success}12`, border: `1px solid ${debit ? colors.danger : colors.success}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>
-                      {debit ? '↑' : '↓'}
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0.7rem 0', borderBottom: i < data.recentTx.length - 1 ? `1px solid ${colors.border}` : 'none', opacity: isPending ? 0.7 : 1 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 11, background: isPending ? `${colors.gold}12` : debit ? `${colors.danger}12` : `${colors.success}12`, border: `1px solid ${isPending ? colors.gold : debit ? colors.danger : colors.success}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>
+                      {isPending ? '⏳' : debit ? '↑' : '↓'}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.84rem', color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.description ?? tx.label ?? 'Transaction'}</div>
-                      <div style={{ fontSize: '0.62rem', color: colors.textFaint, marginTop: 1 }}>{tx.accountType ?? ''} · {tx.date ? new Date(tx.date).toLocaleDateString() : ''}</div>
+                      <div style={{ fontSize: '0.62rem', color: colors.textFaint, marginTop: 1 }}>
+                        {tx.accountType ?? ''} · {tx.date ? new Date(tx.date).toLocaleDateString() : ''}
+                        {isPending && <span style={{ marginLeft: 6, background: `${colors.gold}18`, color: colors.gold, padding: '1px 6px', borderRadius: 4, fontSize: '0.58rem', fontWeight: 700 }}>PENDING</span>}
+                      </div>
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: debit ? colors.danger : colors.success, flexShrink: 0 }}>{debit ? '-' : '+'}${amt.toLocaleString()}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isPending ? colors.gold : debit ? colors.danger : colors.success, flexShrink: 0 }}>{debit ? '-' : '+'}${amt.toLocaleString()}</div>
                   </div>
                 );
               })

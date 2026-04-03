@@ -184,3 +184,56 @@ export async function cloudUpdateTransferStatus(id: string, status: string): Pro
     return true;
   } catch (err) { console.error('[cloud] Update transfer error:', err); return false; }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CLOUD CARDS — Supabase-synced card requests
+// Table: cards (id text PK, user_email text, holder_name text, network text,
+//   tier text, delivery_address text, city text, country text, status text,
+//   card_number text, cvv text, expiry text, requested_at timestamptz,
+//   approved_at timestamptz, estimated_delivery timestamptz)
+// ═══════════════════════════════════════════════════════════════
+
+export interface CloudCard {
+  id: string;
+  user_email: string;
+  holder_name: string;
+  network: string;
+  tier: string;
+  delivery_address: string;
+  city: string;
+  country: string;
+  status: string;
+  card_number?: string;
+  cvv?: string;
+  expiry?: string;
+  requested_at: string;
+  approved_at?: string;
+  estimated_delivery?: string;
+}
+
+/** Save a new card request to Supabase */
+export async function cloudSaveCard(card: CloudCard): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cards`, {
+      method: 'POST',
+      headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(card),
+    });
+    if (!res.ok) { console.error('[cloud] Save card failed:', res.status); return false; }
+    return true;
+  } catch (err) { console.error('[cloud] Save card error:', err); return false; }
+}
+
+/** Get all cards for a user */
+export async function cloudGetUserCards(email: string): Promise<CloudCard[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/cards?user_email=eq.${encodeURIComponent(email.toLowerCase())}&order=requested_at.desc`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
