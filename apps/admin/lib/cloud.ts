@@ -35,6 +35,8 @@ export interface CloudAccount {
   balance: number;
   phone: string;
   bank_accounts: any[] | null;
+  blocked?: boolean;
+  frozen?: boolean;
 }
 
 export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: string }) {

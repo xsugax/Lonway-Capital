@@ -938,8 +938,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('user_updated', updated.email, `Name: ${updated.name}, Tier: ${updated.tier}`);
     notify(true, `User ${updated.name} updated`);
     setEditUser(null);
-    // Sync to cloud
-    cloudSaveUser({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier || 'Standard', balance: updated.balance }).catch(() => {});
+    // Sync to cloud (including blocked/frozen status)
+    cloudSaveUser({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier || 'Standard', balance: updated.balance, blocked: !!updated.blocked, frozen: !!updated.frozen }).catch(() => {});
   }
 
   function savePinOnly(u: User, pin: string) {

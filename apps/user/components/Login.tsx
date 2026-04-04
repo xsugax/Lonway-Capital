@@ -372,6 +372,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
             name: cloud.name || (m?.name || ''),
             role: cloud.role || (m?.role || 'user'),
             tier: cloud.tier || (m as any)?.tier || 'Standard',
+            frozen: !!(cloud as any).frozen,
+            blocked: !!(cloud as any).blocked,
             idVerified: false,
           };
           saveNewAccount(local);
@@ -391,6 +393,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       if (m.deleted) { setError('This account has been permanently deleted. Please contact support.'); return; }
       if (m.password !== lPw) { setError('Incorrect password. Please try again.'); return; }
       if (m.frozen) { setError('Your account has been frozen. Please contact support or visit a branch.'); return; }
+      if (m.blocked) { setError('Your account has been blocked due to suspicious activity. Please contact support immediately.'); return; }
       setMatched(m);
       if (typeof window !== 'undefined') {
         if (rememberMe) localStorage.setItem('londway_remembered_email', lEmail);

@@ -230,7 +230,19 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
                   if (cloud.tier && accts[idx].tier !== cloud.tier) { accts[idx].tier = cloud.tier; dirty = true; }
                   if (cloud.name && accts[idx].name !== cloud.name) { accts[idx].name = cloud.name; dirty = true; }
                   if (cloud.role && accts[idx].role !== cloud.role) { accts[idx].role = cloud.role; dirty = true; }
+                  const cloudBlocked = !!(cloud as any).blocked;
+                  const cloudFrozen = !!(cloud as any).frozen;
+                  if (accts[idx].blocked !== cloudBlocked) { accts[idx].blocked = cloudBlocked; dirty = true; }
+                  if (accts[idx].frozen !== cloudFrozen) { accts[idx].frozen = cloudFrozen; dirty = true; }
                   if (dirty) localStorage.setItem('londway_accounts', JSON.stringify(accts));
+                  // If blocked or frozen, force logout
+                  if (cloudBlocked || cloudFrozen) {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem('londway_current_user');
+                      window.location.href = '/';
+                    }
+                    return;
+                  }
                 }
               }
             } catch {}
