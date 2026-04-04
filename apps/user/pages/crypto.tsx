@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { getBankAccounts, saveBankAccounts, getCryptoDeposits, saveCryptoDeposits, getNotifications, saveNotifications, getTierLimits } from '../lib/store';
 import { sendTransferReceipt } from '../lib/email';
+import { cloudLookup } from '../lib/cloud';
 
 const COINS = [
   { id: 'bitcoin',     symbol: 'BTC', name: 'Bitcoin',  icon: '₿',  color: '#F7931A', address: 'bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5' },
@@ -54,20 +55,39 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
       });
   }, []);
 
-  // Load tier & deposit history
+  // Load tier & deposit history (sync from cloud first)
   useEffect(() => {
     if (typeof window !== 'undefined' && user?.email) {
-      try {
-        const raw = localStorage.getItem('londway_accounts');
-        if (raw) {
-          const accts = JSON.parse(raw);
-          const acct = accts.find((a: any) => a.email === user.email);
-          const tier = acct?.tier || 'Standard';
-          setUserTier(tier);
-          setTierAllowed(getTierLimits(tier).cryptoAllowed);
+      const email = user.email;
+      (async () => {
+        let tier = 'Standard';
+        try {
+          const cloud = await cloudLookup(email);
+          if (cloud?.tier) {
+            tier = cloud.tier;
+            const raw = localStorage.getItem('londway_accounts');
+            if (raw) {
+              const accts = JSON.parse(raw);
+              const idx = accts.findIndex((a: any) => a.email?.toLowerCase() === email.toLowerCase());
+              if (idx !== -1 && accts[idx].tier !== tier) {
+                accts[idx].tier = tier;
+                localStorage.setItem('londway_accounts', JSON.stringify(accts));
+              }
+            }
+          }
+        } catch {
+          try {
+            const raw = localStorage.getItem('londway_accounts');
+            if (raw) {
+              const acct = JSON.parse(raw).find((a: any) => a.email === email);
+              tier = acct?.tier || 'Standard';
+            }
+          } catch {}
         }
-      } catch {}
-      setDeposits(getCryptoDeposits(user.email));
+        setUserTier(tier);
+        setTierAllowed(getTierLimits(tier).cryptoAllowed);
+      })();
+      setDeposits(getCryptoDeposits(email));
     }
   }, [user?.email]);
 

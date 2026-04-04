@@ -211,12 +211,29 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
 
   React.useEffect(() => {
     async function loadDashboard() {
-      // 1. Re-sync bank accounts from cloud to get latest admin debits/credits
+      // 1. Re-sync bank accounts + account tier from cloud to get latest admin changes
       if (user?.email) {
         try {
           const cloud = await cloudLookup(user.email);
-          if (cloud?.bank_accounts && cloud.bank_accounts.length > 0) {
-            saveBankAccounts(cloud.bank_accounts, cloud.email);
+          if (cloud) {
+            if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {
+              saveBankAccounts(cloud.bank_accounts, cloud.email);
+            }
+            // Sync tier, frozen, blocked status from cloud → localStorage
+            try {
+              const raw = localStorage.getItem('londway_accounts');
+              if (raw) {
+                const accts = JSON.parse(raw);
+                const idx = accts.findIndex((a: any) => a.email?.toLowerCase() === cloud.email.toLowerCase());
+                if (idx !== -1) {
+                  let dirty = false;
+                  if (cloud.tier && accts[idx].tier !== cloud.tier) { accts[idx].tier = cloud.tier; dirty = true; }
+                  if (cloud.name && accts[idx].name !== cloud.name) { accts[idx].name = cloud.name; dirty = true; }
+                  if (cloud.role && accts[idx].role !== cloud.role) { accts[idx].role = cloud.role; dirty = true; }
+                  if (dirty) localStorage.setItem('londway_accounts', JSON.stringify(accts));
+                }
+              }
+            } catch {}
           }
         } catch {}
       }

@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getTierLimits, getDailyUsage, addDailyUsage } from '../lib/store';
+import { cloudLookup } from '../lib/cloud';
 
 const ACCOUNTS_KEY = 'londway_accounts';
 const ADMIN_KEY    = 'londway_admin_data';
@@ -258,13 +259,34 @@ export default function Invest({ user }: { user: { token: string; email?: string
     setUserEmail(email);
     if (!email) { setLoading(false); return; }
 
-    try {
-      const raw = localStorage.getItem(ACCOUNTS_KEY);
-      if (raw) {
-        const acct = JSON.parse(raw).find((a: any) => a.email?.toLowerCase() === email.toLowerCase());
-        setTierLimits(getTierLimits(acct?.tier));
+    // Sync tier from cloud first, then fall back to local
+    (async () => {
+      try {
+        const cloud = await cloudLookup(email);
+        if (cloud?.tier) {
+          const raw = localStorage.getItem(ACCOUNTS_KEY);
+          if (raw) {
+            const accts = JSON.parse(raw);
+            const idx = accts.findIndex((a: any) => a.email?.toLowerCase() === email.toLowerCase());
+            if (idx !== -1 && accts[idx].tier !== cloud.tier) {
+              accts[idx].tier = cloud.tier;
+              localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accts));
+            }
+          }
+          setTierLimits(getTierLimits(cloud.tier));
+        } else {
+          throw new Error('no cloud');
+        }
+      } catch {
+        try {
+          const raw = localStorage.getItem(ACCOUNTS_KEY);
+          if (raw) {
+            const acct = JSON.parse(raw).find((a: any) => a.email?.toLowerCase() === email.toLowerCase());
+            setTierLimits(getTierLimits(acct?.tier));
+          }
+        } catch {}
       }
-    } catch {}
+    })();
 
     setAvailableCash(getAdminBalance(email));
     setRawHoldings(loadRawHoldings(email));

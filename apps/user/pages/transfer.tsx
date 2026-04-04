@@ -10,7 +10,7 @@ import {
   convertAmount,
 } from '../lib/ledger';
 import { downloadReceiptFromLegacy } from '../lib/receipt';
-import { cloudSaveTransfer, cloudGetUserTransfers } from '../lib/cloud';
+import { cloudSaveTransfer, cloudGetUserTransfers, cloudLookup } from '../lib/cloud';
 import type { TierLimits } from '../lib/store';
 
 type TransferType = 'local' | 'international';
@@ -107,16 +107,36 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       migrateLegacyTransfers(user.email);
     }
     fetchHistory();
-    // Load user tier
+    // Load user tier (sync from cloud first for latest admin changes)
     if (typeof window !== 'undefined' && user?.email) {
-      try {
-        const raw = localStorage.getItem('londway_accounts');
-        if (raw) {
-          const accts = JSON.parse(raw);
-          const acct = accts.find((a: any) => a.email === user.email);
-          setTierLimits(getTierLimits(acct?.tier));
+      const email = user.email;
+      (async () => {
+        try {
+          const cloud = await cloudLookup(email);
+          if (cloud?.tier) {
+            const raw = localStorage.getItem('londway_accounts');
+            if (raw) {
+              const accts = JSON.parse(raw);
+              const idx = accts.findIndex((a: any) => a.email?.toLowerCase() === email.toLowerCase());
+              if (idx !== -1 && accts[idx].tier !== cloud.tier) {
+                accts[idx].tier = cloud.tier;
+                localStorage.setItem('londway_accounts', JSON.stringify(accts));
+              }
+            }
+            setTierLimits(getTierLimits(cloud.tier));
+          }
+        } catch {
+          // Fallback to local tier
+          try {
+            const raw = localStorage.getItem('londway_accounts');
+            if (raw) {
+              const accts = JSON.parse(raw);
+              const acct = accts.find((a: any) => a.email === email);
+              setTierLimits(getTierLimits(acct?.tier));
+            }
+          } catch {}
         }
-      } catch {}
+      })();
       setDailyUsed(getDailyUsage(user.email));
     }
     // Auto-poll cloud for status updates every 10s

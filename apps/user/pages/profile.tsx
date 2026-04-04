@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
+import { cloudLookup } from '../lib/cloud';
 
 function HeroBg() {
   return (
@@ -59,15 +60,40 @@ export default function Profile({ user }: { user?: { name: string; email: string
 
   useEffect(() => {
     if (typeof window !== 'undefined' && user?.email) {
-      try {
-        const raw = localStorage.getItem('londway_accounts');
-        if (raw) {
-          const accounts = JSON.parse(raw);
-          const found = accounts.find((a: any) => a.email === user.email);
-          setAccount(found || null);
-          if (found?.profilePic) setProfilePic(found.profilePic);
+      const email = user.email;
+      // Sync tier/name/role from cloud, then load account
+      (async () => {
+        try {
+          const cloud = await cloudLookup(email);
+          if (cloud) {
+            const raw = localStorage.getItem('londway_accounts');
+            if (raw) {
+              const accounts = JSON.parse(raw);
+              const idx = accounts.findIndex((a: any) => a.email?.toLowerCase() === email.toLowerCase());
+              if (idx !== -1) {
+                let dirty = false;
+                if (cloud.tier && accounts[idx].tier !== cloud.tier) { accounts[idx].tier = cloud.tier; dirty = true; }
+                if (cloud.name && accounts[idx].name !== cloud.name) { accounts[idx].name = cloud.name; dirty = true; }
+                if (cloud.role && accounts[idx].role !== cloud.role) { accounts[idx].role = cloud.role; dirty = true; }
+                if (dirty) localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+                setAccount(accounts[idx]);
+                if (accounts[idx]?.profilePic) setProfilePic(accounts[idx].profilePic);
+              }
+            }
+          }
+        } catch {
+          // Fallback: read from local
+          try {
+            const raw = localStorage.getItem('londway_accounts');
+            if (raw) {
+              const accounts = JSON.parse(raw);
+              const found = accounts.find((a: any) => a.email === email);
+              setAccount(found || null);
+              if (found?.profilePic) setProfilePic(found.profilePic);
+            }
+          } catch {}
         }
-      } catch {}
+      })();
       // Estimate member since from stored date or use current year
       const storedDate = localStorage.getItem('londway_member_since_' + user.email);
       if (storedDate) {
