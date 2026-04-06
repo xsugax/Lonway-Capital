@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings } from '../lib/cloud';
+import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings, cloudSaveTransfer } from '../lib/cloud';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -1119,6 +1119,44 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     });
     // Sync the funded amount to the user's bank account so the user app shows the correct balance
     syncUserBankAccounts(user.email, amount, isCredit, { id: tx.id, description: tx.description, createdAt: tx.createdAt });
+    // Save as a cloud transfer so it appears in the user's Transfer History on any device
+    cloudSaveTransfer({
+      id: tx.id,
+      reference: tx.reference,
+      sender_email: user.email,
+      sender_name: isCredit ? (fundSender || 'Londway Capital') : user.name,
+      recipient_name: isCredit ? user.name : (fundSender || 'Londway Capital'),
+      recipient_account: '',
+      amount,
+      currency: 'USD',
+      fee: 0,
+      type: isCredit ? 'credit' : 'debit',
+      status: 'completed',
+      description: tx.description,
+      country: '',
+      bank_name: 'Londway Capital',
+      created_at: tx.createdAt,
+    }).catch(() => {});
+    // Also save to the user's local transfer store (for same-device visibility)
+    try {
+      const tfKey = userKey('londway_transfers', user.email);
+      const tfRaw = localStorage.getItem(tfKey);
+      const tfArr: any[] = tfRaw ? JSON.parse(tfRaw) : [];
+      tfArr.unshift({
+        id: tx.id,
+        reference: tx.reference,
+        recipientName: isCredit ? user.name : (fundSender || 'Londway Capital'),
+        toAccountId: '',
+        amount,
+        currency: 'USD',
+        type: isCredit ? 'credit' : 'debit',
+        status: 'completed',
+        description: tx.description,
+        createdAt: tx.createdAt,
+        fee: 0,
+      });
+      localStorage.setItem(tfKey, JSON.stringify(tfArr));
+    } catch {}
     // Send email notification to the user about the fund action
     sendFundingEmail(user.email, user.name, amount, tx.description, isCredit).catch(() => {});
     writeUserNotification('londway_notifications', user.email, {

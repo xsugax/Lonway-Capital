@@ -202,11 +202,14 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
   function fetchHistory() {
     setHistoryLoading(true);
     const local = getTransfers(user?.email);
-    // Merge cloud statuses: if admin approved/rejected via Supabase, update local
+    // Merge cloud transfers: pull admin-created transactions + sync status updates
     if (user?.email) {
       cloudGetUserTransfers(user.email).then(cloudTxs => {
         if (cloudTxs.length > 0) {
           let changed = false;
+          const localIds = new Set(local.map((lt: any) => lt.id));
+
+          // Update statuses of existing local transfers from cloud
           const updated = local.map((lt: any) => {
             const ct = cloudTxs.find((c: any) => c.id === lt.id);
             if (ct && ct.status !== lt.status) {
@@ -233,12 +236,36 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
             }
             return lt;
           });
+
+          // Pull cloud-only transfers (admin credits/debits) into local history
+          const cloudOnly = cloudTxs.filter((ct: any) => !localIds.has(ct.id));
+          if (cloudOnly.length > 0) {
+            changed = true;
+            for (const ct of cloudOnly) {
+              updated.unshift({
+                id: ct.id,
+                reference: ct.reference,
+                recipientName: ct.recipient_name,
+                toAccountId: ct.recipient_account || '',
+                amount: ct.amount,
+                currency: ct.currency,
+                type: ct.type,
+                status: ct.status,
+                description: ct.description,
+                createdAt: ct.created_at,
+                fee: ct.fee || 0,
+                country: ct.country || '',
+                bankName: ct.bank_name || '',
+              });
+            }
+            // Sort by date descending
+            updated.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          }
+
           if (changed) {
             saveTransfers(updated, user?.email);
-            setHistory(updated);
-          } else {
-            setHistory(local);
           }
+          setHistory(updated);
         } else {
           setHistory(local);
         }

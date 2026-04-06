@@ -190,6 +190,20 @@ export async function cloudUpdateTransferStatus(id: string, status: string): Pro
   } catch (err) { console.error('[cloud] Transfer status update error:', err); }
 }
 
+/** Save a transfer/transaction record to cloud so it appears in user's transfer history */
+export async function cloudSaveTransfer(tx: Record<string, any>): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transfers`, {
+      method: 'POST',
+      headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(tx),
+    });
+    if (!res.ok) { console.error('[cloud] Save transfer failed:', res.status); return false; }
+    return true;
+  } catch (err) { console.error('[cloud] Save transfer error:', err); return false; }
+}
+
 // ── Card cloud functions ──
 
 export async function cloudGetAllCards(): Promise<any[]> {
