@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { getBankAccounts, saveBankAccounts } from '../lib/store';
+import { cloudLookup } from '../lib/cloud';
 import { exportCSV, exportPDF } from '../lib/exportData';
 import { PageSkeleton } from '../components/LoadingSkeleton';
 
@@ -179,6 +180,51 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
     list.forEach(a => { fs[a.id] = a.frozen ?? false; });
     setFreezeStatus(fs);
     setLoading(false);
+
+    // Reconcile local bank accounts with cloud — fixes any balance drift
+    if (user?.email) {
+      (async () => {
+        try {
+          const cloud = await cloudLookup(user.email!);
+          if (cloud?.bank_accounts && cloud.bank_accounts.length > 0) {
+            const local = getBankAccounts(user.email);
+            const localTotal = local.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+            const cloudTotal = cloud.bank_accounts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+            // If cloud has a different total balance, cloud is authoritative (admin synced)
+            if (Math.abs(localTotal - cloudTotal) > 0.005) {
+              // Merge: take cloud balances but preserve local-only data (profilePic, etc.)
+              const merged = cloud.bank_accounts.map((ca: any) => {
+                const existing = local.find((la: any) => la.type === ca.type || la.id === ca.id);
+                if (existing) {
+                  // Merge cloud transactions with local (dedup by id)
+                  const localTxIds = new Set((existing.transactions || []).map((t: any) => t.id));
+                  const cloudOnly = (ca.transactions || []).filter((t: any) => !localTxIds.has(t.id));
+                  const mergedTx = [...cloudOnly, ...(existing.transactions || [])];
+                  return { ...existing, balance: ca.balance, transactions: mergedTx, recentActivity: ca.recentActivity || existing.recentActivity };
+                }
+                return ca;
+              });
+              saveBankAccounts(merged, user.email);
+              setAccounts(merged);
+            }
+          } else if (cloud?.balance !== undefined && cloud.balance >= 0) {
+            // Cloud has a global balance but no bank_accounts — check for drift
+            const local = getBankAccounts(user.email);
+            const localTotal = local.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+            if (Math.abs(localTotal - cloud.balance) > 0.005) {
+              // Apply the difference to Checking
+              const diff = cloud.balance - localTotal;
+              const checking = local.find((a: any) => a.type === 'Checking') || local[0];
+              if (checking) {
+                checking.balance = Math.max(0, Math.round((checking.balance + diff) * 100) / 100);
+                saveBankAccounts(local, user.email);
+                setAccounts([...local]);
+              }
+            }
+          }
+        } catch {}
+      })();
+    }
   }, [user?.email]);
 
   const handleCopy = (val: string) => {
