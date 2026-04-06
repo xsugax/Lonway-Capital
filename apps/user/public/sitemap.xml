@@ -3,18 +3,18 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://londwaycapital.com/</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-logo-full.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-logo-full.png</image:loc>
       <image:title>Londway Capital Logo — Premium Private Banking</image:title>
       <image:caption>Londway Capital full logo with LC monogram and Premium Private Banking tagline</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-headquarters.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-headquarters.png</image:loc>
       <image:title>Londway Capital Headquarters — Financial District</image:title>
-      <image:caption>Londway Capital headquarters building in the Financial District with gold-illuminated windows and the LC logo</image:caption>
+      <image:caption>Londway Capital headquarters building in the Financial District with gold-illuminated windows</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://londwaycapital.com/og-image.png</image:loc>
@@ -22,116 +22,128 @@
       <image:caption>Londway Capital social sharing banner for premium private banking and wealth management</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-private-banking-office.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-private-banking-office.png</image:loc>
       <image:title>Londway Capital Private Banking Office</image:title>
-      <image:caption>Elegant Londway Capital private banking consultation room with panoramic city views and premium furniture</image:caption>
+      <image:caption>Elegant private banking consultation room with panoramic city views and premium furniture</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-security.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-security.png</image:loc>
       <image:title>Londway Capital Bank-Grade Security Infrastructure</image:title>
-      <image:caption>Londway Capital security vault with AES-256 encryption, MFA, SOC 2 Type II, PCI DSS Level 1, and FDIC insurance</image:caption>
+      <image:caption>Security vault with AES-256 encryption, MFA, SOC 2 Type II, PCI DSS Level 1, and FDIC insurance</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-mobile-banking-app.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-mobile-banking-app.png</image:loc>
       <image:title>Londway Capital Mobile Banking App</image:title>
-      <image:caption>Londway Capital mobile banking app interface showing account balance, transactions, and premium banking features</image:caption>
+      <image:caption>Mobile banking app interface showing account balance, transactions, and premium banking features</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-global-banking.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-global-banking.png</image:loc>
       <image:title>Londway Capital Global Banking Network</image:title>
-      <image:caption>Londway Capital worldwide banking network with 12 offices in New York, London, Dubai, Singapore, Tokyo, and more</image:caption>
+      <image:caption>Worldwide banking network with offices in New York, London, Dubai, Singapore, and Tokyo</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-wealth-management.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-wealth-management.png</image:loc>
       <image:title>Londway Capital Wealth Management Portfolio Analytics</image:title>
-      <image:caption>Londway Capital wealth management showing 5-year portfolio growth outperforming S&amp;P 500 with diversified asset allocation</image:caption>
+      <image:caption>Wealth management showing 5-year portfolio growth with diversified asset allocation</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-premium-cards.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-premium-cards.png</image:loc>
       <image:title>Londway Capital Premium Card Collection</image:title>
-      <image:caption>Londway Capital premium debit and credit cards — Standard, Gold Elite, and Black World Elite tiers</image:caption>
+      <image:caption>Premium debit and credit cards — Standard, Gold Elite, and Black World Elite tiers</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-investment-dashboard.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-investment-dashboard.png</image:loc>
       <image:title>Londway Capital Investment Dashboard</image:title>
-      <image:caption>Londway Capital investment dashboard with portfolio performance, asset allocation, top holdings, and dividend tracking</image:caption>
+      <image:caption>Investment dashboard with portfolio performance, asset allocation, and dividend tracking</image:caption>
     </image:image>
   </url>
   <url>
     <loc>https://londwaycapital.com/accounts</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://londwaycapital.com/images/londway-capital-security.png</image:loc>
+      <image:title>Londway Capital Secure Banking Accounts</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://londwaycapital.com/transfer</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://londwaycapital.com/images/londway-capital-global-banking.png</image:loc>
+      <image:title>Londway Capital Global Wire Transfers</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://londwaycapital.com/cards</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-premium-cards.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-premium-cards.png</image:loc>
       <image:title>Londway Capital Premium Card Collection</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://londwaycapital.com/vaults</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://londwaycapital.com/images/londway-capital-security.png</image:loc>
+      <image:title>Londway Capital Savings Vaults</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://londwaycapital.com/invest</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-investment-dashboard.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-investment-dashboard.png</image:loc>
       <image:title>Londway Capital Investment Dashboard</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://londwaycapital.com/images/londway-capital-wealth-management.svg</image:loc>
+      <image:loc>https://londwaycapital.com/images/londway-capital-wealth-management.png</image:loc>
       <image:title>Londway Capital Wealth Management Analytics</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://londwaycapital.com/crypto</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://londwaycapital.com/insights</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://londwaycapital.com/health-score</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://londwaycapital.com/checkbook</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://londwaycapital.com/profile</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://londwaycapital.com/notifications</loc>
-    <lastmod>2026-03-23</lastmod>
+    <lastmod>2026-04-06</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>

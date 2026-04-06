@@ -1048,6 +1048,30 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
         </div>
       </section>
 
+      {/* ──────────────── SEO IMAGE GALLERY — Crawlable branded images ──────────────── */}
+      <section style={{ padding: 'clamp(2rem, 4vw, 4rem) 1rem', borderTop: `1px solid ${GBR}`, background: isDark ? S1 : colors.surface2 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ fontSize: '0.68rem', color: G, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', textAlign: 'center', marginBottom: '1.6rem' }}>THE LONDWAY EXPERIENCE</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+            {[
+              { src: '/images/londway-capital-headquarters.png', alt: 'Londway Capital headquarters building in the Financial District with gold-illuminated windows and LC logo' },
+              { src: '/images/londway-capital-private-banking-office.png', alt: 'Londway Capital private banking consultation room with panoramic city views and premium furniture' },
+              { src: '/images/londway-capital-security.png', alt: 'Londway Capital bank-grade security vault with AES-256 encryption and FDIC insurance' },
+              { src: '/images/londway-capital-mobile-banking-app.png', alt: 'Londway Capital mobile banking app showing account balance and transactions' },
+              { src: '/images/londway-capital-global-banking.png', alt: 'Londway Capital global banking network with offices in New York London Dubai Singapore and Tokyo' },
+              { src: '/images/londway-capital-premium-cards.png', alt: 'Londway Capital premium debit and credit cards Standard Gold Elite and Black World Elite tiers' },
+              { src: '/images/londway-capital-wealth-management.png', alt: 'Londway Capital wealth management portfolio analytics and 5-year growth performance' },
+              { src: '/images/londway-capital-investment-dashboard.png', alt: 'Londway Capital investment dashboard with portfolio performance asset allocation and dividend tracking' },
+            ].map(img => (
+              <div key={img.src} style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${GBR}`, background: isDark ? S2 : '#fff' }}>
+                <img src={img.src} alt={img.alt} width={360} height={189} loading="lazy" decoding="async"
+                  style={{ width: '100%', height: 'auto', display: 'block' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ──────────────── FOOTER ──────────────── */}
       <footer style={{ borderTop: `1px solid ${GBR}`, padding: 'clamp(1.5rem, 4vw, 3rem)', background: isDark ? S1 : colors.surface2 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
