@@ -165,6 +165,12 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
   const [copied, setCopied] = useState<string | null>(null);
   const [freezeStatus, setFreezeStatus] = useState<Record<string, boolean>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [moveModal, setMoveModal] = useState(false);
+  const [moveFrom, setMoveFrom] = useState('');
+  const [moveTo, setMoveTo] = useState('');
+  const [moveAmount, setMoveAmount] = useState('');
+  const [moveError, setMoveError] = useState('');
+  const [moveSuccess, setMoveSuccess] = useState('');
 
   useEffect(() => {
     const list: Account[] = getBankAccounts(user?.email);
@@ -188,6 +194,68 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
     const acc = accs.find((a: any) => a.id === id);
     if (acc) { acc.frozen = !isFrozen; saveBankAccounts(accs, user?.email); }
     setAccounts(accs);
+  };
+
+  const openMoveModal = () => {
+    const accs = getBankAccounts(user?.email);
+    if (accs.length < 2) return;
+    setMoveFrom(accs[0]?.id || '');
+    setMoveTo(accs[1]?.id || '');
+    setMoveAmount('');
+    setMoveError('');
+    setMoveSuccess('');
+    setMoveModal(true);
+  };
+
+  const handleMove = () => {
+    setMoveError('');
+    setMoveSuccess('');
+    const amount = parseFloat(moveAmount);
+    if (!amount || amount <= 0) { setMoveError('Enter a valid amount.'); return; }
+    if (moveFrom === moveTo) { setMoveError('Source and destination must be different.'); return; }
+
+    const accs = getBankAccounts(user?.email);
+    const src = accs.find((a: any) => a.id === moveFrom);
+    const dst = accs.find((a: any) => a.id === moveTo);
+    if (!src || !dst) { setMoveError('Account not found.'); return; }
+    if (src.frozen) { setMoveError(`${src.name} is frozen. Unfreeze it first.`); return; }
+    if (dst.frozen) { setMoveError(`${dst.name} is frozen. Unfreeze it first.`); return; }
+    if (amount > src.balance) { setMoveError(`Insufficient funds. ${src.name} balance: $${src.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`); return; }
+
+    // Debit source
+    src.balance -= amount;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const txId = `mv-${Date.now()}`;
+    if (!src.transactions) src.transactions = [];
+    src.transactions.unshift({
+      id: txId + '-d',
+      description: `Transfer to ${dst.name}`,
+      amount,
+      type: 'debit' as const,
+      date: dateStr,
+      currency: '$',
+    });
+
+    // Credit destination
+    dst.balance += amount;
+    if (!dst.transactions) dst.transactions = [];
+    dst.transactions.unshift({
+      id: txId + '-c',
+      description: `Transfer from ${src.name}`,
+      amount,
+      type: 'credit' as const,
+      date: dateStr,
+      currency: '$',
+    });
+
+    src.recentActivity = `Moved $${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${dst.name}`;
+    dst.recentActivity = `Received $${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} from ${src.name}`;
+
+    saveBankAccounts(accs, user?.email);
+    setAccounts([...accs]);
+    setMoveSuccess(`$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} moved from ${src.name} to ${dst.name}`);
+    setMoveAmount('');
   };
 
   const totalBalance = accounts.reduce((sum, a) => sum + (a.balance ?? 0), 0);
@@ -276,6 +344,7 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
               <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
                 {[
                   { icon: '↗', label: t('transfer'), href: '/transfer', color: colors.gold },
+                  { icon: '⇄', label: 'Move Money', href: '#move', color: '#58a6ff' },
                   { icon: '＋', label: t('addAccount'), href: '#', color: colors.success },
                   { icon: '↙', label: t('deposit'), href: '#', color: '#9b8fbf' },
                   { icon: '₿', label: 'Crypto Fund', href: '/crypto', color: '#F7931A' },
@@ -283,6 +352,7 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
                   <a
                     key={a.label}
                     href={a.href}
+                    onClick={a.href === '#move' ? (e: React.MouseEvent) => { e.preventDefault(); openMoveModal(); } : undefined}
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '1rem 1.3rem', background: `${a.color}0f`, border: `1px solid ${a.color}22`, borderRadius: 14, cursor: 'pointer', textDecoration: 'none', minWidth: 88 }}
                   >
                     <span style={{ width: 36, height: 36, borderRadius: 10, background: `${a.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.color, fontSize: '1.1rem', fontWeight: 800 }}>{a.icon}</span>
@@ -296,6 +366,48 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
       </section>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* ──────────── Move Money Modal ──────────── */}
+      {moveModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => { if (e.target === e.currentTarget) setMoveModal(false); }}>
+          <div style={{ background: colors.surface, borderRadius: 20, padding: 'clamp(1.5rem, 3vw, 2.5rem)', width: '100%', maxWidth: 420, border: `1px solid ${colors.border}`, boxShadow: '0 24px 80px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: colors.text, fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Move Money</h2>
+              <button onClick={() => setMoveModal(false)} style={{ background: 'none', border: 'none', color: colors.textFaint, fontSize: '1.3rem', cursor: 'pointer', padding: 4 }}>✕</button>
+            </div>
+
+            <label style={{ display: 'block', color: colors.textMuted, fontSize: '0.78rem', fontWeight: 600, marginBottom: 6 }}>From</label>
+            <select value={moveFrom} onChange={e => { setMoveFrom(e.target.value); if (e.target.value === moveTo) { const other = accounts.find(a => a.id !== e.target.value); if (other) setMoveTo(other.id); } }}
+              style={{ width: '100%', padding: '0.7rem 0.9rem', borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text, fontSize: '0.9rem', marginBottom: '1rem', outline: 'none' }}>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name} — ${a.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</option>)}
+            </select>
+
+            <label style={{ display: 'block', color: colors.textMuted, fontSize: '0.78rem', fontWeight: 600, marginBottom: 6 }}>To</label>
+            <select value={moveTo} onChange={e => setMoveTo(e.target.value)}
+              style={{ width: '100%', padding: '0.7rem 0.9rem', borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text, fontSize: '0.9rem', marginBottom: '1rem', outline: 'none' }}>
+              {accounts.filter(a => a.id !== moveFrom).map(a => <option key={a.id} value={a.id}>{a.name} — ${a.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</option>)}
+            </select>
+
+            <label style={{ display: 'block', color: colors.textMuted, fontSize: '0.78rem', fontWeight: 600, marginBottom: 6 }}>Amount</label>
+            <div style={{ position: 'relative', marginBottom: '1.2rem' }}>
+              <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: colors.textFaint, fontWeight: 600 }}>$</span>
+              <input type="number" min="0.01" step="0.01" value={moveAmount} onChange={e => setMoveAmount(e.target.value)}
+                placeholder="0.00"
+                style={{ width: '100%', padding: '0.7rem 0.9rem 0.7rem 2rem', borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text, fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+
+            {moveError && <div style={{ color: colors.danger, fontSize: '0.8rem', marginBottom: '0.8rem', padding: '0.6rem', background: `${colors.danger}10`, borderRadius: 8, border: `1px solid ${colors.danger}28` }}>{moveError}</div>}
+            {moveSuccess && <div style={{ color: colors.success, fontSize: '0.8rem', marginBottom: '0.8rem', padding: '0.6rem', background: `${colors.success}10`, borderRadius: 8, border: `1px solid ${colors.success}28` }}>✓ {moveSuccess}</div>}
+
+            <button onClick={handleMove}
+              style={{ width: '100%', padding: '0.8rem', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${colors.gold}, ${colors.goldDim})`, color: '#0D1628', fontSize: '0.92rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em', marginTop: 4 }}>
+              Move Funds
+            </button>
+            <p style={{ color: colors.textFaint, fontSize: '0.7rem', textAlign: 'center', marginTop: '0.7rem' }}>Instant · No fees · Between your own accounts</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
