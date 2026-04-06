@@ -3,6 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { sendVerificationCode, sendWelcomeEmail, generateSecureCode } from '../lib/email';
 import { getNotifications, saveNotifications, getBankAccounts, saveBankAccounts, generateFundedAccounts } from '../lib/store';
 import { cloudLookup, cloudSaveUser } from '../lib/cloud';
+import {
+  hashPassword, verifyPassword, generateSessionToken,
+  isLockedOut, recordFailedAttempt, clearLockout,
+} from '../lib/crypto';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string; email: string }) => void;
@@ -259,7 +263,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   };
 
   // ─── Registration flow ───
-  const regNext = () => {
+  const regNext = async () => {
     setError(null);
     if (regStep === 0) {
       if (!rName.trim()) { setError('Enter your full name'); return; }
@@ -296,8 +300,10 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       }).catch(() => { setSending(false); setRegCodeFallback(true); setRegStep(4); });
     } else if (regStep === 4) {
       if (rCode !== rGenCode) { setError('Incorrect code. Check your email or use the code displayed below.'); return; }
+      // Hash password before storing
+      const hashedPw = await hashPassword(rPw);
       saveNewAccount({
-        email: rEmail, password: rPw, name: rName, role: 'user',
+        email: rEmail, password: hashedPw, name: rName, role: 'user',
         phone: rPhone, dob: rDob, idVerified: true, faceData: faceData || undefined,
       });
       setRPin(''); setRPinC('');
@@ -305,20 +311,25 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     } else if (regStep === 5) {
       if (rPin.length !== 4) { setError('PIN must be exactly 4 digits'); return; }
       if (rPin !== rPinC) { setError('PINs do not match'); return; }
-      updateAccountPin(rEmail, rPin);
+      // Hash PIN before storing
+      const hashedPin = await hashPassword(rPin);
+      updateAccountPin(rEmail, hashedPin);
       setRegStep(6);
     } else if (regStep === 6) {
       sendWelcomeEmail(rEmail, rName).catch(() => {});
       // Seed account numbers and write welcome notification for new user
       getBankAccounts(rEmail); // triggers seed write to localStorage keyed by email
-      // Save to cloud for cross-device login
-      cloudSaveUser({ email: rEmail, password: rPw, pin: rPin, name: rName, role: 'user', tier: 'Standard', balance: 0, phone: rPhone }).catch(() => {});
+      // Hash credentials for cloud storage
+      const hashedPwCloud = await hashPassword(rPw);
+      const hashedPinCloud = await hashPassword(rPin);
+      // Save to cloud for cross-device login (hashed credentials)
+      cloudSaveUser({ email: rEmail, password: hashedPwCloud, pin: hashedPinCloud, name: rName, role: 'user', tier: 'Standard', balance: 0, phone: rPhone }).catch(() => {});
       const welcomeNotifs = [
         { id: 'n-welcome-' + Date.now(), message: `Welcome to Londway Capital, ${rName}! Your account is verified and ready to use.`, type: 'success', date: new Date().toISOString(), read: false },
         { id: 'n-fund-' + Date.now(), message: 'Your account balance is $0.00. Fund your account via Transfer, Crypto deposit, or contact a branch.', type: 'info', date: new Date().toISOString(), read: false },
       ];
       saveNotifications(welcomeNotifs, rEmail);
-      onLogin({ name: rName, token: 'token-' + Date.now(), role: 'user', email: rEmail });
+      onLogin({ name: rName, token: generateSessionToken(), role: 'user', email: rEmail });
     }
   };
 
@@ -353,6 +364,13 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const loginNext = async () => {
     setError(null);
     if (loginStep === 0) {
+      // Brute-force lockout check
+      const lockout = isLockedOut();
+      if (lockout.locked) {
+        const mins = Math.ceil(lockout.remainingMs / 60000);
+        setError(`Too many failed attempts. Account locked for ${mins} minute${mins > 1 ? 's' : ''}.`);
+        return;
+      }
       // Step 0: email + password
       if (!lEmail.includes('@')) { setError('Enter a valid email address'); return; }
       if (!lPw) { setError('Enter your password'); return; }
@@ -391,7 +409,27 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       } finally { setSending(false); }
       if (!m) { setError('No account found. Check your email or contact support.'); return; }
       if (m.deleted) { setError('This account has been permanently deleted. Please contact support.'); return; }
-      if (m.password !== lPw) { setError('Incorrect password. Please try again.'); return; }
+      // Verify password using PBKDF2 hash comparison (backward-compatible with legacy plain text)
+      const pwMatch = await verifyPassword(lPw, m.password);
+      if (!pwMatch) {
+        const result = recordFailedAttempt();
+        if (result.locked) {
+          setError('Too many failed attempts. Account locked for 15 minutes.');
+        } else {
+          setError(`Incorrect password. ${result.attemptsLeft} attempt${result.attemptsLeft !== 1 ? 's' : ''} remaining.`);
+        }
+        return;
+      }
+      // Successful password check — clear lockout counter
+      clearLockout();
+      // Auto-upgrade legacy plain-text password to PBKDF2 hash
+      if (!m.password.includes(':') || m.password.length < 60) {
+        try {
+          const hashed = await hashPassword(lPw);
+          updateAccountPassword(m.email, hashed);
+          cloudSaveUser({ email: m.email, password: hashed }).catch(() => {});
+        } catch {}
+      }
       if (m.frozen) { setError('Your account has been frozen. Please contact support or visit a branch.'); return; }
       if (m.blocked) { setError('Your account has been blocked due to suspicious activity. Please contact support immediately.'); return; }
       setMatched(m);
@@ -416,20 +454,23 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       // Skip PIN step when no PIN is configured
       if (!matched?.pin) {
         if (matched?.faceData) { setLoginStep(3); setTimeout(() => startCam(), 300); }
-        else { onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email }); }
+        else { onLogin({ name: matched!.name, token: generateSessionToken(), role: matched!.role, email: matched!.email }); }
         return;
       }
       setLoginStep(2); // go to PIN step
     } else if (loginStep === 2) {
-      // Step 2: PIN verification
+      // Step 2: PIN verification (PBKDF2 hash comparison, backward-compatible)
       if (lPin.length !== 4) { setError('Enter your 4-digit PIN'); return; }
-      if (matched?.pin && matched.pin !== lPin) { setError('Incorrect PIN'); return; }
+      if (matched?.pin) {
+        const pinMatch = await verifyPassword(lPin, matched.pin);
+        if (!pinMatch) { setError('Incorrect PIN'); return; }
+      }
       // If account has face data enrolled, proceed to face scan; otherwise login
       if (matched?.faceData) {
         setLoginStep(3);
         setTimeout(() => startCam(), 300);
       } else {
-        onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
+        onLogin({ name: matched!.name, token: generateSessionToken(), role: matched!.role, email: matched!.email });
       }
     } else if (loginStep === 3) {
       // Step 3: Face scan (always succeeds — presence check only)
@@ -437,7 +478,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       setTimeout(() => {
         stopCam();
         setScanning(false);
-        onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email });
+        onLogin({ name: matched!.name, token: generateSessionToken(), role: matched!.role, email: matched!.email });
       }, 2500);
     }
   };
@@ -806,10 +847,13 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         <div><label style={lbl}>CONFIRM PASSWORD</label><input type="password" style={inp} value={forgotPwC} onChange={e => setForgotPwC(e.target.value)} placeholder="Re-enter password" /></div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button style={btnO} onClick={() => setForgotStep(1)}>← Back</button>
-          <button style={btn} onClick={() => {
+          <button style={btn} onClick={async () => {
             if (forgotPw.length < 6) { setError('Password must be at least 6 characters'); return; }
             if (forgotPw !== forgotPwC) { setError('Passwords do not match'); return; }
-            updateAccountPassword(forgotEmail, forgotPw);
+            // Hash the new password before storing
+            const hashedPw = await hashPassword(forgotPw);
+            updateAccountPassword(forgotEmail, hashedPw);
+            cloudSaveUser({ email: forgotEmail, password: hashedPw }).catch(() => {});
             // Send password change security alert email
             const accounts = getAccounts();
             const acct = accounts.find(a => a.email === forgotEmail);
@@ -946,7 +990,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           <BtnRow onBack={loginBack} onNext={loginNext} nextLabel="🔍 Verify Face" />
           <div style={{ textAlign: 'center', marginTop: 8 }}>
             <span
-              onClick={() => { stopCam(); onLogin({ name: matched!.name, token: 'token-' + Date.now(), role: matched!.role, email: matched!.email }); }}
+              onClick={() => { stopCam(); onLogin({ name: matched!.name, token: generateSessionToken(), role: matched!.role, email: matched!.email }); }}
               style={{ fontSize: '0.76rem', color: 'rgba(196,160,82,0.55)', cursor: 'pointer' }}
             >
               Skip Face Scan →

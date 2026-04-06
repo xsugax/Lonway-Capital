@@ -10,6 +10,7 @@ import { useRouter } from 'next/router';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { LangProvider } from '../contexts/LanguageContext';
 import { trackPageVisit } from '../lib/trackVisit';
+import { startInactivityTimer, stopInactivityTimer } from '../lib/crypto';
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || '';
 
@@ -45,7 +46,16 @@ export default function App({ Component, pageProps }: AppProps) {
               const acct = accts.find((a: any) => a.email === parsed.email);
               if (acct?.deleted || acct?.frozen) { blocked = true; localStorage.removeItem('londway_session'); }
             } catch {}
-            if (!blocked) setUser(parsed);
+            if (!blocked) {
+              setUser(parsed);
+              // Start inactivity timer for restored session
+              startInactivityTimer(() => {
+                setUser(null);
+                stopInactivityTimer();
+                try { localStorage.removeItem('londway_session'); } catch {}
+                try { sessionStorage.clear(); } catch {}
+              });
+            }
           }
         }
       }
@@ -90,10 +100,15 @@ export default function App({ Component, pageProps }: AppProps) {
     import('../lib/email').then(({ sendLoginAlert, getDeviceInfo }) => {
       sendLoginAlert(u.email, u.name, getDeviceInfo()).catch(() => {});
     }).catch(() => {});
+    // Start inactivity auto-logout timer (10 minutes)
+    startInactivityTimer(() => handleLogout());
   }
   function handleLogout() {
     setUser(null);
+    stopInactivityTimer();
     try { localStorage.removeItem('londway_session'); } catch {}
+    // Clear sensitive session data from sessionStorage
+    try { sessionStorage.clear(); } catch {}
   }
 
   return (

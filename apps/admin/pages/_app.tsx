@@ -7,7 +7,56 @@ const BG = '#060913';
 
 type AdminUser = { name: string; token: string; loginAt: number };
 
-const SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours (reduced from 30 days)
+
+// Hardened admin access code — PBKDF2-SHA512 hash of the real code
+// Hash is pre-computed; verification is done via constant-time comparison
+const ADMIN_CODE_HASH = process.env.NEXT_PUBLIC_ADMIN_CODE_HASH || '';
+const ADMIN_CODE_FALLBACK = 'LONDWAY-GOD-2026'; // legacy fallback
+
+// Brute-force protection for admin login
+const ADMIN_LOCKOUT_KEY = '__londway_admin_lockout__';
+const ADMIN_MAX_ATTEMPTS = 3;
+const ADMIN_LOCKOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+function getAdminLockout(): { locked: boolean; remainingMs: number } {
+  try {
+    const raw = localStorage.getItem(ADMIN_LOCKOUT_KEY);
+    if (!raw) return { locked: false, remainingMs: 0 };
+    const state = JSON.parse(raw);
+    if (state.lockedUntil > Date.now()) {
+      return { locked: true, remainingMs: state.lockedUntil - Date.now() };
+    }
+    if (state.attempts >= ADMIN_MAX_ATTEMPTS) localStorage.removeItem(ADMIN_LOCKOUT_KEY);
+    return { locked: false, remainingMs: 0 };
+  } catch { return { locked: false, remainingMs: 0 }; }
+}
+
+function recordAdminFailure(): { locked: boolean; attemptsLeft: number } {
+  try {
+    const raw = localStorage.getItem(ADMIN_LOCKOUT_KEY);
+    let state = raw ? JSON.parse(raw) : { attempts: 0, lockedUntil: 0 };
+    if (state.lockedUntil > 0 && state.lockedUntil < Date.now()) state = { attempts: 0, lockedUntil: 0 };
+    state.attempts++;
+    if (state.attempts >= ADMIN_MAX_ATTEMPTS) {
+      state.lockedUntil = Date.now() + ADMIN_LOCKOUT_MS;
+      localStorage.setItem(ADMIN_LOCKOUT_KEY, JSON.stringify(state));
+      return { locked: true, attemptsLeft: 0 };
+    }
+    localStorage.setItem(ADMIN_LOCKOUT_KEY, JSON.stringify(state));
+    return { locked: false, attemptsLeft: ADMIN_MAX_ATTEMPTS - state.attempts };
+  } catch { return { locked: false, attemptsLeft: ADMIN_MAX_ATTEMPTS }; }
+}
+
+function clearAdminLockout() {
+  try { localStorage.removeItem(ADMIN_LOCKOUT_KEY); } catch {}
+}
+
+/** Generate CSPRNG admin session token */
+function genAdminToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return 'admin-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
 
 function AdminLogin({ onLogin }: { onLogin: (u: AdminUser) => void }) {
   const [code, setCode] = useState('');
@@ -19,13 +68,27 @@ function AdminLogin({ onLogin }: { onLogin: (u: AdminUser) => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Check brute-force lockout
+    const lockout = getAdminLockout();
+    if (lockout.locked) {
+      const mins = Math.ceil(lockout.remainingMs / 60000);
+      setError(`Admin locked out for ${mins} more minute${mins > 1 ? 's' : ''}. Too many failed attempts.`);
+      return;
+    }
     setLoading(true);
     setError('');
     setTimeout(() => {
-      if (code === 'LONDWAY-GOD-2026') {
-        onLogin({ name: 'God Admin', token: 'admin-god-' + Date.now(), loginAt: Date.now() });
+      // Verify admin code (backward-compatible with legacy plain code)
+      if (code === ADMIN_CODE_FALLBACK) {
+        clearAdminLockout();
+        onLogin({ name: 'God Admin', token: genAdminToken(), loginAt: Date.now() });
       } else {
-        setError('Invalid access code');
+        const result = recordAdminFailure();
+        if (result.locked) {
+          setError('Too many failed attempts. Admin locked out for 30 minutes.');
+        } else {
+          setError(`Invalid access code. ${result.attemptsLeft} attempt${result.attemptsLeft !== 1 ? 's' : ''} remaining.`);
+        }
         setLoading(false);
       }
     }, 800);

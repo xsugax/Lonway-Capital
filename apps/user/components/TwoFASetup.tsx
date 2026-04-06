@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { verifyTOTP } from '../lib/crypto';
 
 export default function TwoFASetup({ user }: { user: { token: string } }) {
   const { colors } = useTheme();
@@ -23,12 +24,18 @@ export default function TwoFASetup({ user }: { user: { token: string } }) {
     setLoading(false);
   };
 
-  const verifyToken = () => {
+  const verifyToken = async () => {
     setLoading(true);
     setError(null);
     if (token.length === 6 && /^\d+$/.test(token)) {
-      localStorage.setItem('londway_2fa', JSON.stringify({ enabled: true, secret }));
-      setStep('done');
+      // Verify TOTP code against the secret using RFC 6238
+      const valid = await verifyTOTP(secret, token);
+      if (valid) {
+        localStorage.setItem('londway_2fa', JSON.stringify({ enabled: true, secret }));
+        setStep('done');
+      } else {
+        setError('Invalid code. Make sure your authenticator app is synced and try again.');
+      }
     } else {
       setError('Please enter a valid 6-digit code');
     }
@@ -50,9 +57,13 @@ export default function TwoFASetup({ user }: { user: { token: string } }) {
         {step === 'verify' && (
           <>
             <div style={{ color: colors.text, marginBottom: 16, textAlign: 'center' }}>
-              Scan this QR code in your authenticator app:<br />
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(otpauthUrl)}&size=200x200`} alt="2FA QR" style={{ margin: '1rem auto', display: 'block' }} />
-              Or enter this secret: <span style={{ color: colors.gold, fontWeight: 600 }}>{secret}</span>
+              Enter this secret in your authenticator app (Google Authenticator, Authy, etc.):<br />
+              <div style={{
+                margin: '1rem auto', padding: '1rem', background: colors.surface2, borderRadius: 10,
+                border: `1px solid ${colors.border}`, fontFamily: 'monospace', fontSize: '1.1rem',
+                letterSpacing: '0.15em', color: colors.gold, fontWeight: 700, wordBreak: 'break-all',
+              }}>{secret}</div>
+              <span style={{ fontSize: '0.8rem', color: '#888' }}>Keep this secret safe — do not share it</span>
             </div>
             <input type="text" placeholder="Enter 6-digit code" value={token} onChange={e => setToken(e.target.value)} style={{ width: '100%', padding: 10, borderRadius: 6, border: `1px solid ${colors.border}`, marginTop: 4, background: colors.surface2, color: colors.text, outline: 'none', marginBottom: 16 }} />
             <button onClick={verifyToken} style={{ background: colors.gold, color: colors.bg, fontWeight: 700, border: 'none', borderRadius: 6, padding: '0.75rem 2rem', fontSize: '1rem', width: '100%', cursor: loading ? 'not-allowed' : 'pointer' }} disabled={loading}>
