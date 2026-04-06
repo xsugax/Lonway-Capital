@@ -50,6 +50,17 @@ export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: strin
   } catch (err) { console.error('[cloud] Save error:', err); }
 }
 
+/** PATCH only the fields that changed — never overwrites password/pin with empty values */
+export async function cloudPatchUser(email: string, fields: Record<string, any>): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify(fields) }
+    );
+  } catch (err) { console.error('[cloud] Patch error:', err); }
+}
+
 export async function cloudUpdateBalance(email: string, balance: number, bankAccounts?: any[]) {
   if (!isCloudEnabled()) return;
   try {

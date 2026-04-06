@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings } from '../lib/cloud';
+import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings } from '../lib/cloud';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -938,8 +938,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     addAudit('user_updated', updated.email, `Name: ${updated.name}, Tier: ${updated.tier}`);
     notify(true, `User ${updated.name} updated`);
     setEditUser(null);
-    // Sync to cloud (including blocked/frozen status)
-    cloudSaveUser({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier || 'Standard', balance: updated.balance, blocked: !!updated.blocked, frozen: !!updated.frozen }).catch(() => {});
+    // Sync to cloud — PATCH only the fields that actually changed (avoids overwriting password/pin with '')
+    const patch: Record<string, any> = { name: updated.name, role: updated.role, tier: updated.tier || 'Standard', balance: updated.balance, blocked: !!updated.blocked, frozen: !!updated.frozen };
+    if (updated.password) patch.password = updated.password;
+    if (updated.pin) patch.pin = updated.pin;
+    cloudPatchUser(updated.email, patch).catch(() => {});
   }
 
   function savePinOnly(u: User, pin: string) {
