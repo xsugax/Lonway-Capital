@@ -264,6 +264,37 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
 
           if (changed) {
             saveTransfers(updated, user?.email);
+            // Reconcile local balance with cloud when new admin debits/credits arrive
+            if (cloudOnly.length > 0 && user?.email) {
+              cloudLookup(user.email).then(acct => {
+                if (acct && typeof acct.balance === 'number') {
+                  const bankAccts = getBankAccounts(user.email);
+                  const localTotal = bankAccts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+                  if (Math.abs(localTotal - acct.balance) > 0.01) {
+                    // Cloud has the correct balance — apply the difference to Checking
+                    const checking = bankAccts.find((a: any) => a.type === 'Checking') || bankAccts[0];
+                    if (checking) {
+                      const diff = acct.balance - localTotal;
+                      checking.balance = Math.round((checking.balance + diff) * 100) / 100;
+                      // Record the admin operation in the account's transaction list
+                      for (const ct of cloudOnly) {
+                        const txEntry = {
+                          id: ct.id || `admin-${Date.now()}`,
+                          type: ct.type === 'credit' ? 'credit' : 'debit',
+                          description: ct.description || (ct.type === 'credit' ? 'Admin Credit' : 'Admin Debit'),
+                          amount: ct.amount,
+                          date: ct.created_at || new Date().toISOString(),
+                          status: 'completed',
+                        };
+                        checking.transactions = [txEntry, ...(Array.isArray(checking.transactions) ? checking.transactions : [])];
+                      }
+                      checking.recentActivity = cloudOnly[0]?.description || (cloudOnly[0]?.type === 'credit' ? 'Admin Credit' : 'Admin Debit');
+                      saveBankAccounts(bankAccts, user.email);
+                    }
+                  }
+                }
+              }).catch(() => {});
+            }
           }
           setHistory(updated);
         } else {
