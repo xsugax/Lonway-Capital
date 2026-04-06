@@ -1,6 +1,10 @@
 import '../styles/globals.css';
 import type { AppProps } from 'next/app';
 import React, { useState, useEffect } from 'react';
+import { patchLocalStorage } from '../lib/storage-compat';
+
+// Patch localStorage to match user app encryption — MUST run before any data access
+if (typeof window !== 'undefined') patchLocalStorage();
 
 const G = '#C4A052';
 const BG = '#060913';

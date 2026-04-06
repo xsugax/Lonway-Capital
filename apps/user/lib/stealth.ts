@@ -98,27 +98,7 @@ export function patchLocalStorage() {
 let _devToolsOpen = false;
 
 function detectDevTools() {
-  // Method 1: debugger timing — triggers only when DevTools is open
-  const threshold = 160;
-  const before = performance.now();
-  // eslint-disable-next-line no-debugger
-  debugger;
-  const after = performance.now();
-  if (after - before > threshold) {
-    _devToolsOpen = true;
-    onDevToolsDetected();
-  }
-
-  // Method 2: console.log timing trick
-  const el = new Image();
-  Object.defineProperty(el, 'id', {
-    get: () => {
-      _devToolsOpen = true;
-      onDevToolsDetected();
-      return '';
-    },
-  });
-  // Method 3: window outer/inner size comparison (detects docked DevTools)
+  // Method 1: window outer/inner size comparison (detects docked DevTools)
   if (
     window.outerWidth - window.innerWidth > 200 ||
     window.outerHeight - window.innerHeight > 300
@@ -129,15 +109,13 @@ function detectDevTools() {
 }
 
 function onDevToolsDetected() {
-  // Clear all sensitive data from memory and storage
+  // Clear session and redirect away — nothing to inspect
   try {
     sessionStorage.clear();
     localStorage.removeItem('londway_session');
   } catch {}
-  // Redirect to blank page — nothing to inspect
   try {
-    document.body.innerHTML = '';
-    document.title = '';
+    window.location.replace('about:blank');
   } catch {}
 }
 
@@ -234,8 +212,11 @@ function monitorDOMIntegrity() {
       for (const node of Array.from(mutation.addedNodes)) {
         if (node instanceof HTMLElement) {
           const tag = node.tagName.toLowerCase();
-          // Block injected scripts
+          // Block injected scripts — allow Next.js & inline scripts
           if (tag === 'script' && !node.getAttribute('data-lc-trusted')) {
+            const src = node.getAttribute('src') || '';
+            // Allow internal scripts (Next.js chunks, relative paths)
+            if (!src || src.startsWith('/') || src.startsWith('.') || src.includes('/_next/')) continue;
             node.remove();
           }
           // Block injected iframes (clickjacking)
@@ -311,41 +292,14 @@ function hideFrameworkFingerprints() {
 // Prevent prototype pollution attacks
 // ═══════════════════════════════════════════
 
-function freezePrototypes() {
-  try {
-    Object.freeze(Object.prototype);
-    Object.freeze(Array.prototype);
-    Object.freeze(Function.prototype);
-  } catch {}
-}
+// freezePrototypes removed — freezing Object/Array/Function prototypes breaks React internals
 
 // ═══════════════════════════════════════════
 // Anti-Fetch Intercept — prevent fetch/XHR hooks
 // that attackers might inject to intercept API calls
 // ═══════════════════════════════════════════
 
-function protectFetchXHR() {
-  // Freeze the native fetch reference
-  const originalFetch = window.fetch.bind(window);
-  Object.defineProperty(window, 'fetch', {
-    value: originalFetch,
-    writable: false,
-    configurable: false,
-  });
-  // Freeze XMLHttpRequest open/send
-  const originalOpen = XMLHttpRequest.prototype.open;
-  const originalSend = XMLHttpRequest.prototype.send;
-  Object.defineProperty(XMLHttpRequest.prototype, 'open', {
-    value: originalOpen,
-    writable: false,
-    configurable: false,
-  });
-  Object.defineProperty(XMLHttpRequest.prototype, 'send', {
-    value: originalSend,
-    writable: false,
-    configurable: false,
-  });
-}
+// protectFetchXHR removed — freezing fetch/XHR breaks Next.js internal patching
 
 // ═══════════════════════════════════════════
 // Periodic Integrity Sweep
@@ -398,8 +352,7 @@ function detectBots() {
     window.domAutomation || window.domAutomationController,
   ];
   if (botSignals.some(Boolean)) {
-    document.body.innerHTML = '';
-    document.title = '';
+    try { window.location.replace('about:blank'); } catch {}
   }
 }
 
@@ -427,8 +380,6 @@ export function initStealth() {
 
   // Layer 4: Protection against injection/tampering
   monitorDOMIntegrity();
-  protectFetchXHR();
-  freezePrototypes();
 
   // Layer 5: Bot detection
   detectBots();

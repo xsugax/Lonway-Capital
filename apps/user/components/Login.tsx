@@ -71,9 +71,20 @@ function getAccounts(): StoredAccount[] {
         if (!u.email || !u.balance || u.balance <= 0) continue;
         const safe = u.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
         const acctKey = `londway_bank_accounts__${safe}`;
-        if (!localStorage.getItem(acctKey)) {
+        const existing = localStorage.getItem(acctKey);
+        if (!existing) {
           const seeded = generateFundedAccounts(u.email, u.balance);
           localStorage.setItem(acctKey, JSON.stringify(seeded));
+        } else {
+          // Re-seed if existing accounts have $0 total and admin set a balance
+          try {
+            const accts = JSON.parse(existing);
+            const total = accts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+            if (total <= 0) {
+              const seeded = generateFundedAccounts(u.email, u.balance);
+              localStorage.setItem(acctKey, JSON.stringify(seeded));
+            }
+          } catch {}
         }
       }
     }

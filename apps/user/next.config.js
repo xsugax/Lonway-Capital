@@ -55,7 +55,6 @@ const nextConfig = {
             },
             mangle: {
               toplevel: true,
-              properties: { regex: /^_(?!_)/ },
             },
             output: {
               comments: false,
