@@ -48,7 +48,7 @@ export default function App({ Component, pageProps }: AppProps) {
             try {
               const accts = JSON.parse(localStorage.getItem('londway_accounts') || '[]');
               const acct = accts.find((a: any) => a.email === parsed.email);
-              if (acct?.deleted || acct?.frozen) { blocked = true; localStorage.removeItem('londway_session'); }
+              if (acct?.deleted || acct?.frozen || acct?.blocked) { blocked = true; localStorage.removeItem('londway_session'); }
             } catch {}
             if (!blocked) {
               setUser(parsed);

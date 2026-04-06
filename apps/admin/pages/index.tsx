@@ -1032,6 +1032,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         if (idx !== -1) { accounts[idx].frozen = newFrozen; localStorage.setItem('londway_accounts', JSON.stringify(accounts)); }
       }
     } catch {}
+    // Sync to cloud so freeze is enforced across all devices
+    cloudPatchUser(u.email, { frozen: newFrozen }).catch(() => {});
     addAudit(u.frozen ? 'account_unfrozen' : 'account_frozen', u.email);
     notify(true, `${u.name} ${u.frozen ? 'unfrozen' : 'frozen'}`);
     // Send freeze/unfreeze security alert email to customer
@@ -1072,6 +1074,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   }
 
   function toggleBlock(u: User) {
+    const action = u.blocked ? 'unblock' : 'block';
+    if (!u.blocked && !window.confirm(`Are you sure you want to block ${u.name} (${u.email})? They will be unable to log in or make any transactions.`)) return;
     const newBlocked = !u.blocked;
     persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, blocked: newBlocked } : x) });
     // Sync blocked status to londway_accounts so user app enforces it
@@ -1083,6 +1087,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         if (idx !== -1) { accounts[idx].blocked = newBlocked; localStorage.setItem('londway_accounts', JSON.stringify(accounts)); }
       }
     } catch {}
+    // Sync to cloud so block is enforced across all devices
+    cloudPatchUser(u.email, { blocked: newBlocked }).catch(() => {});
     addAudit(u.blocked ? 'account_unblocked' : 'account_blocked', u.email);
     notify(true, `${u.name} ${u.blocked ? 'unblocked' : 'blocked'}`);
   }
