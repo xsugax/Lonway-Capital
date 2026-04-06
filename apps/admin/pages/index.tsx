@@ -1021,6 +1021,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   }
 
   function toggleFreeze(u: User) {
+    if (!u.frozen && !window.confirm(`Are you sure you want to freeze ${u.name}'s account (${u.email})? All transactions and login sessions will be disabled.`)) return;
     const newFrozen = !u.frozen;
     persist({ ...data, users: data.users.map(x => x.id === u.id ? { ...x, frozen: newFrozen } : x) });
     // Sync frozen status to londway_accounts so user app enforces it
