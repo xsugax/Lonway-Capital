@@ -15,7 +15,7 @@ export async function hashPassword(password: string): Promise<string> {
     'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
   );
   const derived = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: salt as BufferSource, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
+    { name: 'PBKDF2', salt: salt as any, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
     keyMaterial,
     HASH_KEY_LEN * 8
   );
@@ -37,7 +37,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
   );
   const derived = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: salt as BufferSource, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
+    { name: 'PBKDF2', salt: salt as any, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
     keyMaterial,
     HASH_KEY_LEN * 8
   );

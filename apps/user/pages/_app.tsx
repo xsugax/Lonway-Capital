@@ -11,6 +11,10 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 import { LangProvider } from '../contexts/LanguageContext';
 import { trackPageVisit } from '../lib/trackVisit';
 import { startInactivityTimer, stopInactivityTimer } from '../lib/crypto';
+import { initStealth, patchLocalStorage } from '../lib/stealth';
+
+// Patch localStorage BEFORE any component renders — encrypts all londway_* keys
+if (typeof window !== 'undefined') patchLocalStorage();
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || '';
 
@@ -61,6 +65,8 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     } catch {}
     setHydrated(true);
+    // Initialize stealth & anti-forensics layer
+    initStealth();
     // Register service worker for PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});

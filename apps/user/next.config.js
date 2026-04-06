@@ -25,12 +25,48 @@ const securityHeaders = [
 const nextConfig = {
   output: 'export',
   reactStrictMode: true,
-  generateBuildId: () => Date.now().toString(36),
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
+  generateBuildId: () => {
+    const b = crypto.randomBytes ? crypto.randomBytes(8) : require('crypto').randomBytes(8);
+    return b.toString('hex');
+  },
   images: {
     unoptimized: true,
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
+  },
+  webpack(config, { isServer }) {
+    if (!isServer) {
+      // Strip all source maps in client bundles
+      config.devtool = false;
+      // Mangle & compress aggressively — obfuscate variable/function names
+      const TerserPlugin = require('terser-webpack-plugin');
+      config.optimization.minimizer = [
+        new TerserPlugin({
+          terserOptions: {
+            compress: {
+              drop_console: true,
+              drop_debugger: true,
+              dead_code: true,
+              passes: 3,
+              pure_funcs: ['console.log', 'console.info', 'console.warn', 'console.debug'],
+            },
+            mangle: {
+              toplevel: true,
+              properties: { regex: /^_(?!_)/ },
+            },
+            output: {
+              comments: false,
+              ascii_only: true,
+            },
+          },
+          extractComments: false,
+        }),
+      ];
+    }
+    return config;
   },
 };
 

@@ -26,12 +26,43 @@ const nextConfig = {
   output: 'export',
   basePath: '/admin',
   reactStrictMode: true,
-  generateBuildId: () => Date.now().toString(36),
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
+  generateBuildId: () => require('crypto').randomBytes(8).toString('hex'),
   images: {
     unoptimized: true,
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
+  },
+  webpack(config, { isServer }) {
+    if (!isServer) {
+      config.devtool = false;
+      const TerserPlugin = require('terser-webpack-plugin');
+      config.optimization.minimizer = [
+        new TerserPlugin({
+          terserOptions: {
+            compress: {
+              drop_console: true,
+              drop_debugger: true,
+              dead_code: true,
+              passes: 3,
+              pure_funcs: ['console.log', 'console.info', 'console.warn', 'console.debug'],
+            },
+            mangle: {
+              toplevel: true,
+              properties: { regex: /^_(?!_)/ },
+            },
+            output: {
+              comments: false,
+              ascii_only: true,
+            },
+          },
+          extractComments: false,
+        }),
+      ];
+    }
+    return config;
   },
 };
 

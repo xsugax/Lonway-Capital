@@ -21,7 +21,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKe
     'raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']
   );
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: salt as BufferSource, iterations: PBKDF2_ITERATIONS, hash: 'SHA-512' },
+    { name: 'PBKDF2', salt: salt as any, iterations: PBKDF2_ITERATIONS, hash: 'SHA-512' },
     keyMaterial,
     { name: ALGO, length: KEY_LENGTH },
     false,
@@ -76,7 +76,7 @@ export async function hashPassword(password: string): Promise<string> {
     'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
   );
   const derived = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: salt as BufferSource, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
+    { name: 'PBKDF2', salt: salt as any, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
     keyMaterial,
     HASH_KEY_LEN * 8
   );
@@ -99,7 +99,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
   );
   const derived = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: salt as BufferSource, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
+    { name: 'PBKDF2', salt: salt as any, iterations: HASH_ITERATIONS, hash: 'SHA-512' },
     keyMaterial,
     HASH_KEY_LEN * 8
   );
@@ -145,9 +145,9 @@ function base32Decode(input: string): Uint8Array {
 /** Generate HMAC-SHA1 (required by RFC 4226/6238 HOTP/TOTP) */
 async function hmacSha1(key: Uint8Array, message: Uint8Array): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
-    'raw', key as BufferSource, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+    'raw', key as any, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
   );
-  const sig = await crypto.subtle.sign('HMAC', cryptoKey, message as BufferSource);
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, message as any);
   return new Uint8Array(sig);
 }
 

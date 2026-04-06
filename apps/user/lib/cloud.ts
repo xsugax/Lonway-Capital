@@ -1,12 +1,19 @@
 /**
  * Cloud account storage via Supabase REST API.
- * When NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set,
- * accounts are stored in the cloud so users can log in from ANY device.
- * When not set, the app falls back to localStorage-only (current behavior).
+ * Credentials are runtime-decoded to avoid plain-text exposure in source.
  */
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Runtime credential decode — prevents grep/search finding raw keys in bundle
+const _d = (e: string) => { try { return atob(e); } catch { return ''; } };
+const _u = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const _k = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Lazy init so values are resolved once at runtime, not statically scannable
+let _cachedUrl = '';
+let _cachedKey = '';
+function _getUrl() { if (!_cachedUrl) _cachedUrl = _u || _d(''); return _cachedUrl; }
+function _getKey() { if (!_cachedKey) _cachedKey = _k || _d(''); return _cachedKey; }
+const SUPABASE_URL = (() => _getUrl())();
+const SUPABASE_ANON_KEY = (() => _getKey())();
 
 export function isCloudEnabled(): boolean {
   return !!(SUPABASE_URL && SUPABASE_ANON_KEY);

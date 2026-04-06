@@ -1,5 +1,6 @@
 // Simple localStorage data store for static deployment (GitHub Pages)
 // All data is isolated per user email — each user owns their own data.
+// Data is transparently encrypted by the stealth layer (stealth.ts patchLocalStorage).
 
 // ═══════════════════════════════════════════
 // Tier Limits
