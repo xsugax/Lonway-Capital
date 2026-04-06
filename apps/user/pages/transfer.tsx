@@ -432,7 +432,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         senderEmail: user?.email || '',
         senderName: user?.name || '',
         recipientAccountId: reviewData.iban || reviewData.accountNumber || 'external',
-        recipientAccountName: reviewData.recipientName,
+        recipientAccountName: reviewData.iban || reviewData.accountNumber || reviewData.recipientName,
         recipientName: reviewData.recipientName,
         recipientBankName: reviewData.bankName,
         iban: reviewData.iban,

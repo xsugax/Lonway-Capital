@@ -43,7 +43,7 @@ export async function downloadReceipt(tx: Transaction): Promise<void> {
     ['Sender', tx.senderName],
     ['Sender Account', tx.senderAccountName],
     ['Recipient', tx.recipientName],
-    ['Recipient Account', tx.recipientAccountName],
+    ['Recipient Account', tx.recipientAccountId && tx.recipientAccountId !== 'external' ? tx.recipientAccountId : tx.recipientAccountName],
   ];
   if (tx.iban) rows.push(['IBAN', tx.iban]);
   if (tx.swift) rows.push(['SWIFT / BIC', tx.swift]);
@@ -339,7 +339,7 @@ export function downloadReceiptFromLegacy(transfer: {
     senderEmail,
     senderName,
     recipientAccountId: transfer.toAccountId || 'external',
-    recipientAccountName: transfer.recipientName,
+    recipientAccountName: transfer.toAccountId || transfer.recipientName,
     recipientName: transfer.recipientName,
     recipientBankName: transfer.bankName,
     country: transfer.country,
