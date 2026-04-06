@@ -75,6 +75,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
                 if (cloud.tier && accounts[idx].tier !== cloud.tier) { accounts[idx].tier = cloud.tier; dirty = true; }
                 if (cloud.name && accounts[idx].name !== cloud.name) { accounts[idx].name = cloud.name; dirty = true; }
                 if (cloud.role && accounts[idx].role !== cloud.role) { accounts[idx].role = cloud.role; dirty = true; }
+                if (cloud.phone && accounts[idx].phone !== cloud.phone) { accounts[idx].phone = cloud.phone; dirty = true; }
                 if (dirty) localStorage.setItem('londway_accounts', JSON.stringify(accounts));
                 setAccount(accounts[idx]);
                 if (accounts[idx]?.profilePic) setProfilePic(accounts[idx].profilePic);

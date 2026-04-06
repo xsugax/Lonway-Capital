@@ -829,6 +829,50 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     setTimeout(() => { console.info(`[admin] Cloud sync: ${synced} users pushed to Supabase`); }, 5000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Sync ALL admin users → londway_accounts on every admin load ──────
+  // Ensures phone, address, createdAt, tier, role, frozen, blocked are
+  // always in sync so the user-side profile displays correct data.
+  useEffect(() => {
+    try {
+      const d = loadData();
+      if (!d.users?.length) return;
+      const raw = localStorage.getItem('londway_accounts');
+      const accounts: any[] = raw ? JSON.parse(raw) : [];
+      let dirty = false;
+      for (const u of d.users) {
+        const idx = accounts.findIndex((a: any) => a.email?.toLowerCase() === u.email?.toLowerCase());
+        if (idx !== -1) {
+          // Merge all admin fields into the existing login account
+          const a = accounts[idx];
+          if (u.name && a.name !== u.name) { a.name = u.name; dirty = true; }
+          if (u.role && a.role !== u.role) { a.role = u.role; dirty = true; }
+          if (u.tier && a.tier !== u.tier) { a.tier = u.tier; dirty = true; }
+          if (u.phone !== undefined && a.phone !== u.phone) { a.phone = u.phone || ''; dirty = true; }
+          if (u.address !== undefined && a.address !== u.address) { a.address = u.address || ''; dirty = true; }
+          if (u.createdAt && a.createdAt !== u.createdAt) { a.createdAt = u.createdAt; dirty = true; }
+          if (u.password && !a.password) { a.password = u.password; dirty = true; }
+          if (u.pin && !a.pin) { a.pin = u.pin; dirty = true; }
+          if (a.frozen !== !!u.frozen) { a.frozen = !!u.frozen; dirty = true; }
+          if (a.blocked !== !!u.blocked) { a.blocked = !!u.blocked; dirty = true; }
+        } else if (u.password || u.pin) {
+          // Admin user not in londway_accounts yet — create entry so they can log in
+          accounts.push({
+            email: u.email, password: u.password || '', pin: u.pin || '',
+            name: u.name, role: u.role, tier: u.tier || 'Standard',
+            phone: u.phone || '', address: u.address || '',
+            createdAt: u.createdAt || new Date().toISOString(),
+            frozen: !!u.frozen, blocked: !!u.blocked, idVerified: !!u.kyc,
+          });
+          dirty = true;
+        }
+      }
+      if (dirty) {
+        localStorage.setItem('londway_accounts', JSON.stringify(accounts));
+        console.info(`[admin] Synced ${d.users.length} admin users → londway_accounts`);
+      }
+    } catch (e) { console.warn('[admin] Account sync failed:', e); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Activation link helpers ────────────────────────────────────
   function makeFundedTx(target: number, acctId: string): object[] {
     if (target <= 0) return [];
@@ -944,7 +988,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     notify(true, `User ${updated.name} updated`);
     setEditUser(null);
     // Sync to cloud — PATCH only the fields that actually changed (avoids overwriting password/pin with '')
-    const patch: Record<string, any> = { name: updated.name, role: updated.role, tier: updated.tier || 'Standard', balance: updated.balance, blocked: !!updated.blocked, frozen: !!updated.frozen };
+    const patch: Record<string, any> = { name: updated.name, role: updated.role, tier: updated.tier || 'Standard', balance: updated.balance, blocked: !!updated.blocked, frozen: !!updated.frozen, phone: updated.phone || '' };
     if (updated.password) patch.password = updated.password;
     if (updated.pin) patch.pin = updated.pin;
     cloudPatchUser(updated.email, patch).catch(() => {});
