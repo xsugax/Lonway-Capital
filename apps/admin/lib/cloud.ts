@@ -72,6 +72,39 @@ export async function cloudDeleteUser(email: string) {
   } catch (err) { console.error('[cloud] Delete error:', err); }
 }
 
+/** Look up a user's cloud data by email */
+export async function cloudLookupUser(email: string): Promise<CloudAccount | null> {
+  if (!isCloudEnabled()) return null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}&select=*`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0] ?? null;
+  } catch { return null; }
+}
+
+/** Refund a transfer amount to a user's cloud balance */
+export async function cloudRefundBalance(email: string, refundAmount: number, description: string): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    const user = await cloudLookupUser(email);
+    if (!user) return;
+    const accts: any[] = user.bank_accounts || [];
+    if (accts.length === 0) return;
+    const idx = accts.findIndex((a: any) => a.type === 'Checking' || a.type === 'checking');
+    const i = idx >= 0 ? idx : 0;
+    accts[i].balance = Math.round((accts[i].balance + refundAmount) * 100) / 100;
+    const entry = { id: 'refund-' + Date.now(), type: 'credit', description, amount: refundAmount, date: new Date().toISOString(), status: 'completed' };
+    accts[i].transactions = [entry, ...(Array.isArray(accts[i].transactions) ? accts[i].transactions : [])];
+    accts[i].recentActivity = description;
+    const totalBalance = accts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+    await cloudUpdateBalance(email, totalBalance, accts);
+  } catch (err) { console.error('[cloud] Refund error:', err); }
+}
+
 // ── Transfer cloud functions ──
 
 export async function cloudGetPendingTransfers(): Promise<any[]> {

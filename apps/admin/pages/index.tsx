@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus } from '../lib/cloud';
+import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance } from '../lib/cloud';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -1339,7 +1339,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                 updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                 updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
                                 cloudUpdateTransferStatus(tx.id, 'rejected').catch(() => {});
-                                syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
+                                cloudRefundBalance(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), `Refund: rejected transfer ${tx.reference}`).catch(() => {});
                                 addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                                 notify(true, `Transfer rejected & refunded: ${tx.reference}`);
                                 const rejectUser = data.users.find(u => u.email === tx._userEmail);
@@ -1597,7 +1597,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                     updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
                                     cloudUpdateTransferStatus(tx.id, 'rejected').catch(() => {});
-                                    syncUserBankAccounts(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), true, { id: 'refund-' + Date.now(), description: `Refund: rejected transfer ${tx.reference}`, createdAt: new Date().toISOString() });
+                                    cloudRefundBalance(tx._userEmail, Number(tx.amount) + Number(tx.fee || 0), `Refund: rejected transfer ${tx.reference}`).catch(() => {});
                                     addAudit('transfer_rejected', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount} (refunded)`);
                                     notify(true, `Transfer rejected & refunded: ${tx.reference}`);
                                     const rejectUser2 = data.users.find(u => u.email === tx._userEmail);

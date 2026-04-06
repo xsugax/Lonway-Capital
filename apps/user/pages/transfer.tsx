@@ -10,7 +10,7 @@ import {
   convertAmount,
 } from '../lib/ledger';
 import { downloadReceiptFromLegacy } from '../lib/receipt';
-import { cloudSaveTransfer, cloudGetUserTransfers, cloudLookup } from '../lib/cloud';
+import { cloudSaveTransfer, cloudGetUserTransfers, cloudLookup, cloudUpdateBalance } from '../lib/cloud';
 import type { TierLimits } from '../lib/store';
 
 type TransferType = 'local' | 'international';
@@ -203,6 +203,24 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
             const ct = cloudTxs.find((c: any) => c.id === lt.id);
             if (ct && ct.status !== lt.status) {
               changed = true;
+              // If rejected, refund the held amount back to checking
+              if (ct.status === 'rejected' && lt.status === 'pending' && user?.email) {
+                try {
+                  const refundAmt = Number(lt.amount) + Number(lt.fee || 0);
+                  if (refundAmt > 0) {
+                    const bankAccts = getBankAccounts(user.email);
+                    const checking = bankAccts.find((a: any) => a.type === 'Checking') || bankAccts[0];
+                    if (checking) {
+                      checking.balance = Math.round((checking.balance + refundAmt) * 100) / 100;
+                      checking.recentActivity = `Refund: rejected transfer ${lt.reference}`;
+                      checking.transactions = [{ id: 'refund-' + Date.now(), type: 'credit', description: `Refund: rejected transfer ${lt.reference}`, amount: refundAmt, date: new Date().toISOString(), status: 'completed' }, ...(Array.isArray(checking.transactions) ? checking.transactions : [])];
+                      saveBankAccounts(bankAccts, user.email);
+                      const totalBal = bankAccts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+                      cloudUpdateBalance(user.email, totalBal, bankAccts).catch(() => {});
+                    }
+                  }
+                } catch {}
+              }
               return { ...lt, status: ct.status };
             }
             return lt;
@@ -405,7 +423,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         console.warn('[transfer] Cloud sync failed — transfer saved locally only');
       }
 
-      // Deduct from checking
+      // Deduct from checking and sync to cloud
       if (user?.email) {
         const bankAccts = getBankAccounts(user.email);
         const checking = bankAccts.find((a: any) => a.type === 'Checking') || bankAccts[0];
@@ -413,6 +431,9 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
           checking.balance = Math.round(Math.max(0, checking.balance - reviewData.total) * 100) / 100;
           checking.recentActivity = `Transfer hold: -$${reviewData.total.toFixed(2)} → ${reviewData.recipientName}`;
           saveBankAccounts(bankAccts, user.email);
+          // Sync deducted balance to cloud so it persists across devices/reloads
+          const totalBal = bankAccts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+          cloudUpdateBalance(user.email, totalBal, bankAccts).catch(() => {});
         }
       }
 
