@@ -10,7 +10,7 @@ import {
   convertAmount,
 } from '../lib/ledger';
 import { downloadReceiptFromLegacy } from '../lib/receipt';
-import { cloudSaveTransfer, cloudGetUserTransfers, cloudLookup, cloudUpdateBalance } from '../lib/cloud';
+import { cloudSaveTransfer, cloudGetUserTransfers, cloudLookup, cloudUpdateBalance, cloudGetBankSettings } from '../lib/cloud';
 import type { TierLimits } from '../lib/store';
 
 type TransferType = 'local' | 'international';
@@ -60,6 +60,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
   const [history, setHistory] = useState<Transfer[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [tierLimits, setTierLimits] = useState<TierLimits>(getTierLimits('Standard'));
+  const [bankSettings, setBankSettings] = useState<{ dailyTransferLimit?: number; perTxLimit?: number } | null>(null);
   const [dailyUsed, setDailyUsed] = useState(0);
   // Local fields
   const [localRecipient, setLocalRecipient] = useState('');
@@ -107,12 +108,12 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       migrateLegacyTransfers(user.email);
     }
     fetchHistory();
-    // Load user tier (sync from cloud first for latest admin changes)
+    // Load user tier + global bank settings from cloud (sync latest admin changes)
     if (typeof window !== 'undefined' && user?.email) {
       const email = user.email;
       (async () => {
         try {
-          const cloud = await cloudLookup(email);
+          const [cloud, gs] = await Promise.all([cloudLookup(email), cloudGetBankSettings()]);
           if (cloud?.tier) {
             const raw = localStorage.getItem('londway_accounts');
             if (raw) {
@@ -125,6 +126,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
             }
             setTierLimits(getTierLimits(cloud.tier));
           }
+          if (gs) setBankSettings(gs);
         } catch {
           // Fallback to local tier
           try {
@@ -139,8 +141,16 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       })();
       setDailyUsed(getDailyUsage(user.email));
     }
-    // Auto-poll cloud for status updates every 10s
-    const pollId = setInterval(() => { fetchHistory(); }, 10000);
+    // Auto-poll cloud for status updates + re-sync tier every 10s
+    const pollId = setInterval(() => {
+      fetchHistory();
+      // Re-sync tier from cloud so admin changes take effect within seconds
+      if (user?.email) {
+        cloudLookup(user.email).then(cloud => {
+          if (cloud?.tier) setTierLimits(getTierLimits(cloud.tier));
+        }).catch(() => {});
+      }
+    }, 10000);
     return () => clearInterval(pollId);
   }, [user?.email]);
 
@@ -292,15 +302,17 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
       }
     }
 
-    // ─── Tier limit enforcement ───
-    if (amt > tierLimits.perTxLimit) {
-      setSubmitResult({ ok: false, message: `Your ${tierLimits.tier} account allows a maximum of $${tierLimits.perTxLimit.toLocaleString()} per transaction. Upgrade your tier to send more.` });
+    // ─── Tier + admin bank settings limit enforcement ───
+    const effectivePerTx = bankSettings?.perTxLimit ? Math.min(tierLimits.perTxLimit, bankSettings.perTxLimit) : tierLimits.perTxLimit;
+    const effectiveDaily = bankSettings?.dailyTransferLimit ? Math.min(tierLimits.dailyTransferLimit, bankSettings.dailyTransferLimit) : tierLimits.dailyTransferLimit;
+    if (amt > effectivePerTx) {
+      setSubmitResult({ ok: false, message: `Your ${tierLimits.tier} account allows a maximum of $${effectivePerTx.toLocaleString()} per transaction. Upgrade your tier to send more.` });
       return;
     }
     const freshDaily = user?.email ? getDailyUsage(user.email) : dailyUsed;
-    if (freshDaily + amt > tierLimits.dailyTransferLimit) {
-      const remaining = Math.max(0, tierLimits.dailyTransferLimit - freshDaily);
-      setSubmitResult({ ok: false, message: `Daily limit reached. You have $${remaining.toLocaleString()} remaining today (${tierLimits.tier} limit: $${tierLimits.dailyTransferLimit.toLocaleString()}).` });
+    if (freshDaily + amt > effectiveDaily) {
+      const remaining = Math.max(0, effectiveDaily - freshDaily);
+      setSubmitResult({ ok: false, message: `Daily limit reached. You have $${remaining.toLocaleString()} remaining today (${tierLimits.tier} limit: $${effectiveDaily.toLocaleString()}).` });
       return;
     }
     if (!isLocal && !tierLimits.intlAllowed) {

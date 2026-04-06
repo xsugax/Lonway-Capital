@@ -99,6 +99,24 @@ export async function cloudDeleteUser(email: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// GLOBAL BANK SETTINGS — admin-configured limits from Supabase
+// ═══════════════════════════════════════════════════════════════
+
+/** Fetch global bank settings set by admin */
+export async function cloudGetBankSettings(): Promise<any | null> {
+  if (!isCloudEnabled()) return null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.__bank_settings__&select=bank_accounts`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0]?.bank_accounts ?? null;
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // CLOUD TRANSFERS — Supabase-synced transfer requests
 // ═══════════════════════════════════════════════════════════════
 

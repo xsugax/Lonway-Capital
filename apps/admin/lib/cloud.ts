@@ -105,6 +105,44 @@ export async function cloudRefundBalance(email: string, refundAmount: number, de
   } catch (err) { console.error('[cloud] Refund error:', err); }
 }
 
+// ── Bank Settings cloud sync ──
+
+/** Save global bank settings to cloud (stored as a special account row) */
+export async function cloudSaveBankSettings(settings: any): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
+      method: 'POST',
+      headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        email: '__bank_settings__',
+        name: 'Bank Settings',
+        role: 'system',
+        tier: 'Standard',
+        password: '',
+        pin: '',
+        balance: 0,
+        phone: '',
+        bank_accounts: settings,
+      }),
+    });
+  } catch (err) { console.error('[cloud] Save bank settings error:', err); }
+}
+
+/** Fetch global bank settings from cloud */
+export async function cloudGetBankSettings(): Promise<any | null> {
+  if (!isCloudEnabled()) return null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.__bank_settings__&select=bank_accounts`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0]?.bank_accounts ?? null;
+  } catch { return null; }
+}
+
 // ── Transfer cloud functions ──
 
 export async function cloudGetPendingTransfers(): Promise<any[]> {

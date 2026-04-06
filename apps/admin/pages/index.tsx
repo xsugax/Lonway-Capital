@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance } from '../lib/cloud';
+import { cloudSaveUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings } from '../lib/cloud';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -1990,6 +1990,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 e.preventDefault();
                 persist({ ...data, settings: settingsForm });
                 addAudit('settings_updated', 'System', 'Bank settings updated');
+                cloudSaveBankSettings(settingsForm).catch(() => {});
                 notify(true, 'Settings saved');
               }} style={{ display: 'grid', gap: 14 }}>
                 <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Bank Name</label>
