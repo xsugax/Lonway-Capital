@@ -212,15 +212,20 @@ function monitorDOMIntegrity() {
       for (const node of Array.from(mutation.addedNodes)) {
         if (node instanceof HTMLElement) {
           const tag = node.tagName.toLowerCase();
-          // Block injected scripts — allow Next.js & inline scripts
+          // Block injected scripts — allow Next.js, inline, and trusted third-party scripts
           if (tag === 'script' && !node.getAttribute('data-lc-trusted')) {
             const src = node.getAttribute('src') || '';
             // Allow internal scripts (Next.js chunks, relative paths)
             if (!src || src.startsWith('/') || src.startsWith('.') || src.includes('/_next/')) continue;
+            // Allow trusted third-party scripts
+            if (src.includes('smartsuppchat') || src.includes('googletagmanager')) continue;
             node.remove();
           }
-          // Block injected iframes (clickjacking)
+          // Block injected iframes (clickjacking) — allow Smartsupp chat
           if (tag === 'iframe') {
+            const iframeSrc = node.getAttribute('src') || '';
+            const iframeId = node.getAttribute('id') || '';
+            if (iframeSrc.includes('smartsupp') || iframeId.includes('smartsupp')) continue;
             node.remove();
           }
           // Block injected link/style that could exfiltrate data
@@ -320,8 +325,13 @@ function startIntegritySweep() {
         el.remove();
       }
     });
-    // Check for injected iframes
-    document.querySelectorAll('iframe').forEach(el => el.remove());
+    // Check for injected iframes — keep Smartsupp chat
+    document.querySelectorAll('iframe').forEach(el => {
+      const src = el.getAttribute('src') || '';
+      const id = el.getAttribute('id') || '';
+      if (src.includes('smartsupp') || id.includes('smartsupp')) return;
+      el.remove();
+    });
     // Verify session hasn't been tampered with
     try {
       const session = localStorage.getItem('londway_session');

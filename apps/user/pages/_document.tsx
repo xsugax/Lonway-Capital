@@ -248,6 +248,7 @@ export default function Document() {
                 widget: '#C4A052',
                 primary: '#C4A052'
               });
+              smartsupp('chat:message', 'Hi there 👋 Welcome to Londway Capital. How can we help you today?');
             `
           }}
         />
