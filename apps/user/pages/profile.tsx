@@ -94,22 +94,35 @@ export default function Profile({ user }: { user?: { name: string; email: string
           } catch {}
         }
       })();
-      // Estimate member since from stored date or use current year
-      const storedDate = localStorage.getItem('londway_member_since_' + user.email);
-      if (storedDate) {
-        setMemberSince(storedDate);
-      } else {
-        const d = new Date();
-        const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        setMemberSince(label);
-        localStorage.setItem('londway_member_since_' + user.email, label);
+      // Derive member since from account createdAt, stored date, or current date
+      let label = '';
+      try {
+        const raw = localStorage.getItem('londway_accounts');
+        if (raw) {
+          const accs = JSON.parse(raw);
+          const acc = accs.find((a: any) => a.email?.toLowerCase() === email.toLowerCase());
+          if (acc?.createdAt) {
+            label = new Date(acc.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          }
+        }
+      } catch {}
+      if (!label) {
+        const storedDate = localStorage.getItem('londway_member_since_' + user.email);
+        if (storedDate) { label = storedDate; }
+        else {
+          const d = new Date();
+          label = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          localStorage.setItem('londway_member_since_' + user.email, label);
+        }
       }
+      setMemberSince(label);
     }
   }, [user?.email]);
 
   const name = account?.name || user?.name || '—';
   const email = account?.email || user?.email || '—';
   const phone = account?.phone || '—';
+  const address = account?.address || '—';
   const dob = formatDob(account?.dob);
   const hasPin = !!account?.pin;
   const hasFace = !!account?.faceData;
@@ -169,6 +182,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
         {fieldRow('Full Name', name)}
         {fieldRow('Email Address', email)}
         {fieldRow('Phone Number', phone)}
+        {fieldRow('Address', address)}
         {fieldRow('Date of Birth', dob)}
       </div>
     );

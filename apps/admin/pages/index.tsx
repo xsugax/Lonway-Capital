@@ -896,7 +896,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
           name: nu.name,
           role: nu.role,
           phone: nu.phone || '',
+          address: nu.address || '',
           tier: nu.tier,
+          createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
           idVerified: false,
         });
         localStorage.setItem('londway_accounts', JSON.stringify(accounts));
@@ -927,11 +929,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         if (updated.tier) accounts[idx].tier = updated.tier;
         if (updated.password) accounts[idx].password = updated.password;
         if (updated.pin) accounts[idx].pin = updated.pin;
+        if (updated.phone !== undefined) accounts[idx].phone = updated.phone;
+        if (updated.address !== undefined) accounts[idx].address = updated.address;
+        if (updated.createdAt) accounts[idx].createdAt = updated.createdAt;
         accounts[idx].frozen = !!updated.frozen;
         accounts[idx].blocked = !!updated.blocked;
         localStorage.setItem('londway_accounts', JSON.stringify(accounts));
       } else if (updated.password || updated.pin) {
-        accounts.push({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier, frozen: !!updated.frozen, blocked: !!updated.blocked, idVerified: false });
+        accounts.push({ email: updated.email, password: updated.password || '', pin: updated.pin || '', name: updated.name, role: updated.role, tier: updated.tier, phone: updated.phone || '', address: updated.address || '', createdAt: updated.createdAt || new Date().toISOString(), frozen: !!updated.frozen, blocked: !!updated.blocked, idVerified: false });
         localStorage.setItem('londway_accounts', JSON.stringify(accounts));
       }
     } catch {}

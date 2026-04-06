@@ -25,6 +25,8 @@ interface StoredAccount {
   role: string;
   phone?: string;
   dob?: string;
+  address?: string;
+  createdAt?: string;
   idVerified?: boolean;
   faceData?: string;
   pin?: string;
