@@ -161,26 +161,7 @@ const TRUST_BADGES = [
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ user }: { user: { token: string; email?: string } }) {
-  // Smartsupp live chat widget — re-ensure on dashboard mount
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (!(window as any).smartsupp) {
-        (window as any)._smartsupp = (window as any)._smartsupp || {};
-        (window as any)._smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
-        const existing = document.getElementById('smartsupp-script');
-        if (!existing) {
-          const script = document.createElement('script');
-          script.id = 'smartsupp-script';
-          script.type = 'text/javascript';
-          script.async = true;
-          script.charset = 'utf-8';
-          script.src = 'https://www.smartsuppchat.com/loader.js?';
-          script.setAttribute('data-lc-trusted', '1');
-          document.head.appendChild(script);
-        }
-      }
-    }
-  }, []);
+
 
   const { colors, theme } = useTheme();
   const { t } = useLang();

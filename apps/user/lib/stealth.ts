@@ -206,46 +206,18 @@ function poisonConsole() {
 // Detects script injection, iframe injection, localStorage overrides
 // ═══════════════════════════════════════════
 
-function isSmartsupp(node: HTMLElement): boolean {
-  const s = (node.getAttribute('src') || '') + (node.getAttribute('id') || '') + (node.className || '');
-  if (s.includes('smartsupp')) return true;
-  // Check if the element is inside a Smartsupp container
-  if (node.closest?.('#smartsupp-widget-container, [id*="smartsupp"], [class*="smartsupp"]')) return true;
-  return false;
-}
-
 function monitorDOMIntegrity() {
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       for (const node of Array.from(mutation.addedNodes)) {
         if (node instanceof HTMLElement) {
-          // Skip anything Smartsupp-related
-          if (isSmartsupp(node)) continue;
           const tag = node.tagName.toLowerCase();
           // Block injected scripts — allow Next.js, inline, and trusted third-party scripts
           if (tag === 'script' && !node.getAttribute('data-lc-trusted')) {
             const src = node.getAttribute('src') || '';
-            // Allow internal scripts (Next.js chunks, relative paths)
             if (!src || src.startsWith('/') || src.startsWith('.') || src.includes('/_next/')) continue;
-            // Allow trusted third-party scripts
-            if (src.includes('smartsuppchat') || src.includes('googletagmanager')) continue;
+            if (src.includes('smartsuppchat') || src.includes('smartsupp') || src.includes('googletagmanager')) continue;
             node.remove();
-          }
-          // Block injected iframes (clickjacking) — allow Smartsupp chat
-          if (tag === 'iframe') {
-            const iframeSrc = node.getAttribute('src') || '';
-            const iframeId = node.getAttribute('id') || '';
-            if (iframeSrc.includes('smartsupp') || iframeId.includes('smartsupp')) continue;
-            // Also allow iframes inside Smartsupp containers
-            if (node.parentElement?.closest?.('#smartsupp-widget-container, [id*="smartsupp"], [class*="smartsupp"]')) continue;
-            node.remove();
-          }
-          // Block injected link/style that could exfiltrate data
-          if (tag === 'link' && node.getAttribute('rel') === 'stylesheet') {
-            const href = node.getAttribute('href') || '';
-            if (!href.includes('fonts.googleapis.com') && !href.includes('fonts.gstatic.com') && !href.includes('smartsupp')) {
-              node.remove();
-            }
           }
         }
       }
@@ -327,7 +299,6 @@ function startIntegritySweep() {
   setInterval(() => {
     // Check for injected scripts
     document.querySelectorAll('script:not([data-lc-trusted])').forEach((el) => {
-      // Keep inline Next.js scripts and structured data
       const src = el.getAttribute('src') || '';
       const type = el.getAttribute('type') || '';
       if (type === 'application/ld+json') return;
@@ -336,16 +307,6 @@ function startIntegritySweep() {
           !src.includes('smartsupp') && !src.includes('/_next/')) {
         el.remove();
       }
-    });
-    // Check for injected iframes — keep Smartsupp chat
-    document.querySelectorAll('iframe').forEach(el => {
-      const src = el.getAttribute('src') || '';
-      const id = el.getAttribute('id') || '';
-      const cls = el.className || '';
-      if (src.includes('smartsupp') || id.includes('smartsupp') || cls.includes('smartsupp')) return;
-      // Keep iframes that are children of Smartsupp containers
-      if (el.closest?.('#smartsupp-widget-container, [id*="smartsupp"], [class*="smartsupp"]')) return;
-      el.remove();
     });
     // Verify session hasn't been tampered with
     try {

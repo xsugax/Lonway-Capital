@@ -221,7 +221,6 @@ export default function Document() {
           }}
         />
 
-        {/* Smartsupp Live Chat — Gold themed */}
         {/* Google Analytics */}
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX" />
         <script
@@ -229,38 +228,10 @@ export default function Document() {
             __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${process.env.NEXT_PUBLIC_GA_ID||'G-XXXXXXXXXX'}');`
           }}
         />
-
-        <script
-          type="text/javascript"
-          data-lc-trusted="1"
-          dangerouslySetInnerHTML={{
-            __html: `
-              var _smartsupp = _smartsupp || {};
-              _smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
-              _smartsupp.color = '#C4A052';
-              _smartsupp.widgetColor = '#C4A052';
-              window.smartsupp||(function(d) {
-                var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
-                s=d.getElementsByTagName('script')[0];c=d.createElement('script');
-                c.type='text/javascript';c.charset='utf-8';c.async=true;
-                c.setAttribute('data-lc-trusted','1');
-                c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
-              })(document);
-              smartsupp('theme:colors', {
-                widget: '#C4A052',
-                primary: '#C4A052'
-              });
-              smartsupp('chat:message', 'Hi there 👋 Welcome to Londway Capital. How can we help you today?');
-            `
-          }}
-        />
       </Head>
       <body>
         <Main />
         <NextScript />
-        <noscript>
-          <a href="https://www.smartsupp.com" rel="nofollow" target="_blank">Chat with us</a>
-        </noscript>
       </body>
     </Html>
   );
