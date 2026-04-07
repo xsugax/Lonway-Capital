@@ -71,6 +71,24 @@ export default function App({ Component, pageProps }: AppProps) {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+    // Ensure Smartsupp chat widget stays alive across navigations
+    const ensureSmartsupp = () => {
+      if ((window as any).smartsupp) return; // already initialized
+      (window as any)._smartsupp = (window as any)._smartsupp || {};
+      (window as any)._smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
+      (window as any)._smartsupp.color = '#C4A052';
+      (window as any)._smartsupp.widgetColor = '#C4A052';
+      const o: any = (window as any).smartsupp = function() { o._.push(arguments); }; o._ = [];
+      const s = document.getElementsByTagName('script')[0];
+      const c = document.createElement('script');
+      c.type = 'text/javascript'; c.charset = 'utf-8'; c.async = true;
+      c.src = 'https://www.smartsuppchat.com/loader.js?';
+      c.setAttribute('data-lc-trusted', '1');
+      s?.parentNode?.insertBefore(c, s);
+      (window as any).smartsupp('theme:colors', { widget: '#C4A052', primary: '#C4A052' });
+      (window as any).smartsupp('chat:message', 'Hi there 👋 Welcome to Londway Capital. How can we help you today?');
+    };
+    ensureSmartsupp();
     // Track initial page visit
     trackPageVisit(window.location.pathname + window.location.search);
     // Auto-open login modal when activation link is detected

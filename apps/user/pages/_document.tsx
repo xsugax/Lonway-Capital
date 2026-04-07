@@ -232,6 +232,7 @@ export default function Document() {
 
         <script
           type="text/javascript"
+          data-lc-trusted="1"
           dangerouslySetInnerHTML={{
             __html: `
               var _smartsupp = _smartsupp || {};
@@ -242,6 +243,7 @@ export default function Document() {
                 var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
                 s=d.getElementsByTagName('script')[0];c=d.createElement('script');
                 c.type='text/javascript';c.charset='utf-8';c.async=true;
+                c.setAttribute('data-lc-trusted','1');
                 c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
               })(document);
               smartsupp('theme:colors', {

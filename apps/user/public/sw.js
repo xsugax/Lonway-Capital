@@ -1,4 +1,4 @@
-const CACHE_NAME = 'londway-v1';
+<const CACHE_NAME = 'londway-v1';
 const STATIC_ASSETS = [
   '/',
   '/accounts',

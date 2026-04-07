@@ -1,9 +1,4 @@
 ﻿"use client";
-declare global {
-  interface Window {
-    _smartsupp?: any;
-  }
-}
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -166,22 +161,6 @@ const TRUST_BADGES = [
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ user }: { user: { token: string; email?: string } }) {
-  // Smartsupp live chat widget
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const prev = document.getElementById('smartsupp-script');
-      if (prev) prev.remove();
-      window._smartsupp = window._smartsupp || {};
-      window._smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
-      const script = document.createElement('script');
-      script.id = 'smartsupp-script';
-      script.type = 'text/javascript';
-      script.async = true;
-      script.charset = 'utf-8';
-      script.src = 'https://www.smartsuppchat.com/loader.js?';
-      document.head.appendChild(script);
-    }
-  }, []);
 
   const { colors, theme } = useTheme();
   const { t } = useLang();
