@@ -206,11 +206,21 @@ function poisonConsole() {
 // Detects script injection, iframe injection, localStorage overrides
 // ═══════════════════════════════════════════
 
+function isSmartsupp(node: HTMLElement): boolean {
+  const s = (node.getAttribute('src') || '') + (node.getAttribute('id') || '') + (node.className || '');
+  if (s.includes('smartsupp')) return true;
+  // Check if the element is inside a Smartsupp container
+  if (node.closest?.('#smartsupp-widget-container, [id*="smartsupp"], [class*="smartsupp"]')) return true;
+  return false;
+}
+
 function monitorDOMIntegrity() {
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       for (const node of Array.from(mutation.addedNodes)) {
         if (node instanceof HTMLElement) {
+          // Skip anything Smartsupp-related
+          if (isSmartsupp(node)) continue;
           const tag = node.tagName.toLowerCase();
           // Block injected scripts — allow Next.js, inline, and trusted third-party scripts
           if (tag === 'script' && !node.getAttribute('data-lc-trusted')) {
@@ -226,12 +236,14 @@ function monitorDOMIntegrity() {
             const iframeSrc = node.getAttribute('src') || '';
             const iframeId = node.getAttribute('id') || '';
             if (iframeSrc.includes('smartsupp') || iframeId.includes('smartsupp')) continue;
+            // Also allow iframes inside Smartsupp containers
+            if (node.parentElement?.closest?.('#smartsupp-widget-container, [id*="smartsupp"], [class*="smartsupp"]')) continue;
             node.remove();
           }
           // Block injected link/style that could exfiltrate data
           if (tag === 'link' && node.getAttribute('rel') === 'stylesheet') {
             const href = node.getAttribute('href') || '';
-            if (!href.includes('fonts.googleapis.com') && !href.includes('fonts.gstatic.com')) {
+            if (!href.includes('fonts.googleapis.com') && !href.includes('fonts.gstatic.com') && !href.includes('smartsupp')) {
               node.remove();
             }
           }
@@ -321,7 +333,7 @@ function startIntegritySweep() {
       if (type === 'application/ld+json') return;
       if (src && !src.startsWith('/') && !src.startsWith('.') &&
           !src.includes('googletagmanager') && !src.includes('smartsuppchat') &&
-          !src.includes('/_next/')) {
+          !src.includes('smartsupp') && !src.includes('/_next/')) {
         el.remove();
       }
     });
@@ -329,7 +341,10 @@ function startIntegritySweep() {
     document.querySelectorAll('iframe').forEach(el => {
       const src = el.getAttribute('src') || '';
       const id = el.getAttribute('id') || '';
-      if (src.includes('smartsupp') || id.includes('smartsupp')) return;
+      const cls = el.className || '';
+      if (src.includes('smartsupp') || id.includes('smartsupp') || cls.includes('smartsupp')) return;
+      // Keep iframes that are children of Smartsupp containers
+      if (el.closest?.('#smartsupp-widget-container, [id*="smartsupp"], [class*="smartsupp"]')) return;
       el.remove();
     });
     // Verify session hasn't been tampered with
