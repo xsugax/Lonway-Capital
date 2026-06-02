@@ -76,7 +76,17 @@ Configure the following DNS records at your domain registrar or DNS provider (e.
 
 ### GitHub Pages (User Frontend — Primary)
 
-The user-facing app (`apps/user`) is deployed to GitHub Pages automatically via the `deploy.yml` workflow.
+The user-facing app (`apps/user`) is deployed to **https://londwaycapital.com** from the `gh-pages` branch.
+
+**If GitHub Actions billing blocks deploy**, run from your PC:
+
+```powershell
+.\scripts\deploy-pages.ps1
+```
+
+(Optional: add `apps/user/.env.local` with Supabase + EmailJS keys before running.)
+
+**Automatic deploy (when Actions billing works):** push to `main` runs `deploy.yml`.
 
 **How it works:**
 1. On push to `main`, GitHub Actions builds the Next.js app with `output: 'export'`
