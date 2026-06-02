@@ -1,6 +1,7 @@
-// Simple localStorage data store for static deployment (GitHub Pages)
-// All data is isolated per user email — each user owns their own data.
+// Per-user data store — localStorage is a fast cache; Supabase is source of truth when configured.
 // Data is transparently encrypted by the stealth layer (stealth.ts patchLocalStorage).
+
+import { isCloudEnabled, cloudUpdateBalance, cloudPatchUserData, type CloudUserData } from './cloud';
 
 // ═══════════════════════════════════════════
 // Tier Limits
@@ -84,6 +85,17 @@ function load(key: string): any[] {
 
 function save(key: string, data: any) {
   if (typeof window !== 'undefined') localStorage.setItem(key, JSON.stringify(data));
+}
+
+function pushBankToCloud(email: string, accounts: any[]) {
+  if (!isCloudEnabled()) return;
+  const total = accounts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+  cloudUpdateBalance(email, total, accounts).catch(() => {});
+}
+
+function pushExtrasToCloud(email: string, partial: Partial<CloudUserData>) {
+  if (!isCloudEnabled()) return;
+  cloudPatchUserData(email, partial).catch(() => {});
 }
 
 // ═══════════════════════════════════════════
@@ -231,6 +243,7 @@ export function getBankAccounts(email?: string): any[] {
 }
 export function saveBankAccounts(accounts: any[], email?: string) {
   save(userKey(ACCT_BASE, email), accounts);
+  if (email) pushBankToCloud(email, accounts);
 }
 
 // ═══════════════════════════════════════════
@@ -239,7 +252,10 @@ export function saveBankAccounts(accounts: any[], email?: string) {
 const VAULTS_BASE = 'londway_vaults';
 
 export function getVaults(email?: string): any[] { return getOrSeed(userKey(VAULTS_BASE, email), []); }
-export function saveVaults(vaults: any[], email?: string) { save(userKey(VAULTS_BASE, email), vaults); }
+export function saveVaults(vaults: any[], email?: string) {
+  save(userKey(VAULTS_BASE, email), vaults);
+  if (email) pushExtrasToCloud(email, { vaults });
+}
 
 // ═══════════════════════════════════════════
 // Transfers  (per-user)
@@ -247,7 +263,10 @@ export function saveVaults(vaults: any[], email?: string) { save(userKey(VAULTS_
 const TRANSFERS_BASE = 'londway_transfers';
 
 export function getTransfers(email?: string): any[] { return getOrSeed(userKey(TRANSFERS_BASE, email), []); }
-export function saveTransfers(transfers: any[], email?: string) { save(userKey(TRANSFERS_BASE, email), transfers); }
+export function saveTransfers(transfers: any[], email?: string) {
+  save(userKey(TRANSFERS_BASE, email), transfers);
+  if (email) pushExtrasToCloud(email, { transfers });
+}
 
 // ═══════════════════════════════════════════
 // Notifications  (per-user)
@@ -255,7 +274,10 @@ export function saveTransfers(transfers: any[], email?: string) { save(userKey(T
 const NOTIF_BASE = 'londway_notifications';
 
 export function getNotifications(email?: string): any[] { return getOrSeed(userKey(NOTIF_BASE, email), []); }
-export function saveNotifications(notifs: any[], email?: string) { save(userKey(NOTIF_BASE, email), notifs); }
+export function saveNotifications(notifs: any[], email?: string) {
+  save(userKey(NOTIF_BASE, email), notifs);
+  if (email) pushExtrasToCloud(email, { notifications: notifs });
+}
 
 // ═══════════════════════════════════════════
 // Cards  (per-user)
@@ -263,7 +285,10 @@ export function saveNotifications(notifs: any[], email?: string) { save(userKey(
 const CARDS_BASE = 'londway_cards';
 
 export function getCards(email?: string): any[] { return load(userKey(CARDS_BASE, email)); }
-export function saveCards(cards: any[], email?: string) { save(userKey(CARDS_BASE, email), cards); }
+export function saveCards(cards: any[], email?: string) {
+  save(userKey(CARDS_BASE, email), cards);
+  if (email) pushExtrasToCloud(email, { cards });
+}
 
 // ═══════════════════════════════════════════
 // Checkbooks  (per-user)
@@ -271,7 +296,10 @@ export function saveCards(cards: any[], email?: string) { save(userKey(CARDS_BAS
 const CHECKS_BASE = 'londway_checkbooks';
 
 export function getCheckbooks(email?: string): any[] { return load(userKey(CHECKS_BASE, email)); }
-export function saveCheckbooks(books: any[], email?: string) { save(userKey(CHECKS_BASE, email), books); }
+export function saveCheckbooks(books: any[], email?: string) {
+  save(userKey(CHECKS_BASE, email), books);
+  if (email) pushExtrasToCloud(email, { checkbooks: books });
+}
 
 // ═══════════════════════════════════════════
 // Crypto Deposits  (per-user)
@@ -279,4 +307,36 @@ export function saveCheckbooks(books: any[], email?: string) { save(userKey(CHEC
 const CRYPTO_BASE = 'londway_crypto_deposits';
 
 export function getCryptoDeposits(email?: string): any[] { return load(userKey(CRYPTO_BASE, email)); }
-export function saveCryptoDeposits(deposits: any[], email?: string) { save(userKey(CRYPTO_BASE, email), deposits); }
+export function saveCryptoDeposits(deposits: any[], email?: string) {
+  save(userKey(CRYPTO_BASE, email), deposits);
+  if (email) pushExtrasToCloud(email, { crypto_deposits: deposits });
+}
+
+/** Local cache only — used when hydrating from cloud (avoids redundant API writes) */
+export function saveBankAccountsLocal(accounts: any[], email?: string) {
+  save(userKey(ACCT_BASE, email), accounts);
+}
+
+export function saveVaultsLocal(vaults: any[], email?: string) {
+  save(userKey(VAULTS_BASE, email), vaults);
+}
+
+export function saveTransfersLocal(transfers: any[], email?: string) {
+  save(userKey(TRANSFERS_BASE, email), transfers);
+}
+
+export function saveNotificationsLocal(notifs: any[], email?: string) {
+  save(userKey(NOTIF_BASE, email), notifs);
+}
+
+export function saveCheckbooksLocal(books: any[], email?: string) {
+  save(userKey(CHECKS_BASE, email), books);
+}
+
+export function saveCryptoDepositsLocal(deposits: any[], email?: string) {
+  save(userKey(CRYPTO_BASE, email), deposits);
+}
+
+export function saveCardsLocal(cards: any[], email?: string) {
+  save(userKey(CARDS_BASE, email), cards);
+}

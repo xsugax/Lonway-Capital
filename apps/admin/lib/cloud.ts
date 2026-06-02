@@ -25,6 +25,16 @@ const writeHdrs = (): Record<string, string> => ({
   'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
 });
 
+export interface CloudUserData {
+  vaults?: any[];
+  transfers?: any[];
+  notifications?: any[];
+  checkbooks?: any[];
+  crypto_deposits?: any[];
+  cards?: any[];
+  daily_usage?: { date: string; amount: number };
+}
+
 export interface CloudAccount {
   email: string;
   password: string;
@@ -35,8 +45,21 @@ export interface CloudAccount {
   balance: number;
   phone: string;
   bank_accounts: any[] | null;
+  user_data?: CloudUserData | null;
   blocked?: boolean;
   frozen?: boolean;
+}
+
+export async function cloudPatchUserData(email: string, partial: Partial<CloudUserData>): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    const existing = await cloudLookupUser(email);
+    const merged: CloudUserData = { ...(existing?.user_data || {}), ...partial };
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify({ user_data: merged }) }
+    );
+  } catch (err) { console.error('[cloud] Patch user_data error:', err); }
 }
 
 export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: string }) {
@@ -95,6 +118,21 @@ export async function cloudLookupUser(email: string): Promise<CloudAccount | nul
     const rows = await res.json();
     return rows?.[0] ?? null;
   } catch { return null; }
+}
+
+export async function cloudGetAllUsers(): Promise<CloudAccount[]> {
+  if (!isCloudEnabled()) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=neq.__bank_settings__&select=*`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.error('[cloud] Get all users error:', err);
+    return [];
+  }
 }
 
 /** Refund a transfer amount to a user's cloud balance */

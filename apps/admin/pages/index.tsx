@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings, cloudSaveTransfer } from '../lib/cloud';
+import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetAllUsers, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings, cloudSaveTransfer } from '../lib/cloud';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -469,6 +469,17 @@ interface BankSettings {
   supportedCurrencies: string[]; maintenanceMode: boolean;
   bankName: string; bankTagline: string;
 }
+interface BankAccount {
+  id: string;
+  type?: string;
+  name?: string;
+  balance: number;
+  currency?: string;
+  accountNumber?: string;
+  frozen?: boolean;
+  recentActivity?: string;
+  transactions?: any[];
+}
 
 type Tab = 'overview' | 'users' | 'transactions' | 'funding' | 'audit' | 'cards' | 'notifications' | 'visitors' | 'settings';
 
@@ -540,6 +551,35 @@ function fmtDate(d: string) { return new Date(d).toLocaleString(); }
 function safeEmail(email: string) { return email.toLowerCase().replace(/[^a-z0-9]/g, '_'); }
 function userKey(base: string, email: string) { return `${base}__${safeEmail(email)}`; }
 
+function makeEmptyBankAccounts(email: string): BankAccount[] {
+  const suffix = `-${email.replace(/[^a-z0-9]/gi, '').slice(0, 6)}`;
+  const acctNum = () => Math.floor(10000000 + Math.random() * 90000000).toString();
+  return [
+    { id: `acc-1${suffix}`, type: 'Checking', name: 'Primary Checking', balance: 0, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity', transactions: [] },
+    { id: `acc-2${suffix}`, type: 'Savings', name: 'High-Yield Savings', balance: 0, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity', transactions: [] },
+  ];
+}
+
+function getUserBankAccounts(email: string): BankAccount[] {
+  const key = userKey('londway_bank_accounts', email);
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    const seed = makeEmptyBankAccounts(email);
+    localStorage.setItem(key, JSON.stringify(seed));
+    return seed;
+  } catch {
+    return makeEmptyBankAccounts(email);
+  }
+}
+
+function saveUserBankAccounts(email: string, accounts: BankAccount[]) {
+  localStorage.setItem(userKey('londway_bank_accounts', email), JSON.stringify(accounts));
+}
+
 // Writes a credit/debit entry directly to the user's bank account localStorage key
 // so that admin funding is immediately visible in the user-facing app.
 // If bank accounts don't exist yet, they are auto-created with seed structure.
@@ -548,20 +588,7 @@ function syncUserBankAccounts(
   tx: { id: string; description: string; createdAt: string },
 ) {
   try {
-    const key = userKey('londway_bank_accounts', email);
-    let raw = localStorage.getItem(key);
-    // If bank accounts don't exist yet, create seed accounts so funding doesn't silently vanish
-    if (!raw) {
-      const suffix = `-${email.replace(/[^a-z0-9]/gi, '').slice(0, 6)}`;
-      const acctNum = () => Math.floor(10000000 + Math.random() * 90000000).toString();
-      const seed = [
-        { id: `acc-1${suffix}`, type: 'Checking', name: 'Primary Checking', balance: 0, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity', transactions: [] },
-        { id: `acc-2${suffix}`, type: 'Savings', name: 'High-Yield Savings', balance: 0, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'No recent activity', transactions: [] },
-      ];
-      localStorage.setItem(key, JSON.stringify(seed));
-      raw = localStorage.getItem(key);
-    }
-    const accts: any[] = JSON.parse(raw!);
+    const accts: any[] = getUserBankAccounts(email);
     if (!accts.length) return;
     const idx = accts.findIndex((a: any) => a.type === 'Checking' || a.type === 'checking');
     const i = idx >= 0 ? idx : 0;
@@ -571,7 +598,7 @@ function syncUserBankAccounts(
     const entry = { id: tx.id, type: isCredit ? 'credit' : 'debit', description: tx.description, amount, date: tx.createdAt, status: 'completed' };
     accts[i].transactions = [entry, ...(Array.isArray(accts[i].transactions) ? accts[i].transactions : [])];
     accts[i].recentActivity = tx.description;
-    localStorage.setItem(key, JSON.stringify(accts));
+    saveUserBankAccounts(email, accts);
     // Sync to cloud so balance is visible from any device
     const totalBalance = accts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
     cloudUpdateBalance(email, totalBalance, accts).catch(() => {});
@@ -743,6 +770,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [newUserModal, setNewUserModal] = useState(false);
   const [newTxModal, setNewTxModal] = useState(false);
   const [editTxModal, setEditTxModal] = useState<Transaction | null>(null);
+  const [accountHistoryModal, setAccountHistoryModal] = useState<{ email: string; name: string; transferRef?: string } | null>(null);
+  const [accountHistoryAccounts, setAccountHistoryAccounts] = useState<BankAccount[]>([]);
+  const [accountHistoryForm, setAccountHistoryForm] = useState({ accountId: '', mode: 'credit' as 'credit' | 'debit' | 'set', amount: '', description: '' });
 
   const [nu, setNu] = useState({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   const [nt, setNt] = useState({ userId: '', type: 'credit' as Transaction['type'], amount: '', currency: 'USD', description: '', senderName: '', status: 'completed', createdAt: '' });
@@ -761,6 +791,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [, setRefreshTick] = useState(0);
   const [cloudTransfers, setCloudTransfers] = useState<any[]>([]);
   const [cloudCards, setCloudCards] = useState<any[]>([]);
+  const [recoveringCloud, setRecoveringCloud] = useState(false);
   useEffect(() => {
     // Load cloud transfers immediately and on interval
     const loadCloud = () => {
@@ -792,7 +823,75 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
 
   const aName = adminName || 'God Admin';
   const persist = useCallback((d: typeof data) => { setData(d); saveData(d); }, []);
-  const notify = (ok: boolean, msg: string) => { setToast({ ok, msg }); setTimeout(() => setToast(null), 4000); };
+  const notify = useCallback((ok: boolean, msg: string) => { setToast({ ok, msg }); setTimeout(() => setToast(null), 4000); }, []);
+
+  const recoverCloudUsers = useCallback(async () => {
+    if (!isCloudEnabled()) {
+      notify(false, 'Cloud recovery unavailable. Supabase is not configured.');
+      return;
+    }
+    setRecoveringCloud(true);
+    try {
+      const cloudUsers = await cloudGetAllUsers();
+      if (!cloudUsers?.length) {
+        notify(true, 'No cloud users found to recover.');
+        return;
+      }
+      const current = loadData();
+      const byEmail = new Map(current.users.map(u => [u.email.toLowerCase(), u]));
+      const mergedUsers = [...current.users];
+      let changed = false;
+
+      for (const cu of cloudUsers) {
+        if (!cu.email || cu.email === '__bank_settings__') continue;
+        const email = cu.email.toLowerCase();
+        const existing = byEmail.get(email);
+        const restored: User = {
+          id: existing?.id ?? email,
+          name: cu.name || existing?.name || email,
+          email,
+          role: cu.role || existing?.role || 'user',
+          frozen: !!cu.frozen,
+          blocked: !!cu.blocked,
+          kyc: !!(cu as any).idVerified,
+          balance: cu.balance ?? existing?.balance ?? 0,
+          createdAt: (cu as any).createdAt || existing?.createdAt || new Date().toISOString(),
+          phone: cu.phone || existing?.phone,
+          address: (cu as any).address || existing?.address,
+          tier: cu.tier || existing?.tier || 'Standard',
+          password: cu.password || existing?.password,
+          pin: cu.pin || existing?.pin,
+        };
+
+        if (!existing) {
+          mergedUsers.push(restored);
+          changed = true;
+        } else {
+          const same = existing.name === restored.name && existing.role === restored.role && existing.frozen === restored.frozen && existing.blocked === restored.blocked && existing.kyc === restored.kyc && existing.balance === restored.balance && existing.phone === restored.phone && existing.address === restored.address && existing.tier === restored.tier && existing.password === restored.password && existing.pin === restored.pin;
+          if (!same) {
+            const idx = mergedUsers.findIndex(u => u.email.toLowerCase() === email);
+            if (idx !== -1) mergedUsers[idx] = restored;
+            else mergedUsers.push(restored);
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        const updated = { ...current, users: mergedUsers };
+        saveData(updated);
+        setData(updated);
+        notify(true, `Recovered ${mergedUsers.length - current.users.length} users from cloud`);
+      } else {
+        notify(true, 'Admin user list already matches cloud cloud data.');
+      }
+    } catch (err) {
+      console.error('[admin] Cloud user recovery failed:', err);
+      notify(false, 'Cloud recovery failed.');
+    } finally {
+      setRecoveringCloud(false);
+    }
+  }, [notify]);
 
   const addAudit = useCallback((action: string, target?: string, details?: string) => {
     const entry: AuditEntry = { id: uid(), timestamp: new Date().toISOString(), action, admin: aName, target, details };
@@ -828,6 +927,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     }
     setTimeout(() => { console.info(`[admin] Cloud sync: ${synced} users pushed to Supabase`); }, 5000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!isCloudEnabled()) return;
+    recoverCloudUsers();
+  }, [recoverCloudUsers]);
 
   // ── Sync ALL admin users → londway_accounts on every admin load ──────
   // Ensures phone, address, createdAt, tier, role, frozen, blocked are
@@ -1170,6 +1274,77 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     setFundModal(null); setFundAmt(''); setFundDesc(''); setFundSender(''); setFundDate('');
   }
 
+  function openAccountHistory(email: string, name?: string, transferRef?: string) {
+    if (!email) { notify(false, 'No user email found for this transfer'); return; }
+    const accounts = getUserBankAccounts(email);
+    setAccountHistoryAccounts(accounts);
+    setAccountHistoryForm({
+      accountId: accounts[0]?.id || '',
+      mode: 'credit',
+      amount: '',
+      description: transferRef ? `Admin adjustment for ${transferRef}` : 'Admin balance adjustment',
+    });
+    setAccountHistoryModal({ email, name: name || email, transferRef });
+  }
+
+  function persistAccountHistory(email: string, accounts: BankAccount[], auditDetail: string) {
+    const total = Math.round(accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0) * 100) / 100;
+    saveUserBankAccounts(email, accounts);
+    setAccountHistoryAccounts(accounts);
+    persist({ ...data, users: data.users.map(u => u.email.toLowerCase() === email.toLowerCase() ? { ...u, balance: total } : u) });
+    cloudUpdateBalance(email, total, accounts).catch(() => {});
+    addAudit('account_history_updated', email, auditDetail);
+  }
+
+  function applyAccountHistoryAdjustment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!accountHistoryModal) return;
+    const amount = parseFloat(accountHistoryForm.amount);
+    if (!Number.isFinite(amount) || amount < 0) { notify(false, 'Enter a valid amount'); return; }
+    const accountIndex = accountHistoryAccounts.findIndex(a => a.id === accountHistoryForm.accountId);
+    if (accountIndex === -1) { notify(false, 'Select an account'); return; }
+    const accounts = accountHistoryAccounts.map(a => ({ ...a, transactions: Array.isArray(a.transactions) ? [...a.transactions] : [] }));
+    const account = accounts[accountIndex];
+    const before = Number(account.balance) || 0;
+    const isSet = accountHistoryForm.mode === 'set';
+    const isCredit = accountHistoryForm.mode === 'credit';
+    const after = isSet
+      ? Math.round(amount * 100) / 100
+      : Math.round((isCredit ? before + amount : Math.max(0, before - amount)) * 100) / 100;
+    const delta = Math.round((after - before) * 100) / 100;
+    const description = accountHistoryForm.description.trim() || (isSet ? 'Admin balance correction' : 'Admin balance adjustment');
+    account.balance = after;
+    account.recentActivity = description;
+    account.transactions = [{
+      id: `admin-${Date.now()}`,
+      type: isSet ? (delta >= 0 ? 'credit' : 'debit') : accountHistoryForm.mode,
+      description,
+      amount: Math.abs(isSet ? delta : amount),
+      date: new Date().toISOString(),
+      status: 'completed',
+      balanceAfter: after,
+      adminEdited: true,
+    }, ...account.transactions];
+    persistAccountHistory(accountHistoryModal.email, accounts, `${account.name || account.type || account.id}: ${before.toFixed(2)} -> ${after.toFixed(2)} (${description})`);
+    writeUserNotification('londway_notifications', accountHistoryModal.email, {
+      id: 'notif-' + Date.now(), type: delta >= 0 ? 'success' : 'warning', date: new Date().toISOString(), read: false,
+      message: `Account Updated - ${account.currency || '$'}${Math.abs(delta).toLocaleString(undefined, { minimumFractionDigits: 2 })} ${delta >= 0 ? 'credited to' : 'debited from'} ${account.name || account.type || 'your account'}. ${description}`,
+    });
+    notify(true, `Updated ${accountHistoryModal.name}'s account history`);
+    setAccountHistoryForm(p => ({ ...p, amount: '' }));
+  }
+
+  function updateAccountHistoryTx(accountId: string, txId: string, updates: Record<string, any>) {
+    if (!accountHistoryModal) return;
+    const accounts = accountHistoryAccounts.map(account => {
+      if (account.id !== accountId) return account;
+      const transactions = (account.transactions || []).map((tx: any) => tx.id === txId ? { ...tx, ...updates, adminEdited: true } : tx);
+      return { ...account, transactions, recentActivity: transactions[0]?.description || account.recentActivity };
+    });
+    persistAccountHistory(accountHistoryModal.email, accounts, `Edited history item ${txId}`);
+    notify(true, 'Transaction history updated');
+  }
+
   // ── Transaction Actions ──────────────────────────────────────
   function createTransaction(e: React.FormEvent) {
     e.preventDefault();
@@ -1297,6 +1472,11 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               </div>
             )}
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." style={{ ...inp, width: 180, padding: '7px 12px', fontSize: '0.8rem' }} />
+            {isCloudEnabled() && (
+              <button onClick={recoverCloudUsers} style={{ ...btnP, padding: '7px 14px' }} disabled={recoveringCloud}>
+                {recoveringCloud ? 'Recovering…' : 'Recover from cloud'}
+              </button>
+            )}
             {onLogout && <button onClick={onLogout} style={{ ...btnD, padding: '7px 14px' }}>Logout</button>}
           </div>
         </div>
@@ -1467,7 +1647,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr>{['Ref','Recipient','Amount','Status'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                      <thead><tr>{['Ref','Recipient','Amount','Status','Account'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
                       <tbody>
                         {[...mergedTransfers].reverse().slice(0, 8).map((tx: any) => (
                           <tr key={tx.id}>
@@ -1475,6 +1655,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                             <td style={{ ...tdS, fontSize: '0.82rem' }}>{tx.recipientName}</td>
                             <td style={{ ...tdS, fontWeight: 700, fontSize: '0.82rem' }}>{tx.currency} {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                             <td style={tdS}><Badge status={tx.status || 'pending'} /></td>
+                            <td style={tdS}><button style={{ ...btnG, padding: '5px 10px', fontSize: '0.72rem' }} onClick={() => openAccountHistory(tx._userEmail, tx._userName || tx._userEmail, tx.reference)}>History</button></td>
                           </tr>
                         ))}
                       </tbody>
@@ -1707,6 +1888,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                   }}>✕ Reject</button>
                                 </>
                               )}
+                              <button style={btnG} onClick={() => openAccountHistory(tx._userEmail, tx._userName || tx.recipientName, tx.reference)}>History</button>
                               <button style={btnD} onClick={() => {
                                 if (!confirm(`Delete transfer ${tx.reference}?`)) return;
                                 deleteUserItem('londway_transfers', tx._userEmail, tx.id);
@@ -2210,6 +2392,54 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
           </Modal>
         );
       })()}
+
+      {accountHistoryModal && (
+        <Modal title={`Account History - ${accountHistoryModal.name}`} onClose={() => setAccountHistoryModal(null)}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div style={{ background: 'rgba(196,160,82,0.06)', border: '1px solid rgba(196,160,82,0.14)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Customer</div>
+              <div style={{ color: IV, fontWeight: 700 }}>{accountHistoryModal.email}</div>
+              {accountHistoryModal.transferRef && <div style={{ color: G, fontSize: '0.78rem', marginTop: 4 }}>Opened from {accountHistoryModal.transferRef}</div>}
+            </div>
+            <form onSubmit={applyAccountHistoryAdjustment} style={{ display: 'grid', gap: 10 }}>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Account</label>
+                <select style={sel} value={accountHistoryForm.accountId} onChange={e => setAccountHistoryForm(p => ({ ...p, accountId: e.target.value }))}>
+                  {accountHistoryAccounts.map(a => <option key={a.id} value={a.id}>{a.name || a.type || a.id} - {(a.currency || '$')}{Number(a.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</option>)}
+                </select></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Control</label>
+                  <select style={sel} value={accountHistoryForm.mode} onChange={e => setAccountHistoryForm(p => ({ ...p, mode: e.target.value as 'credit' | 'debit' | 'set' }))}>
+                    <option value="credit">Money In / Credit</option>
+                    <option value="debit">Money Out / Debit</option>
+                    <option value="set">Set Balance</option>
+                  </select></div>
+                <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>{accountHistoryForm.mode === 'set' ? 'New Balance' : 'Amount'}</label>
+                  <input style={inp} type="number" min="0" step="0.01" value={accountHistoryForm.amount} onChange={e => setAccountHistoryForm(p => ({ ...p, amount: e.target.value }))} required /></div>
+              </div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>History Note</label>
+                <input style={inp} value={accountHistoryForm.description} onChange={e => setAccountHistoryForm(p => ({ ...p, description: e.target.value }))} /></div>
+              <button type="submit" style={{ ...btnP, padding: '11px', borderRadius: 10 }}>Apply Account Update</button>
+            </form>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {accountHistoryAccounts.map(account => (
+                <div key={account.id} style={{ border: '1px solid rgba(196,160,82,0.12)', borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                    <div><div style={{ color: IV, fontWeight: 800 }}>{account.name || account.type || account.id}</div><div style={{ color: SL, fontSize: '0.72rem' }}>{account.accountNumber || 'No account number'}</div></div>
+                    <div style={{ color: G, fontWeight: 800 }}>{account.currency || '$'}{Number(account.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  </div>
+                  {(account.transactions || []).slice(0, 6).map((tx: any) => (
+                    <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 8, padding: '8px 0', borderTop: '1px solid rgba(196,160,82,0.06)' }}>
+                      <input style={{ ...inp, padding: '7px 9px', fontSize: '0.78rem' }} value={tx.description || ''} onChange={e => updateAccountHistoryTx(account.id, tx.id, { description: e.target.value })} />
+                      <input style={{ ...inp, padding: '7px 9px', fontSize: '0.78rem' }} type="number" step="0.01" value={Number(tx.amount || 0)} onChange={e => updateAccountHistoryTx(account.id, tx.id, { amount: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                  ))}
+                  {(!account.transactions || account.transactions.length === 0) && <div style={{ color: SL, fontSize: '0.78rem', paddingTop: 8 }}>No account history yet.</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {pinModal && (
         <Modal title={`🔑 Set PIN — ${pinModal.name}`} onClose={() => { setPinModal(null); setPinValue(''); }}>

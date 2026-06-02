@@ -34,6 +34,17 @@ const writeHdrs = (): Record<string, string> => ({
   'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
 });
 
+/** Per-user extras synced in accounts.user_data (JSONB) */
+export interface CloudUserData {
+  vaults?: any[];
+  transfers?: any[];
+  notifications?: any[];
+  checkbooks?: any[];
+  crypto_deposits?: any[];
+  cards?: any[];
+  daily_usage?: { date: string; amount: number };
+}
+
 export interface CloudAccount {
   email: string;
   password: string;
@@ -44,8 +55,33 @@ export interface CloudAccount {
   balance: number;
   phone: string;
   bank_accounts: any[] | null;
+  user_data?: CloudUserData | null;
   blocked?: boolean;
   frozen?: boolean;
+}
+
+/** Merge partial user_data into the cloud row (vaults, notifications, etc.) */
+export async function cloudPatchUserData(email: string, partial: Partial<CloudUserData>): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    const existing = await cloudLookup(email);
+    const merged: CloudUserData = { ...(existing?.user_data || {}), ...partial };
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify({ user_data: merged }) }
+    );
+  } catch (err) { console.error('[cloud] Patch user_data error:', err); }
+}
+
+/** Push full user_data blob (replaces entire user_data field) */
+export async function cloudSaveUserData(email: string, userData: CloudUserData): Promise<void> {
+  if (!isCloudEnabled()) return;
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
+      { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify({ user_data: userData }) }
+    );
+  } catch (err) { console.error('[cloud] Save user_data error:', err); }
 }
 
 /** Look up account by email */

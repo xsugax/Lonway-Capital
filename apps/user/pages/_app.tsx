@@ -12,6 +12,8 @@ import { LangProvider } from '../contexts/LanguageContext';
 import { trackPageVisit } from '../lib/trackVisit';
 import { startInactivityTimer, stopInactivityTimer } from '../lib/crypto';
 import { initStealth, patchLocalStorage } from '../lib/stealth';
+import { pullUserFromCloud } from '../lib/sync';
+import { isCloudEnabled } from '../lib/cloud';
 
 // Patch localStorage BEFORE any component renders — encrypts all londway_* keys
 if (typeof window !== 'undefined') patchLocalStorage();
@@ -52,6 +54,9 @@ export default function App({ Component, pageProps }: AppProps) {
             } catch {}
             if (!blocked) {
               setUser(parsed);
+              if (parsed.email && isCloudEnabled()) {
+                pullUserFromCloud(parsed.email).catch(() => {});
+              }
               // Start inactivity timer for restored session
               startInactivityTimer(() => {
                 setUser(null);
@@ -111,6 +116,16 @@ export default function App({ Component, pageProps }: AppProps) {
     return () => router.events.off('routeChangeComplete', handleRouteChange);
   }, [router.events]);
 
+  // Re-sync from cloud when user returns to the tab (new phone / another device may have updated data)
+  useEffect(() => {
+    if (!user?.email || !isCloudEnabled()) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') pullUserFromCloud(user.email).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user?.email]);
+
   useEffect(() => {
     if (
       user &&
@@ -126,6 +141,7 @@ export default function App({ Component, pageProps }: AppProps) {
     const session = { ...u, loginAt: Date.now() };
     setUser(session);
     try { localStorage.setItem('londway_session', JSON.stringify(session)); } catch {}
+    if (u.email && isCloudEnabled()) pullUserFromCloud(u.email).catch(() => {});
     setShowLogin(false);
     setShowRegister(false);
     // Send real-time login security alert email (fire-and-forget)

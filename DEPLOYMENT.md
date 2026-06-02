@@ -50,6 +50,10 @@ Configure the following DNS records at your domain registrar or DNS provider (e.
 | Variable | Dev Value | Production Value |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | `https://api.londwaycapital.com` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Same (GitHub secret) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key | Same (GitHub secret) |
+
+**Cross-device sync (required):** Without Supabase, all balances and history live only in the phone browser’s localStorage. With Supabase (free tier), data syncs on every login and save. See `apps/user/.env.local.example` and run `supabase/add_user_data_column.sql` in the SQL Editor.
 
 ### Admin Frontend (`apps/admin`)
 

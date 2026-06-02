@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { sendVerificationCode, sendWelcomeEmail, generateSecureCode } from '../lib/email';
 import { getNotifications, saveNotifications, getBankAccounts, saveBankAccounts, generateFundedAccounts } from '../lib/store';
 import { cloudLookup, cloudSaveUser } from '../lib/cloud';
+import { pullUserFromCloud } from '../lib/sync';
 import {
   hashPassword, verifyPassword, generateSessionToken,
   isLockedOut, recordFailedAttempt, clearLockout,
@@ -408,9 +409,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
             idVerified: false,
           };
           saveNewAccount(local);
-          if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {
-            saveBankAccounts(cloud.bank_accounts, cloud.email);
-          } else if (cloud.balance > 0) {
+          await pullUserFromCloud(cloud.email);
+          if (!cloud.bank_accounts?.length && cloud.balance > 0) {
             const seeded = generateFundedAccounts(cloud.email, cloud.balance);
             saveBankAccounts(seeded, cloud.email);
           }
