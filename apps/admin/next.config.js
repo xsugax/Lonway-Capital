@@ -1,12 +1,4 @@
 /** @type {import('next').NextConfig} */
-function supabaseConnectOrigin() {
-  try {
-    const u = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (u) return new URL(u).origin;
-  } catch { /* */ }
-  return 'https://*.supabase.co';
-}
-
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -21,7 +13,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
-      `connect-src 'self' ${supabaseConnectOrigin()} https://api.emailjs.com`,
+      "connect-src 'self' https://wlaaasfggwqlbxtefaoq.supabase.co",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -74,18 +74,9 @@ Configure the following DNS records at your domain registrar or DNS provider (e.
 
 ## Deployment Guides
 
-### Cloudflare Pages (Primary — recommended)
+### GitHub Pages (User Frontend — Primary)
 
-The site deploys on **Cloudflare Pages** (not GitHub Actions). See **`docs/CLOUDFLARE_SETUP.md`**.
-
-| Setting | Value |
-|---------|--------|
-| Build command | `npm run build:site` |
-| Output directory | `apps/user/out` |
-
-### GitHub Pages (legacy — disabled)
-
-GitHub Actions deploy is disabled due to billing limits. Use Cloudflare instead.
+The user-facing app (`apps/user`) is deployed to GitHub Pages automatically via the `deploy.yml` workflow.
 
 **How it works:**
 1. On push to `main`, GitHub Actions builds the Next.js app with `output: 'export'`
