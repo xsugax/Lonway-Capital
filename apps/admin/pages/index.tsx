@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudGetAllUsers, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings, cloudSaveTransfer } from '../lib/cloud';
+import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudPing, cloudGetAllUsers, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings, cloudSaveTransfer } from '../lib/cloud';
+import { persistNewUser } from '../lib/persist-user';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -792,6 +793,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [cloudTransfers, setCloudTransfers] = useState<any[]>([]);
   const [cloudCards, setCloudCards] = useState<any[]>([]);
   const [recoveringCloud, setRecoveringCloud] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<'local' | 'online' | 'offline' | 'checking'>(
+    () => (isCloudEnabled() ? 'checking' : 'local'),
+  );
+  useEffect(() => {
+    if (!isCloudEnabled()) { setCloudStatus('local'); return; }
+    cloudPing().then(ok => setCloudStatus(ok ? 'online' : 'offline'));
+  }, []);
+
   useEffect(() => {
     // Load cloud transfers immediately and on interval
     const loadCloud = () => {
@@ -1021,46 +1030,52 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   }
 
   // ── User Actions ─────────────────────────────────────────────
-  function createUser(e: React.FormEvent) {
+  async function createUser(e: React.FormEvent) {
     e.preventDefault();
+    const initBalance = parseFloat(nu.balance) || 0;
+    const token = buildActivationToken(nu.email, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
+    const tokenData = JSON.parse(atob(decodeURIComponent(token)));
+    const bankAccounts = tokenData.bankAccounts || null;
+
     const user: User = {
       id: uid(), name: nu.name, email: nu.email, role: nu.role,
-      frozen: false, blocked: false, kyc: false, balance: parseFloat(nu.balance) || 0,
+      frozen: false, blocked: false, kyc: false, balance: initBalance,
       createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
       phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
       password: nu.password || undefined,
       pin: nu.pin || undefined,
     };
+
+    // ── MAGIC: cloud FIRST, local cache second ──
+    const result = await persistNewUser(
+      {
+        email: nu.email, password: nu.password, pin: nu.pin, name: nu.name,
+        role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '',
+      },
+      {
+        email: nu.email, password: nu.password, pin: nu.pin, name: nu.name,
+        role: nu.role, tier: nu.tier, phone: nu.phone || '', address: nu.address || '',
+        createdAt: user.createdAt, idVerified: false,
+      },
+      bankAccounts,
+    );
+
+    if (isCloudEnabled() && !result.ok) {
+      notify(false, result.error || 'Cloud save failed — user not created.');
+      setCloudStatus('offline');
+      return;
+    }
+
     persist({ ...data, users: [...data.users, user] });
-    // Also register in londway_accounts so the user can log in on this device
-    try {
-      const raw = localStorage.getItem('londway_accounts');
-      const accounts: any[] = raw ? JSON.parse(raw) : [];
-      if (!accounts.find((a: any) => a.email === nu.email)) {
-        accounts.push({
-          email: nu.email,
-          password: nu.password,
-          pin: nu.pin,
-          name: nu.name,
-          role: nu.role,
-          phone: nu.phone || '',
-          address: nu.address || '',
-          tier: nu.tier,
-          createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
-          idVerified: false,
-        });
-        localStorage.setItem('londway_accounts', JSON.stringify(accounts));
-      }
-    } catch {}
-    addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
+    addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}${result.cloud ? ' [cloud]' : ' [local only]'}`);
     setNewUserModal(false);
-    // Save to cloud so user can log in from ANY device
-    const initBalance = parseFloat(nu.balance) || 0;
-    const token = buildActivationToken(nu.email, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
-    const tokenData = JSON.parse(atob(decodeURIComponent(token)));
-    cloudSaveUser({ email: nu.email, password: nu.password, pin: nu.pin, name: nu.name, role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '', bank_accounts: tokenData.bankAccounts || null })
-      .then(() => notify(true, `${user.name} created` + (isCloudEnabled() ? ' — synced to cloud ✓' : ' (local only — Supabase not configured)')))
-      .catch(() => notify(true, `${user.name} created (cloud sync failed — local only)`));
+
+    if (result.cloud) {
+      notify(true, `${user.name} created — synced to cloud ✓ (works on any device)`);
+      setCloudStatus('online');
+    } else {
+      notify(true, `${user.name} created — ${result.error || 'this browser only until Supabase is configured'}`);
+    }
     setNu({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   }
 
@@ -1471,6 +1486,14 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 {pending.length} pending · {flagged.length} flagged
               </div>
             )}
+            <div style={{
+              borderRadius: 8, padding: '6px 12px', fontSize: '0.72rem', fontWeight: 700,
+              background: cloudStatus === 'online' ? 'rgba(61,158,122,0.12)' : cloudStatus === 'offline' ? 'rgba(220,80,80,0.12)' : 'rgba(196,160,82,0.1)',
+              border: `1px solid ${cloudStatus === 'online' ? 'rgba(61,158,122,0.35)' : cloudStatus === 'offline' ? 'rgba(220,80,80,0.35)' : 'rgba(196,160,82,0.2)'}`,
+              color: cloudStatus === 'online' ? '#3D9E7A' : cloudStatus === 'offline' ? '#e05555' : G,
+            }} title={cloudStatus === 'online' ? 'Users save to Supabase — works on any device' : cloudStatus === 'offline' ? 'Supabase unreachable — fix billing/keys' : cloudStatus === 'local' ? 'No Supabase keys in this build' : 'Checking cloud…'}>
+              {cloudStatus === 'online' ? '☁ Cloud live' : cloudStatus === 'offline' ? '☁ Cloud offline' : cloudStatus === 'checking' ? '☁ Checking…' : '📱 Local only'}
+            </div>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." style={{ ...inp, width: 180, padding: '7px 12px', fontSize: '0.8rem' }} />
             {isCloudEnabled() && (
               <button onClick={recoverCloudUsers} style={{ ...btnP, padding: '7px 14px' }} disabled={recoveringCloud}>

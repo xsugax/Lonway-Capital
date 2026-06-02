@@ -10,6 +10,20 @@ export function isCloudEnabled(): boolean {
   return !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
+/** Returns true if Supabase API responds (billing OK, keys valid). */
+export async function cloudPing(): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?select=email&limit=1`,
+      { method: 'GET', headers: readHdrs() },
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Headers for read requests */
 const readHdrs = (): Record<string, string> => ({
   'Accept': 'application/json',
@@ -62,15 +76,23 @@ export async function cloudPatchUserData(email: string, partial: Partial<CloudUs
   } catch (err) { console.error('[cloud] Patch user_data error:', err); }
 }
 
-export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: string }) {
-  if (!isCloudEnabled()) return;
+export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: string }): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
       method: 'POST',
       headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({ ...acct, email: acct.email.toLowerCase() }),
     });
-  } catch (err) { console.error('[cloud] Save error:', err); }
+    if (!res.ok) {
+      console.error('[cloud] Save failed:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[cloud] Save error:', err);
+    return false;
+  }
 }
 
 /** PATCH only the fields that changed — never overwrites password/pin with empty values */

@@ -105,16 +105,24 @@ export async function cloudLookup(email: string): Promise<CloudAccount | null> {
   }
 }
 
-/** Create or update account (upsert by email) */
-export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: string }) {
-  if (!isCloudEnabled()) return;
+/** Create or update account (upsert by email). Returns true if saved successfully. */
+export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: string }): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
       method: 'POST',
       headers: { ...writeHdrs(), 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({ ...acct, email: acct.email.toLowerCase() }),
     });
-  } catch (err) { console.error('[cloud] Save error:', err); }
+    if (!res.ok) {
+      console.error('[cloud] Save failed:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[cloud] Save error:', err);
+    return false;
+  }
 }
 
 /** Update balance and optionally bank accounts */
