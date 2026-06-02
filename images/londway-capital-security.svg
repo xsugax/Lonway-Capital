@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#060913"/><stop offset="100%" stop-color="#0d1628"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C4A052"/><stop offset="100%" stop-color="#D4B76A"/></linearGradient>
+    <linearGradient id="vaultDoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a2a3e"/><stop offset="100%" stop-color="#1a1a2e"/></linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="35%"><stop offset="0%" stop-color="#C4A052" stop-opacity="0.08"/><stop offset="100%" stop-color="#C4A052" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <!-- Title -->
+  <text x="600" y="60" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#C4A052" letter-spacing="4">LONDWAY CAPITAL</text>
+  <text x="600" y="95" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="32" font-weight="bold" fill="#fff">Bank-Grade Security Infrastructure</text>
+  <rect x="520" y="108" width="160" height="3" rx="1.5" fill="url(#gold)" opacity="0.5"/>
+  <!-- Central Vault Door -->
+  <g transform="translate(440,150)">
+    <!-- Vault frame -->
+    <rect x="-10" y="-10" width="340" height="340" rx="20" fill="#111827" stroke="#C4A052" stroke-width="1" opacity="0.5"/>
+    <!-- Door -->
+    <circle cx="160" cy="160" r="140" fill="url(#vaultDoor)" stroke="#C4A052" stroke-width="2" opacity="0.8"/>
+    <circle cx="160" cy="160" r="130" fill="none" stroke="#C4A052" stroke-width="0.5" opacity="0.3"/>
+    <circle cx="160" cy="160" r="110" fill="none" stroke="#C4A052" stroke-width="0.5" opacity="0.2"/>
+    <!-- Vault handle (wheel) -->
+    <circle cx="160" cy="160" r="55" fill="none" stroke="#C4A052" stroke-width="3" opacity="0.7"/>
+    <circle cx="160" cy="160" r="50" fill="none" stroke="#C4A052" stroke-width="1" opacity="0.3"/>
+    <!-- Spokes -->
+    <line x1="160" y1="105" x2="160" y2="215" stroke="#C4A052" stroke-width="2.5" opacity="0.6"/>
+    <line x1="105" y1="160" x2="215" y2="160" stroke="#C4A052" stroke-width="2.5" opacity="0.6"/>
+    <line x1="121" y1="121" x2="199" y2="199" stroke="#C4A052" stroke-width="2.5" opacity="0.6"/>
+    <line x1="199" y1="121" x2="121" y2="199" stroke="#C4A052" stroke-width="2.5" opacity="0.6"/>
+    <!-- Center cap -->
+    <circle cx="160" cy="160" r="15" fill="#C4A052" opacity="0.5"/>
+    <circle cx="160" cy="160" r="8" fill="#060913"/>
+    <text x="160" y="164" text-anchor="middle" font-family="Georgia,serif" font-size="8" fill="#C4A052" font-weight="bold">LC</text>
+    <!-- Locking bolts -->
+    <circle cx="160" cy="35" r="10" fill="#1a1a2e" stroke="#C4A052" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="160" cy="285" r="10" fill="#1a1a2e" stroke="#C4A052" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="35" cy="160" r="10" fill="#1a1a2e" stroke="#C4A052" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="285" cy="160" r="10" fill="#1a1a2e" stroke="#C4A052" stroke-width="1.5" opacity="0.5"/>
+  </g>
+  <!-- Left side: Security features -->
+  <g transform="translate(40,180)">
+    <!-- Feature 1: Encryption -->
+    <g transform="translate(0,0)">
+      <rect width="340" height="72" rx="10" fill="rgba(196,160,82,0.04)" stroke="rgba(196,160,82,0.15)" stroke-width="1"/>
+      <circle cx="38" cy="36" r="18" fill="rgba(196,160,82,0.1)" stroke="#C4A052" stroke-width="1"/>
+      <text x="38" y="41" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="16" fill="#C4A052">🔐</text>
+      <text x="68" y="28" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#fff">AES-256 Encryption</text>
+      <text x="68" y="48" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">Military-grade encryption at rest and in</text>
+      <text x="68" y="62" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">transit for all financial data</text>
+    </g>
+    <!-- Feature 2: MFA -->
+    <g transform="translate(0,85)">
+      <rect width="340" height="72" rx="10" fill="rgba(196,160,82,0.04)" stroke="rgba(196,160,82,0.15)" stroke-width="1"/>
+      <circle cx="38" cy="36" r="18" fill="rgba(196,160,82,0.1)" stroke="#C4A052" stroke-width="1"/>
+      <text x="38" y="41" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="16" fill="#C4A052">🛡</text>
+      <text x="68" y="28" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#fff">Multi-Factor Authentication</text>
+      <text x="68" y="48" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">Biometric, hardware key, and TOTP</text>
+      <text x="68" y="62" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">verification on every transaction</text>
+    </g>
+    <!-- Feature 3: Monitoring -->
+    <g transform="translate(0,170)">
+      <rect width="340" height="72" rx="10" fill="rgba(196,160,82,0.04)" stroke="rgba(196,160,82,0.15)" stroke-width="1"/>
+      <circle cx="38" cy="36" r="18" fill="rgba(196,160,82,0.1)" stroke="#C4A052" stroke-width="1"/>
+      <text x="38" y="41" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="15" fill="#C4A052">📡</text>
+      <text x="68" y="28" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#fff">24/7 Fraud Monitoring</text>
+      <text x="68" y="48" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">AI-powered real-time transaction</text>
+      <text x="68" y="62" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">monitoring and anomaly detection</text>
+    </g>
+  </g>
+  <!-- Right side: Compliance -->
+  <g transform="translate(820,180)">
+    <g transform="translate(0,0)">
+      <rect width="340" height="72" rx="10" fill="rgba(196,160,82,0.04)" stroke="rgba(196,160,82,0.15)" stroke-width="1"/>
+      <circle cx="38" cy="36" r="18" fill="rgba(196,160,82,0.1)" stroke="#C4A052" stroke-width="1"/>
+      <text x="38" y="41" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="15" fill="#C4A052">✓</text>
+      <text x="68" y="28" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#fff">SOC 2 Type II Certified</text>
+      <text x="68" y="48" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">Annually audited security controls</text>
+      <text x="68" y="62" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">and data protection standards</text>
+    </g>
+    <g transform="translate(0,85)">
+      <rect width="340" height="72" rx="10" fill="rgba(196,160,82,0.04)" stroke="rgba(196,160,82,0.15)" stroke-width="1"/>
+      <circle cx="38" cy="36" r="18" fill="rgba(196,160,82,0.1)" stroke="#C4A052" stroke-width="1"/>
+      <text x="38" y="41" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="15" fill="#C4A052">🌐</text>
+      <text x="68" y="28" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#fff">PCI DSS Level 1</text>
+      <text x="68" y="48" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">Highest level of payment card</text>
+      <text x="68" y="62" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">industry security compliance</text>
+    </g>
+    <g transform="translate(0,170)">
+      <rect width="340" height="72" rx="10" fill="rgba(196,160,82,0.04)" stroke="rgba(196,160,82,0.15)" stroke-width="1"/>
+      <circle cx="38" cy="36" r="18" fill="rgba(196,160,82,0.1)" stroke="#C4A052" stroke-width="1"/>
+      <text x="38" y="41" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="15" fill="#C4A052">🏛</text>
+      <text x="68" y="28" font-family="Helvetica,sans-serif" font-size="14" font-weight="bold" fill="#fff">FDIC Insured</text>
+      <text x="68" y="48" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">Deposits insured up to $250,000</text>
+      <text x="68" y="62" font-family="Helvetica,sans-serif" font-size="11" fill="#9CA3AF">per depositor, per institution</text>
+    </g>
+  </g>
+  <!-- Bottom bar -->
+  <rect x="0" y="520" width="1200" height="110" fill="rgba(196,160,82,0.03)"/>
+  <rect x="0" y="520" width="1200" height="1" fill="#C4A052" opacity="0.15"/>
+  <!-- Stats -->
+  <text x="200" y="560" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="28" font-weight="bold" fill="#C4A052">99.99%</text>
+  <text x="200" y="585" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="12" fill="#6B7280">Uptime SLA</text>
+  <text x="480" y="560" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="28" font-weight="bold" fill="#C4A052">0</text>
+  <text x="480" y="585" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="12" fill="#6B7280">Security Breaches</text>
+  <text x="720" y="560" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="28" font-weight="bold" fill="#C4A052">$2.8T+</text>
+  <text x="720" y="585" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="12" fill="#6B7280">Assets Protected</text>
+  <text x="1000" y="560" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="28" font-weight="bold" fill="#C4A052">180+</text>
+  <text x="1000" y="585" text-anchor="middle" font-family="Helvetica,sans-serif" font-size="12" fill="#6B7280">Countries Served</text>
+</svg>

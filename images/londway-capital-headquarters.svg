@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a1628"/><stop offset="100%" stop-color="#1a2a4a"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C4A052"/><stop offset="100%" stop-color="#D4B76A"/></linearGradient>
+    <linearGradient id="bldg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a2a4a"/><stop offset="100%" stop-color="#0d1628"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a3a5a" stop-opacity="0.6"/><stop offset="100%" stop-color="#1a2a4a" stop-opacity="0.8"/></linearGradient>
+  </defs>
+  <!-- Sky -->
+  <rect width="1200" height="630" fill="url(#sky)"/>
+  <!-- Stars -->
+  <circle cx="100" cy="80" r="1.5" fill="#fff" opacity="0.4"/><circle cx="250" cy="120" r="1" fill="#fff" opacity="0.3"/>
+  <circle cx="400" cy="60" r="1.5" fill="#fff" opacity="0.5"/><circle cx="550" cy="100" r="1" fill="#fff" opacity="0.3"/>
+  <circle cx="700" cy="50" r="1.5" fill="#fff" opacity="0.4"/><circle cx="850" cy="90" r="1" fill="#fff" opacity="0.3"/>
+  <circle cx="950" cy="70" r="1.5" fill="#fff" opacity="0.5"/><circle cx="1100" cy="110" r="1" fill="#fff" opacity="0.3"/>
+  <!-- Left building -->
+  <rect x="60" y="200" width="180" height="430" fill="url(#bldg)" rx="4"/>
+  <g opacity="0.3"><rect x="80" y="220" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="120" y="220" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="160" y="220" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="200" y="220" width="30" height="20" fill="#4a6a9a" rx="2"/></g>
+  <g opacity="0.25"><rect x="80" y="260" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="120" y="260" width="30" height="20" fill="#C4A052" rx="2"/><rect x="160" y="260" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="200" y="260" width="30" height="20" fill="#4a6a9a" rx="2"/></g>
+  <g opacity="0.3"><rect x="80" y="300" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="120" y="300" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="160" y="300" width="30" height="20" fill="#C4A052" rx="2"/><rect x="200" y="300" width="30" height="20" fill="#4a6a9a" rx="2"/></g>
+  <!-- Main HQ building -->
+  <rect x="320" y="120" width="560" height="510" fill="url(#bldg)" rx="6"/>
+  <rect x="320" y="120" width="560" height="60" fill="#0d1628" rx="6"/>
+  <!-- Roof accent -->
+  <rect x="320" y="178" width="560" height="4" fill="url(#gold)" opacity="0.7"/>
+  <!-- LC Logo on building -->
+  <rect x="550" y="132" width="100" height="36" rx="6" fill="none" stroke="#C4A052" stroke-width="1.5" opacity="0.7"/>
+  <text x="600" y="157" text-anchor="middle" font-family="Georgia,serif" font-size="22" font-weight="bold" fill="#C4A052" letter-spacing="3">LC</text>
+  <!-- Windows grid -->
+  <g opacity="0.35">
+    <rect x="345" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="395" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="445" y="200" width="40" height="28" fill="#C4A052" rx="2"/><rect x="495" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="545" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="595" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="645" y="200" width="40" height="28" fill="#C4A052" rx="2"/><rect x="695" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="745" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="795" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="845" y="200" width="40" height="28" fill="#4a6a9a" rx="2"/>
+  </g>
+  <g opacity="0.3">
+    <rect x="345" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="395" y="245" width="40" height="28" fill="#C4A052" rx="2"/><rect x="445" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="495" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="545" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="595" y="245" width="40" height="28" fill="#C4A052" rx="2"/><rect x="645" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="695" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="745" y="245" width="40" height="28" fill="#C4A052" rx="2"/><rect x="795" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="845" y="245" width="40" height="28" fill="#4a6a9a" rx="2"/>
+  </g>
+  <g opacity="0.35">
+    <rect x="345" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="395" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="445" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="495" y="290" width="40" height="28" fill="#C4A052" rx="2"/><rect x="545" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="595" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="645" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="695" y="290" width="40" height="28" fill="#C4A052" rx="2"/><rect x="745" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="795" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="845" y="290" width="40" height="28" fill="#4a6a9a" rx="2"/>
+  </g>
+  <g opacity="0.3">
+    <rect x="345" y="335" width="40" height="28" fill="#C4A052" rx="2"/><rect x="395" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="445" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="495" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="545" y="335" width="40" height="28" fill="#C4A052" rx="2"/><rect x="595" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="645" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="695" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="745" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="795" y="335" width="40" height="28" fill="#C4A052" rx="2"/><rect x="845" y="335" width="40" height="28" fill="#4a6a9a" rx="2"/>
+  </g>
+  <g opacity="0.35">
+    <rect x="345" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="395" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="445" y="380" width="40" height="28" fill="#C4A052" rx="2"/><rect x="495" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="545" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="595" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="645" y="380" width="40" height="28" fill="#C4A052" rx="2"/><rect x="695" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="745" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="795" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/><rect x="845" y="380" width="40" height="28" fill="#4a6a9a" rx="2"/>
+  </g>
+  <!-- Lobby entrance -->
+  <rect x="530" y="480" width="140" height="150" fill="#1a2a4a" rx="4"/>
+  <rect x="530" y="480" width="140" height="8" fill="url(#gold)" opacity="0.5"/>
+  <rect x="545" y="500" width="50" height="130" fill="#0d1628" rx="3" opacity="0.6"/>
+  <rect x="605" y="500" width="50" height="130" fill="#0d1628" rx="3" opacity="0.6"/>
+  <!-- Right building -->
+  <rect x="960" y="260" width="180" height="370" fill="url(#bldg)" rx="4"/>
+  <g opacity="0.3"><rect x="980" y="280" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="1020" y="280" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="1060" y="280" width="30" height="20" fill="#C4A052" rx="2"/><rect x="1100" y="280" width="30" height="20" fill="#4a6a9a" rx="2"/></g>
+  <g opacity="0.25"><rect x="980" y="320" width="30" height="20" fill="#C4A052" rx="2"/><rect x="1020" y="320" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="1060" y="320" width="30" height="20" fill="#4a6a9a" rx="2"/><rect x="1100" y="320" width="30" height="20" fill="#4a6a9a" rx="2"/></g>
+  <!-- Ground / Street -->
+  <rect x="0" y="610" width="1200" height="20" fill="#0a1020"/>
+  <rect x="0" y="608" width="1200" height="3" fill="url(#gold)" opacity="0.15"/>
+  <!-- Gold reflection on ground -->
+  <rect x="480" y="615" width="240" height="4" fill="#C4A052" opacity="0.08" rx="2"/>
+  <!-- Title overlay -->
+  <rect x="0" y="0" width="1200" height="630" fill="url(#sky)" opacity="0.15"/>
+</svg>

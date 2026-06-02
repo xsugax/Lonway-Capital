@@ -1,0 +1,10 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #060913; color: #EAE0D0; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@keyframes spin { to { transform: rotate(360deg); } }
+::selection { background: rgba(196,160,82,0.3); color: #fff; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(196,160,82,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(196,160,82,0.4); }
+

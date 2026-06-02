@@ -1,0 +1,20 @@
+# Londway Capital — https://londwaycapital.com
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Googlebot
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Bingbot
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+Sitemap: https://londwaycapital.com/sitemap.xml
+Host: https://londwaycapital.com
