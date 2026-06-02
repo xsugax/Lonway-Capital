@@ -9,6 +9,8 @@
     "build:user": "cd apps/user && npm run build",
     "build:admin": "cd apps/admin && npm run build",
     "build:all": "npm run build:user && npm run build:admin",
+    "install:apps": "npm install --legacy-peer-deps --prefix apps/user && npm install --legacy-peer-deps --prefix apps/admin",
+    "build:site": "npm run install:apps && npm run build:user && npm run build:admin && node scripts/merge-static-site.js",
     "start:user": "cd apps/user && npm start",
     "start:admin": "cd apps/admin && npm start",
     "test": "echo \"Error: no test specified\" && exit 1"
