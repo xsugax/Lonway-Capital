@@ -52,9 +52,9 @@ function getAccounts(): StoredAccount[] {
       let changed = false;
       for (const u of (adminData.users || [])) {
         if (!u.password && !u.pin) continue;
-        const existing = accounts.find((a: StoredAccount) => a.email === u.email);
+        const existing = accounts.find((a: StoredAccount) => a.email?.toLowerCase() === u.email?.toLowerCase());
         if (!existing) {
-          accounts.push({ email: u.email, password: u.password || '', pin: u.pin || '', name: u.name, role: u.role || 'user', tier: u.tier || 'Standard', frozen: !!u.frozen, blocked: !!u.blocked, idVerified: false });
+          accounts.push({ email: (u.email || '').toLowerCase(), password: u.password || '', pin: u.pin || '', name: u.name, role: u.role || 'user', tier: u.tier || 'Standard', frozen: !!u.frozen, blocked: !!u.blocked, idVerified: false });
           changed = true;
         } else {
           let dirty = false;
@@ -389,37 +389,40 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       if (!lEmail.includes('@')) { setError('Enter a valid email address'); return; }
       if (!lPw) { setError('Enter your password'); return; }
       const emailLower = lEmail.toLowerCase().trim();
-      // Start with whatever is stored locally
-      let m: StoredAccount | undefined = getAccounts().find(a => a.email.toLowerCase() === emailLower);
-      // ALWAYS check cloud — this ensures cross-device login AND latest credentials
+      const findLocal = () => getAccounts().find(a => a.email?.toLowerCase() === emailLower);
+      let m: StoredAccount | undefined = findLocal();
+      // Check cloud when configured — merges into local for cross-device login
       setSending(true);
       try {
         const cloud = await cloudLookup(emailLower);
         if (cloud) {
-          // Merge cloud data into local — cloud is source of truth
+          const password = cloud.password || m?.password || '';
           const local: StoredAccount = {
-            email: cloud.email,
-            password: cloud.password || (m?.password || ''),
-            pin: cloud.pin || (m?.pin || ''),
-            name: cloud.name || (m?.name || ''),
-            role: cloud.role || (m?.role || 'user'),
+            email: cloud.email?.toLowerCase() || emailLower,
+            password,
+            pin: cloud.pin || m?.pin || '',
+            name: cloud.name || m?.name || '',
+            role: cloud.role || m?.role || 'user',
             tier: cloud.tier || (m as any)?.tier || 'Standard',
             frozen: !!(cloud as any).frozen,
             blocked: !!(cloud as any).blocked,
-            idVerified: false,
+            idVerified: m?.idVerified ?? false,
           };
-          saveNewAccount(local);
-          await pullUserFromCloud(cloud.email);
-          if (!cloud.bank_accounts?.length && cloud.balance > 0) {
-            const seeded = generateFundedAccounts(cloud.email, cloud.balance);
-            saveBankAccounts(seeded, cloud.email);
+          if (password) {
+            saveNewAccount(local);
+            await pullUserFromCloud(local.email);
+            if (!cloud.bank_accounts?.length && cloud.balance > 0) {
+              const seeded = generateFundedAccounts(local.email, cloud.balance);
+              saveBankAccounts(seeded, local.email);
+            }
+            m = local;
           }
-          m = local; // always prefer freshest cloud copy
         }
       } catch (err) {
         console.error('[login] Cloud lookup failed, using local copy:', err);
-        // Fall through — m still points to local account if it exists
       } finally { setSending(false); }
+      // Re-read local registry (admin may have created user on same browser)
+      if (!m) m = findLocal();
       if (!m) { setError('No account found. Check your email or contact support.'); return; }
       if (m.deleted) { setError('This account has been permanently deleted. Please contact support.'); return; }
       // Verify password using PBKDF2 hash comparison (backward-compatible with legacy plain text)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudPing, cloudGetAllUsers, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings, cloudSaveTransfer } from '../lib/cloud';
-import { persistNewUser } from '../lib/persist-user';
+import { upsertLoginAccountLocal } from '../lib/persist-user';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
@@ -963,8 +963,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
           if (u.phone !== undefined && a.phone !== u.phone) { a.phone = u.phone || ''; dirty = true; }
           if (u.address !== undefined && a.address !== u.address) { a.address = u.address || ''; dirty = true; }
           if (u.createdAt && a.createdAt !== u.createdAt) { a.createdAt = u.createdAt; dirty = true; }
-          if (u.password && !a.password) { a.password = u.password; dirty = true; }
-          if (u.pin && !a.pin) { a.pin = u.pin; dirty = true; }
+          if (u.password && a.password !== u.password) { a.password = u.password; dirty = true; }
+          if (u.pin && a.pin !== u.pin) { a.pin = u.pin; dirty = true; }
           if (a.frozen !== !!u.frozen) { a.frozen = !!u.frozen; dirty = true; }
           if (a.blocked !== !!u.blocked) { a.blocked = !!u.blocked; dirty = true; }
         } else if (u.password || u.pin) {
@@ -1030,15 +1030,16 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   }
 
   // ── User Actions ─────────────────────────────────────────────
-  async function createUser(e: React.FormEvent) {
+  function createUser(e: React.FormEvent) {
     e.preventDefault();
     const initBalance = parseFloat(nu.balance) || 0;
-    const token = buildActivationToken(nu.email, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
+    const emailNorm = nu.email.toLowerCase().trim();
+    const token = buildActivationToken(emailNorm, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
     const tokenData = JSON.parse(atob(decodeURIComponent(token)));
     const bankAccounts = tokenData.bankAccounts || null;
 
     const user: User = {
-      id: uid(), name: nu.name, email: nu.email, role: nu.role,
+      id: uid(), name: nu.name, email: emailNorm, role: nu.role,
       frozen: false, blocked: false, kyc: false, balance: initBalance,
       createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
       phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
@@ -1046,36 +1047,44 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       pin: nu.pin || undefined,
     };
 
-    // ── MAGIC: cloud FIRST, local cache second ──
-    const result = await persistNewUser(
-      {
-        email: nu.email, password: nu.password, pin: nu.pin, name: nu.name,
-        role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '',
-      },
-      {
-        email: nu.email, password: nu.password, pin: nu.pin, name: nu.name,
-        role: nu.role, tier: nu.tier, phone: nu.phone || '', address: nu.address || '',
-        createdAt: user.createdAt, idVerified: false,
-      },
-      bankAccounts,
-    );
-
-    if (isCloudEnabled() && !result.ok) {
-      notify(false, result.error || 'Cloud save failed — user not created.');
-      setCloudStatus('offline');
-      return;
+    // 1. Admin panel + login registry (local) — always, so login works like before
+    persist({ ...data, users: [...data.users, user] });
+    upsertLoginAccountLocal({
+      email: emailNorm,
+      password: nu.password,
+      pin: nu.pin,
+      name: nu.name,
+      role: nu.role,
+      tier: nu.tier,
+      phone: nu.phone || '',
+      address: nu.address || '',
+      createdAt: user.createdAt,
+      idVerified: false,
+    });
+    if (bankAccounts?.length) {
+      saveUserBankAccounts(emailNorm, bankAccounts);
     }
 
-    persist({ ...data, users: [...data.users, user] });
-    addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}${result.cloud ? ' [cloud]' : ' [local only]'}`);
+    addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
     setNewUserModal(false);
 
-    if (result.cloud) {
-      notify(true, `${user.name} created — synced to cloud ✓ (works on any device)`);
-      setCloudStatus('online');
-    } else {
-      notify(true, `${user.name} created — ${result.error || 'this browser only until Supabase is configured'}`);
-    }
+    // 2. Cloud sync (best-effort — does not block local login)
+    cloudSaveUser({
+      email: emailNorm, password: nu.password, pin: nu.pin, name: nu.name,
+      role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '',
+      bank_accounts: bankAccounts,
+    }).then((ok) => {
+      if (ok) {
+        setCloudStatus('online');
+        notify(true, `${user.name} created — synced to cloud ✓`);
+      } else if (isCloudEnabled()) {
+        setCloudStatus('offline');
+        notify(true, `${user.name} created — login ready; cloud sync failed (other devices need Supabase)`);
+      }
+    }).catch(() => {
+      notify(true, `${user.name} created — login ready on this browser`);
+    });
+
     setNu({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
   }
 
