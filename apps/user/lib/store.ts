@@ -90,7 +90,11 @@ function save(key: string, data: any) {
 function pushBankToCloud(email: string, accounts: any[]) {
   if (!isCloudEnabled()) return;
   const total = accounts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
-  cloudUpdateBalance(email, total, accounts).catch(() => {});
+  cloudUpdateBalance(email, total, accounts).then((saved) => {
+    if (!saved) console.error('[store] Bank account changes were not synced to cloud.');
+  }).catch((err) => {
+    console.error('[store] Bank account sync failed:', err);
+  });
 }
 
 function pushExtrasToCloud(email: string, partial: Partial<CloudUserData>) {

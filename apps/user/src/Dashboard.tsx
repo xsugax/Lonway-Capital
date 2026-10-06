@@ -3,8 +3,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTheme } from '../contexts/ThemeContext';
-import { getBankAccounts, saveBankAccounts, getTransfers } from '../lib/store';
-import { cloudLookup, cloudGetUserTransfers } from '../lib/cloud';
+import { getBankAccounts, saveBankAccountsLocal, getTransfers } from '../lib/store';
+import { cloudLookup, cloudGetUserTransfers, isCloudEnabled } from '../lib/cloud';
 import { useLang } from '../contexts/LanguageContext';
 import { exportCSV, exportPDF } from '../lib/exportData';
 import { DashboardSkeleton } from '../components/LoadingSkeleton';
@@ -168,8 +168,11 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [balanceAvailable, setBalanceAvailable] = React.useState(false);
+  const [syncStatus, setSyncStatus] = React.useState<'checking' | 'synced' | 'unavailable' | 'local'>('checking');
   const [clock, setClock] = React.useState('');
   const [tzName, setTzName] = React.useState('');
+  const dashboardHasData = React.useRef(false);
 
   React.useEffect(() => {
     const fmtClock = () => {
@@ -190,107 +193,165 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
   }, [t]);
 
   React.useEffect(() => {
+    let active = true;
+    let loadingDashboard = false;
+    dashboardHasData.current = false;
+    setLoading(true);
+    setError(null);
+    const hasCachedAccounts = () => {
+      if (!user?.email) return false;
+      const emailKey = user.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      return localStorage.getItem(`londway_bank_accounts__${emailKey}`) !== null;
+    };
+
     async function loadDashboard() {
-      // 1. Re-sync bank accounts + account tier from cloud to get latest admin changes
-      if (user?.email) {
-        try {
+      if (loadingDashboard) return;
+      loadingDashboard = true;
+      let cloudAccountFound = false;
+
+      try {
+        // 1. Refresh accounts and profile from cloud without echoing the pull back as a write.
+        if (user?.email && isCloudEnabled()) {
           const cloud = await cloudLookup(user.email);
-          if (cloud) {
-            if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {
-              saveBankAccounts(cloud.bank_accounts, cloud.email);
+          if (cloud && active) {
+            cloudAccountFound = true;
+            if (cloud.bank_accounts?.length) {
+              saveBankAccountsLocal(cloud.bank_accounts, cloud.email);
+            } else {
+              const cloudBalance = Number(cloud.balance);
+              const cachedAccounts = getBankAccounts(user.email);
+              const cachedBalance = cachedAccounts.reduce(
+                (sum: number, account: any) => sum + (Number(account.balance) || 0),
+                0
+              );
+              if (Number.isFinite(cloudBalance) && cloudBalance >= 0 && cachedBalance !== cloudBalance && cachedAccounts.length) {
+                saveBankAccountsLocal(
+                  [
+                    { ...cachedAccounts[0], balance: cloudBalance },
+                    ...cachedAccounts.slice(1).map((account: any) => ({ ...account, balance: 0 })),
+                  ],
+                  user.email
+                );
+              }
             }
-            // Sync tier, frozen, blocked status from cloud → localStorage
+
+            // Sync tier and account status from cloud to the local profile.
             try {
               const raw = localStorage.getItem('londway_accounts');
               if (raw) {
-                const accts = JSON.parse(raw);
-                const idx = accts.findIndex((a: any) => a.email?.toLowerCase() === cloud.email.toLowerCase());
+                const accounts = JSON.parse(raw);
+                const idx = accounts.findIndex((account: any) => account.email?.toLowerCase() === cloud.email.toLowerCase());
                 if (idx !== -1) {
                   let dirty = false;
-                  if (cloud.tier && accts[idx].tier !== cloud.tier) { accts[idx].tier = cloud.tier; dirty = true; }
-                  if (cloud.name && accts[idx].name !== cloud.name) { accts[idx].name = cloud.name; dirty = true; }
-                  if (cloud.role && accts[idx].role !== cloud.role) { accts[idx].role = cloud.role; dirty = true; }
-                  const cloudBlocked = !!(cloud as any).blocked;
-                  const cloudFrozen = !!(cloud as any).frozen;
-                  if (accts[idx].blocked !== cloudBlocked) { accts[idx].blocked = cloudBlocked; dirty = true; }
-                  if (accts[idx].frozen !== cloudFrozen) { accts[idx].frozen = cloudFrozen; dirty = true; }
-                  if (dirty) localStorage.setItem('londway_accounts', JSON.stringify(accts));
-                  // If blocked or frozen, force logout
+                  if (cloud.tier && accounts[idx].tier !== cloud.tier) { accounts[idx].tier = cloud.tier; dirty = true; }
+                  if (cloud.name && accounts[idx].name !== cloud.name) { accounts[idx].name = cloud.name; dirty = true; }
+                  if (cloud.role && accounts[idx].role !== cloud.role) { accounts[idx].role = cloud.role; dirty = true; }
+                  const cloudBlocked = !!cloud.blocked;
+                  const cloudFrozen = !!cloud.frozen;
+                  if (accounts[idx].blocked !== cloudBlocked) { accounts[idx].blocked = cloudBlocked; dirty = true; }
+                  if (accounts[idx].frozen !== cloudFrozen) { accounts[idx].frozen = cloudFrozen; dirty = true; }
+                  if (dirty) localStorage.setItem('londway_accounts', JSON.stringify(accounts));
                   if (cloudBlocked || cloudFrozen) {
-                    if (typeof window !== 'undefined') {
-                      localStorage.removeItem('londway_current_user');
-                      window.location.href = '/';
-                    }
+                    localStorage.removeItem('londway_current_user');
+                    window.location.href = '/';
                     return;
                   }
                 }
               }
-            } catch {}
+            } catch (err) {
+              console.error('[dashboard] Failed to update the local account profile:', err);
+            }
           }
-        } catch {}
-      }
+        }
 
-      // 2. Read bank accounts (now includes admin debits from cloud sync)
-      const accounts = getBankAccounts(user?.email);
-      const totalBalance = accounts.reduce((sum: number, acc: any) => sum + (acc.balance ?? 0), 0);
+        if (!active) return;
+        setSyncStatus(!user?.email || !isCloudEnabled() ? 'local' : cloudAccountFound ? 'synced' : 'unavailable');
+        setBalanceAvailable(cloudAccountFound || hasCachedAccounts());
 
-      // 3. Gather transactions from bank accounts (admin debits/credits)
-      const allTx: any[] = [];
-      const seenIds = new Set<string>();
-      accounts.forEach((acc: any) => {
-        (acc.transactions ?? []).forEach((tx: any) => {
-          if (tx.id && seenIds.has(tx.id)) return;
-          if (tx.id) seenIds.add(tx.id);
-          allTx.push({ ...tx, accountType: acc.type });
+        // 2. Use the latest cloud accounts, or the last saved local cache during an outage.
+        const accounts = getBankAccounts(user?.email);
+        const totalBalance = accounts.reduce((sum: number, account: any) => sum + (Number(account.balance) || 0), 0);
+
+        // 3. Gather transactions from bank accounts.
+        const allTx: any[] = [];
+        const seenIds = new Set<string>();
+        accounts.forEach((account: any) => {
+          (account.transactions ?? []).forEach((tx: any) => {
+            if (tx.id && seenIds.has(tx.id)) return;
+            if (tx.id) seenIds.add(tx.id);
+            allTx.push({ ...tx, accountType: account.type });
+          });
         });
-      });
 
-      // 4. Merge user-submitted transfers (local + cloud) into transaction history
-      if (user?.email) {
-        try {
+        // 4. Merge user-submitted transfers (local + cloud) into transaction history.
+        if (user?.email) {
           const localTransfers = getTransfers(user.email);
-          let cloudTransfers: any[] = [];
-          try { cloudTransfers = await cloudGetUserTransfers(user.email); } catch {}
-          // Deduplicate local + cloud transfers
-          const txIds = new Set(localTransfers.map((t: any) => t.id));
-          const merged = [...localTransfers, ...cloudTransfers.filter((ct: any) => !txIds.has(ct.id))];
-          // Add completed/pending transfers as transaction entries
-          merged.forEach((t: any) => {
-            const tid = t.id || `tf-${t.reference}`;
+          const cloudTransfers = isCloudEnabled() ? await cloudGetUserTransfers(user.email) : [];
+          const txIds = new Set(localTransfers.map((transfer: any) => transfer.id));
+          const merged = [...localTransfers, ...cloudTransfers.filter((transfer: any) => !txIds.has(transfer.id))];
+          merged.forEach((transfer: any) => {
+            const tid = transfer.id || `tf-${transfer.reference}`;
             if (seenIds.has(tid)) return;
             seenIds.add(tid);
-            const isPending = t.status === 'pending';
+            const isPending = transfer.status === 'pending';
             allTx.push({
               id: tid,
               type: 'debit',
               description: isPending
-                ? `Transfer to ${t.recipientName || t.recipient_name} (Pending)`
-                : `Transfer to ${t.recipientName || t.recipient_name}`,
-              amount: Number(t.amount),
-              date: t.createdAt || t.created_at,
-              status: t.status || 'completed',
+                ? `Transfer to ${transfer.recipientName || transfer.recipient_name} (Pending)`
+                : `Transfer to ${transfer.recipientName || transfer.recipient_name}`,
+              amount: Number(transfer.amount),
+              date: transfer.createdAt || transfer.created_at,
+              status: transfer.status || 'completed',
               accountType: 'Checking',
             });
           });
-        } catch {}
-      }
+        }
 
-      allTx.sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
-      setData({
-        totalBalance,
-        netWorth: totalBalance,
-        todayChange: 0,
-        monthlyGrowth: 0,
-        chartData: [0, 0, 0, 0, 0, 0, Math.round(totalBalance)],
-        chartLabels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
-        accounts,
-        recentTx: allTx.slice(0, 6),
-        insight: 'Your spending is on track this month. Consider increasing your vault contribution by 5% to reach your goal faster.',
-      });
-      setLoading(false);
+        if (!active) return;
+        allTx.sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
+        setData({
+          totalBalance,
+          netWorth: totalBalance,
+          todayChange: 0,
+          monthlyGrowth: 0,
+          chartData: [0, 0, 0, 0, 0, 0, Math.round(totalBalance)],
+          chartLabels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
+          accounts,
+          recentTx: allTx.slice(0, 6),
+          insight: 'Your spending is on track this month. Consider increasing your vault contribution by 5% to reach your goal faster.',
+        });
+        dashboardHasData.current = true;
+        setError(null);
+      } catch (err) {
+        console.error('[dashboard] Refresh failed; keeping the last saved balances:', err);
+        if (active) {
+          setSyncStatus(isCloudEnabled() ? 'unavailable' : 'local');
+          setBalanceAvailable(hasCachedAccounts());
+          if (!dashboardHasData.current) setError('Balance data could not be loaded. Please try again shortly.');
+        }
+      } finally {
+        loadingDashboard = false;
+        if (active) setLoading(false);
+      }
     }
-    loadDashboard();
-  }, []);
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadDashboard();
+    };
+
+    void loadDashboard();
+    const refreshInterval = window.setInterval(refreshWhenVisible, 30_000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+
+    return () => {
+      active = false;
+      window.clearInterval(refreshInterval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
+  }, [user?.email]);
 
   if (loading) return (
     <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif", padding: 'clamp(1rem, 3vw, 2rem)' }}>
@@ -318,6 +379,28 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.58rem', color: colors.success, fontWeight: 600, letterSpacing: '0.08em' }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.success, boxShadow: `0 0 8px ${colors.success}` }}/>
               SECURE SESSION
+            </div>
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: '0.58rem',
+                color: syncStatus === 'synced' ? colors.success : syncStatus === 'checking' ? colors.textMuted : colors.danger,
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+              }}
+            >
+              <span>{syncStatus === 'synced' ? '●' : syncStatus === 'checking' ? '◌' : '●'}</span>
+              {syncStatus === 'synced'
+                ? 'BALANCE SYNCED'
+                : syncStatus === 'checking'
+                  ? 'CHECKING SYNC'
+                  : syncStatus === 'local'
+                    ? 'CLOUD SYNC NOT CONFIGURED'
+                    : 'SYNC UNAVAILABLE · SHOWING SAVED BALANCE'}
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.62rem', color: colors.gold, fontWeight: 700, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.3rem 0.9rem', letterSpacing: '0.08em' }}>
               Assets under management: $2.5T
@@ -349,11 +432,13 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${colors.gold}08` }}/>
               <div style={{ color: colors.textFaint, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>{t('totalBalance')}</div>
               <div className="dash-balance" style={{ color: colors.gold, fontSize: 'clamp(1.6rem, 6vw, 2.8rem)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
-                ${data.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {balanceAvailable
+                  ? `$${data.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : 'Balance temporarily unavailable'}
               </div>
-              <div style={{ marginTop: 8 }}>
+              {balanceAvailable && <div style={{ marginTop: 8 }}>
                 <MiniSparkline values={data.chartData} color={colors.gold}/>
-              </div>
+              </div>}
             </div>
 
             {/* Today's Change */}

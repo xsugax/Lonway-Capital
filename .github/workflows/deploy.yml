@@ -24,6 +24,14 @@ jobs:
         with:
           node-version: 20
 
+      - name: Verify Supabase configuration
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL" || { echo "::error::Set the NEXT_PUBLIC_SUPABASE_URL repository secret."; exit 1; }
+          test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" || { echo "::error::Set the NEXT_PUBLIC_SUPABASE_ANON_KEY repository secret."; exit 1; }
+
       # ── Build User App ──
       - name: Install user dependencies
         run: npm install --legacy-peer-deps

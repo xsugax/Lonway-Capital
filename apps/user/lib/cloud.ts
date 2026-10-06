@@ -126,16 +126,24 @@ export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: strin
 }
 
 /** Update balance and optionally bank accounts */
-export async function cloudUpdateBalance(email: string, balance: number, bankAccounts?: any[]) {
-  if (!isCloudEnabled()) return;
+export async function cloudUpdateBalance(email: string, balance: number, bankAccounts?: any[]): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
   try {
     const body: Record<string, any> = { balance };
     if (bankAccounts) body.bank_accounts = bankAccounts;
-    await fetch(
+    const res = await fetch(
       `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
       { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify(body) }
     );
-  } catch (err) { console.error('[cloud] Update error:', err); }
+    if (!res.ok) {
+      console.error('[cloud] Update failed:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[cloud] Update error:', err);
+    return false;
+  }
 }
 
 /** Delete account from cloud */

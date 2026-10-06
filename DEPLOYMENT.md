@@ -53,7 +53,7 @@ Configure the following DNS records at your domain registrar or DNS provider (e.
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Same (GitHub secret) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key | Same (GitHub secret) |
 
-**Cross-device sync (required):** Without Supabase, all balances and history live only in the phone browser’s localStorage. With Supabase (free tier), data syncs on every login and save. See `apps/user/.env.local.example` and run `supabase/add_user_data_column.sql` in the SQL Editor.
+**Balance source of truth:** The user dashboard reads balances from Supabase, not from the NestJS API. Configure both Supabase repository secrets before deploying; the deploy workflow now fails early if either is missing. While the dashboard is open, it refreshes cloud balances every 30 seconds and when the tab becomes active again. If Supabase is temporarily unreachable, it keeps showing the saved local balance and marks sync as unavailable rather than treating the outage as a successful zero balance. See `apps/user/.env.local.example` and run `supabase/add_user_data_column.sql` in the SQL Editor.
 
 ### Admin Frontend (`apps/admin`)
 
@@ -119,7 +119,7 @@ GitHub Pages cannot run server-side code. The NestJS API needs a platform like:
 - **Render** — Free tier available, auto-deploys from GitHub
 - **Fly.io** — Generous free tier, good for API hosting
 
-Whichever platform you choose, set the custom domain to `api.londwaycapital.com` and configure the DNS CNAME accordingly.
+Whichever platform you choose, set the custom domain to `api.londwaycapital.com` and configure the DNS CNAME accordingly. GitHub Pages cannot keep a server process running; choose an always-on API hosting plan if the NestJS API is needed. This API is separate from dashboard balances, which use Supabase.
 
 ---
 
