@@ -170,7 +170,6 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [balanceAvailable, setBalanceAvailable] = React.useState(false);
-  const [syncStatus, setSyncStatus] = React.useState<'checking' | 'synced' | 'unavailable' | 'local'>('checking');
   const [clock, setClock] = React.useState('');
   const [tzName, setTzName] = React.useState('');
   const dashboardHasData = React.useRef(false);
@@ -248,7 +247,6 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
         }
 
         if (!active) return;
-        setSyncStatus(!user?.email || !isCloudEnabled() ? 'local' : cloudAccountFound ? 'synced' : 'unavailable');
         setBalanceAvailable(cloudAccountFound || hasCachedAccounts());
 
         // 2. Use the latest cloud accounts, or the last saved local cache during an outage.
@@ -309,7 +307,6 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
       } catch (err) {
         console.error('[dashboard] Refresh failed; keeping the last saved balances:', err);
         if (active) {
-          setSyncStatus(isCloudEnabled() ? 'unavailable' : 'local');
           setBalanceAvailable(hasCachedAccounts());
           if (!dashboardHasData.current) setError('Balance data could not be loaded. Please try again shortly.');
         }
@@ -362,28 +359,6 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.58rem', color: colors.success, fontWeight: 600, letterSpacing: '0.08em' }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.success, boxShadow: `0 0 8px ${colors.success}` }}/>
               SECURE SESSION
-            </div>
-            <div
-              role="status"
-              aria-live="polite"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: '0.58rem',
-                color: syncStatus === 'synced' ? colors.success : syncStatus === 'checking' ? colors.textMuted : colors.danger,
-                fontWeight: 700,
-                letterSpacing: '0.06em',
-              }}
-            >
-              <span>{syncStatus === 'synced' ? '●' : syncStatus === 'checking' ? '◌' : '●'}</span>
-              {syncStatus === 'synced'
-                ? 'BALANCE SYNCED'
-                : syncStatus === 'checking'
-                  ? 'CHECKING SYNC'
-                  : syncStatus === 'local'
-                    ? 'CLOUD SYNC NOT CONFIGURED'
-                    : 'SYNC UNAVAILABLE · SHOWING SAVED BALANCE'}
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.62rem', color: colors.gold, fontWeight: 700, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.3rem 0.9rem', letterSpacing: '0.08em' }}>
               Assets under management: $2.5T
