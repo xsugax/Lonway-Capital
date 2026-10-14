@@ -997,7 +997,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       { id: c2, type: 'Savings', name: 'High-Yield Savings', balance: saveBal, currency: '$', accountNumber: acctNum(), frozen: false, recentActivity: 'Interest Credit', transactions: makeFundedTx(saveBal, c2) },
     ];
     const payload = { email, password, pin, name, role, tier, bankAccounts };
-    return encodeURIComponent(btoa(JSON.stringify(payload)));
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+    return encodeURIComponent(btoa(binary));
   }
 
   // ── User Actions ─────────────────────────────────────────────
@@ -1018,22 +1020,22 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       setNewUserError('An account with this email already exists.');
       return;
     }
-    const token = buildActivationToken(emailNorm, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
-    const tokenData = JSON.parse(atob(decodeURIComponent(token)));
-    const bankAccounts = tokenData.bankAccounts || null;
-
-    const user: User = {
-      id: uid(), name: nu.name, email: emailNorm, role: nu.role,
-      frozen: false, blocked: false, kyc: false, balance: initBalance,
-      createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
-      phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
-      password: nu.password || undefined,
-      pin: nu.pin || undefined,
-    };
-
     setCreatingUser(true);
     setNewUserError('');
     try {
+      const token = buildActivationToken(emailNorm, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
+      const tokenBytes = Uint8Array.from(atob(decodeURIComponent(token)), character => character.charCodeAt(0));
+      const tokenData = JSON.parse(new TextDecoder().decode(tokenBytes));
+      const bankAccounts = tokenData.bankAccounts || null;
+      const user: User = {
+        id: uid(), name: nu.name, email: emailNorm, role: nu.role,
+        frozen: false, blocked: false, kyc: false, balance: initBalance,
+        createdAt: nu.createdAt ? new Date(nu.createdAt).toISOString() : new Date().toISOString(),
+        phone: nu.phone || undefined, address: nu.address || undefined, tier: nu.tier,
+        password: nu.password || undefined,
+        pin: nu.pin || undefined,
+      };
+
       const result = await persistNewUser({
         email: emailNorm,
         password: nu.password,

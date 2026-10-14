@@ -175,7 +175,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       const params = new URLSearchParams(window.location.search);
       const token = params.get('activate');
       if (!token) return;
-      const data = JSON.parse(atob(decodeURIComponent(token)));
+      const tokenBytes = Uint8Array.from(atob(decodeURIComponent(token)), character => character.charCodeAt(0));
+      const data = JSON.parse(new TextDecoder().decode(tokenBytes));
       if (!data?.email || !data?.password) return;
       const accounts = (() => {
         try { const r = localStorage.getItem(ACCOUNTS_KEY); return r ? JSON.parse(r) : []; } catch { return []; }
