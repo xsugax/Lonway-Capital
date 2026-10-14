@@ -95,23 +95,35 @@ export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: strin
   }
 }
 
-export async function cloudInsertUser(acct: Partial<CloudAccount> & { email: string }): Promise<boolean> {
-  if (!isCloudEnabled()) return false;
+export async function cloudInsertUser(
+  acct: Partial<CloudAccount> & { email: string },
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isCloudEnabled()) return { ok: false, error: 'Supabase is not configured.' };
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
       method: 'POST',
-      headers: { ...writeHdrs(), 'Prefer': 'return=representation' },
+      headers: { ...writeHdrs(), 'Prefer': 'return=minimal' },
       body: JSON.stringify({ ...acct, email: acct.email.toLowerCase() }),
     });
     if (!res.ok) {
-      console.error('[cloud] Create user failed:', res.status, await res.text().catch(() => ''));
-      return false;
+      const details = await res.text().catch(() => '');
+      console.error('[cloud] Create user failed:', res.status, details);
+      let message = '';
+      try {
+        const parsed = JSON.parse(details);
+        message = parsed.message || parsed.details || parsed.hint || '';
+      } catch {
+        message = details;
+      }
+      return {
+        ok: false,
+        error: `Supabase rejected account creation (${res.status})${message ? `: ${message.slice(0, 240)}` : '.'}`,
+      };
     }
-    const rows = await res.json();
-    return Array.isArray(rows) && rows.some((row: CloudAccount) => row.email?.toLowerCase() === acct.email.toLowerCase());
+    return { ok: true };
   } catch (err) {
     console.error('[cloud] Create user error:', err);
-    return false;
+    return { ok: false, error: 'Could not reach Supabase to create the account.' };
   }
 }
 

@@ -65,14 +65,26 @@ export async function persistNewUser(
     return { ok: false, cloud: false, error: 'An account with this email already exists.' };
   }
 
-  const saved = await cloudInsertUser(payload);
-  if (!saved) {
+  const inserted = await cloudInsertUser(payload);
+  if (!inserted.ok) {
     return {
       ok: false,
       cloud: false,
-      error: 'Cloud save failed. Check the Supabase connection; user was not created.',
+      error: `${inserted.error || 'Cloud save failed.'} User was not created.`,
     };
   }
+
+  const verification = await cloudCheckUserExists(payload.email);
+  if (verification.error || !verification.exists) {
+    return {
+      ok: false,
+      cloud: false,
+      error: verification.error
+        ? `Account insert was accepted but could not be verified: ${verification.error} Do not retry with this email until checking the cloud account list.`
+        : 'Account insert was accepted but the account was not found in Supabase. Do not retry with this email until checking the cloud account list.',
+    };
+  }
+
   upsertLoginAccountLocal(localEntry);
 
   if (bankAccounts?.length && typeof window !== 'undefined') {
