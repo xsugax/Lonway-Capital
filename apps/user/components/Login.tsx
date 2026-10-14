@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sendVerificationCode, sendWelcomeEmail, generateSecureCode } from '../lib/email';
 import { getNotifications, saveNotifications, getBankAccounts, saveBankAccounts, generateFundedAccounts } from '../lib/store';
-import { cloudLookup, cloudSaveUser } from '../lib/cloud';
+import { cloudLookup, cloudSaveUser, cloudInsertUser } from '../lib/cloud';
 import { pullUserFromCloud } from '../lib/sync';
 import {
   hashPassword, verifyPassword, generateSessionToken,
@@ -330,14 +330,25 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       updateAccountPin(rEmail, hashedPin);
       setRegStep(6);
     } else if (regStep === 6) {
-      sendWelcomeEmail(rEmail, rName).catch(() => {});
       // Seed account numbers and write welcome notification for new user
       getBankAccounts(rEmail); // triggers seed write to localStorage keyed by email
       // Hash credentials for cloud storage
       const hashedPwCloud = await hashPassword(rPw);
       const hashedPinCloud = await hashPassword(rPin);
-      // Save to cloud for cross-device login (hashed credentials)
-      cloudSaveUser({ email: rEmail, password: hashedPwCloud, pin: hashedPinCloud, name: rName, role: 'user', tier: 'Standard', balance: 0, phone: rPhone }).catch(() => {});
+      const existingCloudAccount = await cloudLookup(rEmail);
+      const saved = existingCloudAccount
+        ? existingCloudAccount.password === hashedPwCloud && existingCloudAccount.pin === hashedPinCloud
+        : await cloudInsertUser({
+          email: rEmail, password: hashedPwCloud, pin: hashedPinCloud, name: rName,
+          role: 'user', tier: 'Standard', balance: 0, phone: rPhone,
+        });
+      if (!saved) {
+        setError('Your account could not be synced to the cloud. Please retry; do not create another account.');
+        return;
+      }
+      sendWelcomeEmail(rEmail, rName).then(result => {
+        if (!result.success) console.error('[registration] Welcome email was not delivered:', result.error);
+      }).catch(err => console.error('[registration] Welcome email request failed:', err));
       const welcomeNotifs = [
         { id: 'n-welcome-' + Date.now(), message: `Welcome to Londway Capital, ${rName}! Your account is verified and ready to use.`, type: 'success', date: new Date().toISOString(), read: false },
         { id: 'n-fund-' + Date.now(), message: 'Your account balance is $0.00. Fund your account via Transfer, Crypto deposit, or contact a branch.', type: 'info', date: new Date().toISOString(), read: false },
@@ -411,10 +422,6 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           if (password) {
             saveNewAccount(local);
             await pullUserFromCloud(local.email);
-            if (!cloud.bank_accounts?.length && cloud.balance > 0) {
-              const seeded = generateFundedAccounts(local.email, cloud.balance);
-              saveBankAccounts(seeded, local.email);
-            }
             m = local;
           }
         }

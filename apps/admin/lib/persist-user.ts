@@ -4,8 +4,8 @@
  */
 
 import {
-  cloudSaveUser,
-  cloudLookupUser,
+  cloudCheckUserExists,
+  cloudInsertUser,
   isCloudEnabled,
   type CloudAccount,
 } from './cloud';
@@ -49,25 +49,30 @@ export async function persistNewUser(
 ): Promise<{ ok: boolean; cloud: boolean; error?: string }> {
   const payload = { ...cloudPayload, bank_accounts: bankAccounts ?? cloudPayload.bank_accounts ?? null };
 
-  if (isCloudEnabled()) {
-    const saved = await cloudSaveUser(payload);
-    if (!saved) {
-      return {
-        ok: false,
-        cloud: false,
-        error: 'Cloud save failed — check Supabase billing/connection. User was NOT saved.',
-      };
-    }
-    const verified = await cloudLookupUser(payload.email);
-    if (!verified) {
-      return {
-        ok: false,
-        cloud: false,
-        error: 'Cloud save unverified — user may not appear on other devices.',
-      };
-    }
+  if (!isCloudEnabled()) {
+    return {
+      ok: false,
+      cloud: false,
+      error: 'Supabase is unavailable in this build. User was not created.',
+    };
   }
 
+  const existing = await cloudCheckUserExists(payload.email);
+  if (existing.error) {
+    return { ok: false, cloud: false, error: `${existing.error} User was not created.` };
+  }
+  if (existing.exists) {
+    return { ok: false, cloud: false, error: 'An account with this email already exists.' };
+  }
+
+  const saved = await cloudInsertUser(payload);
+  if (!saved) {
+    return {
+      ok: false,
+      cloud: false,
+      error: 'Cloud save failed. Check the Supabase connection; user was not created.',
+    };
+  }
   upsertLoginAccountLocal(localEntry);
 
   if (bankAccounts?.length && typeof window !== 'undefined') {
@@ -75,14 +80,6 @@ export async function persistNewUser(
       const safe = payload.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
       localStorage.setItem(`londway_bank_accounts__${safe}`, JSON.stringify(bankAccounts));
     } catch { /* */ }
-  }
-
-  if (!isCloudEnabled()) {
-    return {
-      ok: true,
-      cloud: false,
-      error: 'Saved on this browser only — Supabase keys missing in build.',
-    };
   }
 
   return { ok: true, cloud: true };

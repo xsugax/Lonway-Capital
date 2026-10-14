@@ -1,11 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cloudSaveUser, cloudPatchUser, cloudUpdateBalance, cloudDeleteUser, isCloudEnabled, cloudPing, cloudGetAllUsers, cloudGetPendingTransfers, cloudUpdateTransferStatus, cloudGetAllCards, cloudUpdateCardStatus, cloudRefundBalance, cloudSaveBankSettings, cloudSaveTransfer } from '../lib/cloud';
-import { upsertLoginAccountLocal } from '../lib/persist-user';
+import { persistNewUser } from '../lib/persist-user';
 
 // ── EmailJS receipt sending (admin side, uses fetch — no dependencies) ──
 const EJS_SID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || '';
 const EJS_TID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME || '';
 const EJS_PK  = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || '';
+
+function adminEmailReady(purpose: string): boolean {
+  if (EJS_SID && EJS_TID && EJS_PK) return true;
+  console.error(`[Admin Email] Cannot send ${purpose}: EmailJS build configuration is missing.`);
+  return false;
+}
+
+async function sendAdminEmail(email: string, params: Record<string, string>, purpose: string): Promise<void> {
+  if (!adminEmailReady(purpose)) return;
+  try {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_id: EJS_SID,
+        template_id: EJS_TID,
+        user_id: EJS_PK,
+        template_params: params,
+      }),
+    });
+    if (!response.ok) {
+      console.error(`[Admin Email] ${purpose} failed with HTTP ${response.status}:`, await response.text().catch(() => ''));
+      return;
+    }
+    console.info(`[Admin Email] ${purpose} accepted by EmailJS → ${email}`);
+  } catch (err) {
+    console.error(`[Admin Email] ${purpose} request failed:`, err);
+  }
+}
 
 // ── LC Monogram Logo (inline HTML, no SVG text — maximum compatibility) ──
 const LC_LOGO_ADMIN = `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
@@ -120,10 +149,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,t
 }
 
 async function sendApprovalReceiptEmail(email: string, userName: string, ref: string, amount: number, currency: string, recipient: string, type: string, account?: string) {
-  if (!EJS_SID || !EJS_TID || !EJS_PK) {
-    console.warn('[Admin Email] EmailJS not configured. Set NEXT_PUBLIC_EMAILJS_SERVICE_ID, NEXT_PUBLIC_EMAILJS_TEMPLATE_WELCOME, NEXT_PUBLIC_EMAILJS_PUBLIC_KEY env vars.');
-    return;
-  }
+  if (!adminEmailReady('approval receipt')) return;
   const firstName = userName.split(' ')[0];
   const amtFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const typeLabel = type === 'international' ? 'International Wire Transfer' : 'Domestic ACH Transfer';
@@ -170,24 +196,15 @@ async function sendApprovalReceiptEmail(email: string, userName: string, ref: st
 
 <p style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated receipt from Londway Capital. For questions about this transfer, contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a>.</p>`;
   const html = receiptEmailHtml('Transfer Receipt', body);
-  try {
-    const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
-        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Transfer Approved — Receipt for ${amtFmt} to ${recipient} (${ref})`, html_content: html, reply_to: 'support@londwaycapital.com' },
-      }),
-    });
-    if (!resp.ok) console.error('[Admin Email] EmailJS responded with', resp.status, await resp.text().catch(() => ''));
-    else console.info(`[Admin Email] ✓ Approval receipt sent → ${email}`);
-  } catch (err) {
-    console.error('[Admin Email] ✗ Failed to send approval receipt:', err);
-  }
+  await sendAdminEmail(email, {
+    to_email: email, to_name: userName, from_name: 'Londway Capital',
+    subject: `Transfer Approved — Receipt for ${amtFmt} to ${recipient} (${ref})`,
+    html_content: html, reply_to: 'support@londwaycapital.com',
+  }, 'approval receipt');
 }
 
 async function sendRejectionEmail(email: string, userName: string, ref: string, amount: number, currency: string, recipient: string) {
-  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  if (!adminEmailReady('rejection notice')) return;
   const firstName = userName.split(' ')[0];
   const amtFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
@@ -229,18 +246,15 @@ async function sendRejectionEmail(email: string, userName: string, ref: string, 
 
 <p style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or call <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
   const html = receiptEmailHtml('Transfer Update', body);
-  try {
-    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
-        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Transfer Declined — ${amtFmt} to ${recipient} (${ref})`, html_content: html, reply_to: 'support@londwaycapital.com' },
-      }),
-    });
-  } catch {}
+  await sendAdminEmail(email, {
+    to_email: email, to_name: userName, from_name: 'Londway Capital',
+    subject: `Transfer Declined — ${amtFmt} to ${recipient} (${ref})`,
+    html_content: html, reply_to: 'support@londwaycapital.com',
+  }, 'rejection notice');
 }
 
 async function sendFundingEmail(email: string, userName: string, amount: number, description: string, isCredit: boolean) {
-  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  if (!adminEmailReady('funding notice')) return;
   const firstName = userName.split(' ')[0];
   const amtFmt = `USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
@@ -290,14 +304,11 @@ async function sendFundingEmail(email: string, userName: string, amount: number,
 
 <p style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">Questions? Contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or call <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
   const html = receiptEmailHtml(isCredit ? 'Funds Received' : 'Account Update', body);
-  try {
-    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
-        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `${isCredit ? 'Funds Received' : 'Account Debited'} — ${amtFmt} | ${description}`, html_content: html, reply_to: 'support@londwaycapital.com' },
-      }),
-    });
-  } catch {}
+  await sendAdminEmail(email, {
+    to_email: email, to_name: userName, from_name: 'Londway Capital',
+    subject: `${isCredit ? 'Funds Received' : 'Account Debited'} — ${amtFmt} | ${description}`,
+    html_content: html, reply_to: 'support@londwaycapital.com',
+  }, 'funding notice');
 }
 
 // ── Admin-initiated security notification emails ──
@@ -308,7 +319,7 @@ function adminSecurityHash(): string {
 }
 
 async function sendPinChangeAlertAdmin(email: string, userName: string) {
-  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  if (!adminEmailReady('PIN change alert')) return;
   const firstName = userName.split(' ')[0];
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
   const changeId = adminSecurityHash();
@@ -341,19 +352,15 @@ async function sendPinChangeAlertAdmin(email: string, userName: string) {
 </div>
 <p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated security notification from Londway Capital.</p>`;
   const html = receiptEmailHtml('Security Alert', body);
-  try {
-    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
-        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Security Alert: Account PIN Changed | Londway Capital`, html_content: html, reply_to: 'support@londwaycapital.com' },
-      }),
-    });
-    console.info(`[Admin Email] ✓ PIN change alert sent → ${email}`);
-  } catch (err) { console.error('[Admin Email] ✗ PIN change alert failed:', err); }
+  await sendAdminEmail(email, {
+    to_email: email, to_name: userName, from_name: 'Londway Capital',
+    subject: 'Security Alert: Account PIN Changed | Londway Capital',
+    html_content: html, reply_to: 'support@londwaycapital.com',
+  }, 'PIN change alert');
 }
 
 async function sendAccountFrozenEmailAdmin(email: string, userName: string) {
-  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  if (!adminEmailReady('account frozen alert')) return;
   const firstName = userName.split(' ')[0];
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
   const caseId = `FRZ-${adminSecurityHash()}`;
@@ -393,19 +400,15 @@ async function sendAccountFrozenEmailAdmin(email: string, userName: string) {
 </td></tr></table>
 <p class="lc-text-muted" style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">Reference this case ID when contacting support: <strong style="color:#C4A052;">${caseId}</strong></p>`;
   const html = receiptEmailHtml('Account Notice', body);
-  try {
-    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
-        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Important: Your Account Has Been Frozen — Case ${caseId} | Londway Capital`, html_content: html, reply_to: 'support@londwaycapital.com' },
-      }),
-    });
-    console.info(`[Admin Email] ✓ Account frozen alert sent → ${email}`);
-  } catch (err) { console.error('[Admin Email] ✗ Account frozen alert failed:', err); }
+  await sendAdminEmail(email, {
+    to_email: email, to_name: userName, from_name: 'Londway Capital',
+    subject: `Important: Your Account Has Been Frozen — Case ${caseId} | Londway Capital`,
+    html_content: html, reply_to: 'support@londwaycapital.com',
+  }, 'account frozen alert');
 }
 
 async function sendAccountUnfrozenEmailAdmin(email: string, userName: string) {
-  if (!EJS_SID || !EJS_TID || !EJS_PK) return;
+  if (!adminEmailReady('account restored alert')) return;
   const firstName = userName.split(' ')[0];
   const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
   const body = `
@@ -435,15 +438,11 @@ async function sendAccountUnfrozenEmailAdmin(email: string, userName: string) {
 </td></tr></table>
 <p class="lc-text-muted" style="margin:0;font-size:11px;color:#9CA3AF;line-height:1.6;text-align:center;">Thank you for your patience. If you have any questions, contact us at <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a> or <a href="tel:+12125550180" style="color:#C4A052;text-decoration:none;font-weight:600;">+1 (212) 555-0180</a>.</p>`;
   const html = receiptEmailHtml('Account Restored', body);
-  try {
-    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service_id: EJS_SID, template_id: EJS_TID, user_id: EJS_PK,
-        template_params: { to_email: email, to_name: userName, from_name: 'Londway Capital', subject: `Your Account Has Been Restored — Welcome Back | Londway Capital`, html_content: html, reply_to: 'support@londwaycapital.com' },
-      }),
-    });
-    console.info(`[Admin Email] ✓ Account unfrozen alert sent → ${email}`);
-  } catch (err) { console.error('[Admin Email] ✗ Account unfrozen alert failed:', err); }
+  await sendAdminEmail(email, {
+    to_email: email, to_name: userName, from_name: 'Londway Capital',
+    subject: 'Your Account Has Been Restored — Welcome Back | Londway Capital',
+    html_content: html, reply_to: 'support@londwaycapital.com',
+  }, 'account restored alert');
 }
 
 // ── Types ──────────────────────────────────────────────────────
@@ -769,6 +768,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [fundSender, setFundSender] = useState('');
   const [fundDate, setFundDate] = useState('');
   const [newUserModal, setNewUserModal] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUserError, setNewUserError] = useState('');
   const [newTxModal, setNewTxModal] = useState(false);
   const [editTxModal, setEditTxModal] = useState<Transaction | null>(null);
   const [accountHistoryModal, setAccountHistoryModal] = useState<{ email: string; name: string; transferRef?: string } | null>(null);
@@ -907,36 +908,6 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     setData(prev => { const next = { ...prev, audit: [...prev.audit, entry] }; saveData(next); return next; });
   }, [aName]);
 
-  // ── Auto-sync ALL users to Supabase on admin panel load ──────
-  // Merges passwords from both admin data AND londway_accounts so users
-  // that were created before the cloud fix get their credentials pushed.
-  useEffect(() => {
-    if (!isCloudEnabled()) return;
-    const d = loadData();
-    // Also read londway_accounts which stores passwords/PINs for login
-    let loginAccounts: any[] = [];
-    try { const raw = localStorage.getItem('londway_accounts'); if (raw) loginAccounts = JSON.parse(raw); } catch {}
-    let synced = 0;
-    for (const u of d.users) {
-      // Find matching login account to get password/pin (admin data may not have them)
-      const loginAcct = loginAccounts.find((a: any) => a.email?.toLowerCase() === u.email?.toLowerCase());
-      const password = u.password || loginAcct?.password || '';
-      const pin = u.pin || loginAcct?.pin || '';
-      // Only sync users that have a password (skip demo/seed users without credentials)
-      if (!password) continue;
-      const bankKey = userKey('londway_bank_accounts', u.email);
-      let bankAccounts: any[] | null = null;
-      try { const raw = localStorage.getItem(bankKey); if (raw) bankAccounts = JSON.parse(raw); } catch {}
-      cloudSaveUser({
-        email: u.email, password, pin,
-        name: u.name, role: u.role, tier: u.tier || 'Standard',
-        balance: u.balance || 0, phone: u.phone || '',
-        bank_accounts: bankAccounts,
-      }).then(() => { synced++; }).catch(() => {});
-    }
-    setTimeout(() => { console.info(`[admin] Cloud sync: ${synced} users pushed to Supabase`); }, 5000);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (!isCloudEnabled()) return;
     recoverCloudUsers();
@@ -1030,10 +1001,23 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   }
 
   // ── User Actions ─────────────────────────────────────────────
-  function createUser(e: React.FormEvent) {
+  async function createUser(e: React.FormEvent) {
     e.preventDefault();
-    const initBalance = parseFloat(nu.balance) || 0;
+    if (creatingUser) return;
+    const initBalance = nu.balance.trim() ? Number(nu.balance) : 0;
     const emailNorm = nu.email.toLowerCase().trim();
+    if (!nu.name.trim() || !emailNorm) {
+      setNewUserError('Name and email are required.');
+      return;
+    }
+    if (!Number.isFinite(initBalance) || initBalance < 0) {
+      setNewUserError('Enter a valid non-negative opening balance.');
+      return;
+    }
+    if (data.users.some(user => user.email.toLowerCase() === emailNorm)) {
+      setNewUserError('An account with this email already exists.');
+      return;
+    }
     const token = buildActivationToken(emailNorm, nu.password, nu.pin, nu.name, nu.role, nu.tier, initBalance);
     const tokenData = JSON.parse(atob(decodeURIComponent(token)));
     const bankAccounts = tokenData.bankAccounts || null;
@@ -1047,45 +1031,52 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       pin: nu.pin || undefined,
     };
 
-    // 1. Admin panel + login registry (local) — always, so login works like before
-    persist({ ...data, users: [...data.users, user] });
-    upsertLoginAccountLocal({
-      email: emailNorm,
-      password: nu.password,
-      pin: nu.pin,
-      name: nu.name,
-      role: nu.role,
-      tier: nu.tier,
-      phone: nu.phone || '',
-      address: nu.address || '',
-      createdAt: user.createdAt,
-      idVerified: false,
-    });
-    if (bankAccounts?.length) {
-      saveUserBankAccounts(emailNorm, bankAccounts);
-    }
+    setCreatingUser(true);
+    setNewUserError('');
+    try {
+      const result = await persistNewUser({
+        email: emailNorm,
+        password: nu.password,
+        pin: nu.pin,
+        name: nu.name.trim(),
+        role: nu.role,
+        tier: nu.tier,
+        balance: initBalance,
+        phone: nu.phone || '',
+      }, {
+        email: emailNorm,
+        password: nu.password,
+        pin: nu.pin,
+        name: nu.name.trim(),
+        role: nu.role,
+        tier: nu.tier,
+        phone: nu.phone || '',
+        address: nu.address || '',
+        createdAt: user.createdAt,
+        idVerified: false,
+      }, bankAccounts);
 
-    addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
-    setNewUserModal(false);
-
-    // 2. Cloud sync (best-effort — does not block local login)
-    cloudSaveUser({
-      email: emailNorm, password: nu.password, pin: nu.pin, name: nu.name,
-      role: nu.role, tier: nu.tier, balance: initBalance, phone: nu.phone || '',
-      bank_accounts: bankAccounts,
-    }).then((ok) => {
-      if (ok) {
-        setCloudStatus('online');
-        notify(true, `${user.name} created — synced to cloud ✓`);
-      } else if (isCloudEnabled()) {
-        setCloudStatus('offline');
-        notify(true, `${user.name} created — login ready; cloud sync failed (other devices need Supabase)`);
+      if (!result.ok || !result.cloud) {
+        setNewUserError(result.error || 'Cloud account creation failed.');
+        notify(false, result.error || 'Cloud account creation failed.');
+        return;
       }
-    }).catch(() => {
-      notify(true, `${user.name} created — login ready on this browser`);
-    });
 
-    setNu({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
+      persist({ ...data, users: [...data.users, user] });
+      saveUserBankAccounts(emailNorm, bankAccounts);
+      addAudit('user_created', user.email, `Balance: ${fmtMoney(user.balance)}, Role: ${user.role}`);
+      setCloudStatus('online');
+      setNewUserModal(false);
+      notify(true, `${user.name} created and verified in Supabase.`);
+      setNu({ name: '', email: '', password: '', pin: '', role: 'user', balance: '', phone: '', address: '', tier: 'Standard', createdAt: '' });
+    } catch (err) {
+      console.error('[admin] User creation failed:', err);
+      const message = 'Could not create the user in Supabase. Please try again.';
+      setNewUserError(message);
+      notify(false, message);
+    } finally {
+      setCreatingUser(false);
+    }
   }
 
   function updateUser(updated: User) {
@@ -1546,26 +1537,10 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             {/* ── Quick Actions ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: '1.5rem' }}>
               {[
-                { label: '+ Create User', action: () => setNewUserModal(true), c: G },
+                { label: '+ Create User', action: () => { setNewUserError(''); setNewUserModal(true); }, c: G },
                 { label: '+ New Transaction', action: () => setNewTxModal(true), c: '#50C878' },
                 { label: '👥 Manage Users', action: () => setTab('users'), c: '#A2B2BF' },
                 { label: '💰 Fund Account', action: () => setTab('funding'), c: G },
-                { label: '☁ Sync All to Cloud', action: () => {
-                  if (!isCloudEnabled()) { notify(false, 'Cloud not configured'); return; }
-                  let loginAccounts: any[] = [];
-                  try { const raw = localStorage.getItem('londway_accounts'); if (raw) loginAccounts = JSON.parse(raw); } catch {}
-                  let ok = 0;
-                  const all = data.users;
-                  Promise.all(all.map(u => {
-                    const loginAcct = loginAccounts.find((a: any) => a.email?.toLowerCase() === u.email?.toLowerCase());
-                    const password = u.password || loginAcct?.password || '';
-                    const pin = u.pin || loginAcct?.pin || '';
-                    const bankKey = userKey('londway_bank_accounts', u.email);
-                    let ba: any[] | null = null;
-                    try { const raw = localStorage.getItem(bankKey); if (raw) ba = JSON.parse(raw); } catch {}
-                    return cloudSaveUser({ email: u.email, password, pin, name: u.name, role: u.role, tier: u.tier || 'Standard', balance: u.balance || 0, phone: u.phone || '', bank_accounts: ba }).then(() => { ok++; }).catch(() => {});
-                  })).then(() => notify(true, `☁ Synced ${ok}/${all.length} users to cloud`));
-                }, c: '#3B82F6' },
               ].map(a => (
                 <button key={a.label} onClick={a.action} style={{
                   background: `${a.c}10`, border: `1px solid ${a.c}30`, borderRadius: 12,
@@ -2504,8 +2479,13 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       )}
 
       {newUserModal && (
-        <Modal title="+ Create New User" onClose={() => setNewUserModal(false)}>
+        <Modal title="+ Create New User" onClose={() => { if (!creatingUser) setNewUserModal(false); }}>
           <form onSubmit={createUser} style={{ display: 'grid', gap: 12 }}>
+            {newUserError && (
+              <div role="alert" style={{ background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.25)', borderRadius: 8, padding: '0.65rem 0.9rem', color: '#ff7779', fontSize: '0.8rem' }}>
+                {newUserError}
+              </div>
+            )}
             {[
               { l: 'Full Name', k: 'name', t: 'text', r: true },
               { l: 'Email', k: 'email', t: 'email', r: true },
@@ -2532,7 +2512,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
             </div>
             <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate Creation (optional)</label>
               <input style={inp} type="datetime-local" value={nu.createdAt} onChange={e => setNu(p => ({ ...p, createdAt: e.target.value }))} /></div>
-            <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Create User</button>
+            <button type="submit" disabled={creatingUser} style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10, opacity: creatingUser ? 0.6 : 1, cursor: creatingUser ? 'wait' : 'pointer' }}>
+              {creatingUser ? 'Creating in cloud…' : 'Create User'}
+            </button>
           </form>
         </Modal>
       )}
@@ -2659,4 +2641,3 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     </main>
   );
 }
-

@@ -3,8 +3,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTheme } from '../contexts/ThemeContext';
-import { getBankAccounts, saveBankAccountsLocal, getTransfers } from '../lib/store';
+import { getBankAccounts, getTransfers } from '../lib/store';
 import { cloudLookup, cloudGetUserTransfers, isCloudEnabled } from '../lib/cloud';
+import { applyCloudBankAccounts } from '../lib/sync';
 import { useLang } from '../contexts/LanguageContext';
 import { exportCSV, exportPDF } from '../lib/exportData';
 import { DashboardSkeleton } from '../components/LoadingSkeleton';
@@ -215,25 +216,7 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
           const cloud = await cloudLookup(user.email);
           if (cloud && active) {
             cloudAccountFound = true;
-            if (cloud.bank_accounts?.length) {
-              saveBankAccountsLocal(cloud.bank_accounts, cloud.email);
-            } else {
-              const cloudBalance = Number(cloud.balance);
-              const cachedAccounts = getBankAccounts(user.email);
-              const cachedBalance = cachedAccounts.reduce(
-                (sum: number, account: any) => sum + (Number(account.balance) || 0),
-                0
-              );
-              if (Number.isFinite(cloudBalance) && cloudBalance >= 0 && cachedBalance !== cloudBalance && cachedAccounts.length) {
-                saveBankAccountsLocal(
-                  [
-                    { ...cachedAccounts[0], balance: cloudBalance },
-                    ...cachedAccounts.slice(1).map((account: any) => ({ ...account, balance: 0 })),
-                  ],
-                  user.email
-                );
-              }
-            }
+            applyCloudBankAccounts(user.email, cloud);
 
             // Sync tier and account status from cloud to the local profile.
             try {

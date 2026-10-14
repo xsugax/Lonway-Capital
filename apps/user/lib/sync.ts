@@ -41,9 +41,16 @@ function mergeBankAccountsFromCloud(local: any[], cloud: any[]): any[] {
     const existing = local.find((la: any) => la.type === ca.type || la.id === ca.id);
     if (existing) {
       const mergedTx = mergeTransactions(existing.transactions || [], ca.transactions || []);
+      const cloudBalance = Number(ca.balance);
+      const localBalance = Number(existing.balance);
+      const balanceIsValid = Number.isFinite(cloudBalance) && cloudBalance >= 0;
+      const preserveKnownBalance = cloudBalance === 0
+        && Number.isFinite(localBalance)
+        && localBalance > 0
+        && !hasBalancedTransactionHistory([ca]);
       return {
         ...existing,
-        balance: ca.balance,
+        balance: balanceIsValid && !preserveKnownBalance ? cloudBalance : existing.balance,
         transactions: mergedTx,
         recentActivity: ca.recentActivity || existing.recentActivity,
         frozen: ca.frozen ?? existing.frozen,
@@ -51,6 +58,97 @@ function mergeBankAccountsFromCloud(local: any[], cloud: any[]): any[] {
     }
     return ca;
   });
+}
+
+function getBalance(accounts: any[]): number {
+  return accounts.reduce((sum: number, account: any) => {
+    const balance = Number(account.balance);
+    return sum + (Number.isFinite(balance) && balance >= 0 ? balance : 0);
+  }, 0);
+}
+
+function hasBalancedTransactionHistory(accounts: any[]): boolean {
+  const transactions = accounts.flatMap((account: any) =>
+    Array.isArray(account.transactions) ? account.transactions : []
+  );
+  if (!transactions.length || !transactions.some((transaction: any) => transaction.type === 'debit')) {
+    return false;
+  }
+
+  const net = transactions.reduce((sum: number, transaction: any) => {
+    const amount = Number(transaction.amount);
+    if (!Number.isFinite(amount) || amount < 0) return sum;
+    if (transaction.type === 'credit') return sum + amount;
+    if (transaction.type === 'debit') return sum - amount;
+    return sum;
+  }, 0);
+  return Math.abs(net) < 0.005;
+}
+
+export function applyCloudBankAccounts(email: string, cloud: CloudAccount): void {
+  if (typeof window === 'undefined') return;
+
+  const safeEmail = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const cacheKey = `londway_bank_accounts__${safeEmail}`;
+  const hasLocalAccounts = localStorage.getItem(cacheKey) !== null;
+  const local = hasLocalAccounts ? getBankAccounts(email) : [];
+
+  const cloudAccounts = Array.isArray(cloud.bank_accounts) ? cloud.bank_accounts : [];
+  const cloudAccountsTotal = getBalance(cloudAccounts);
+  const cloudBalance = Number(cloud.balance);
+  const hasCloudBalance = Number.isFinite(cloudBalance) && cloudBalance >= 0;
+
+  if (cloudAccounts.length && cloudAccountsTotal > 0) {
+    saveBankAccountsLocal(mergeBankAccountsFromCloud(local, cloudAccounts), email);
+    return;
+  }
+
+  if (cloudAccounts.length && cloudAccountsTotal === 0 && hasCloudBalance && cloudBalance > 0) {
+    if (getBalance(local) > 0) return;
+    saveBankAccountsLocal([{
+      id: `cloud-balance-${safeEmail}`,
+      type: 'Checking',
+      name: 'Cloud Balance',
+      balance: cloudBalance,
+      currency: '$',
+      frozen: !!cloud.frozen,
+      recentActivity: 'Synced from cloud',
+      transactions: [],
+    }], email);
+    return;
+  }
+
+  if (!hasCloudBalance) return;
+
+  const cachedBalance = getBalance(local);
+  if (cloudBalance === 0 && cachedBalance > 0 && !hasBalancedTransactionHistory(cloudAccounts)) {
+    console.warn('[sync] Ignoring a zero cloud balance that conflicts with a positive local balance and has no zero-balance transaction history.');
+    return;
+  }
+
+  if (!local.length || !cloudAccounts.length) {
+    saveBankAccountsLocal([{
+      id: `cloud-balance-${safeEmail}`,
+      type: 'Checking',
+      name: 'Cloud Balance',
+      balance: cloudBalance,
+      currency: '$',
+      frozen: !!cloud.frozen,
+      recentActivity: 'Synced from cloud',
+      transactions: [],
+    }], email);
+    return;
+  }
+
+  if (cachedBalance !== cloudBalance) {
+    saveBankAccountsLocal(
+      [
+        { ...local[0], balance: cloudBalance },
+        ...local.slice(1).map((account: any) => ({ ...account, balance: 0 })),
+      ],
+      email
+    );
+  }
 }
 
 function applyAccountProfile(cloud: CloudAccount): void {
@@ -101,11 +199,7 @@ export async function pullUserFromCloud(email: string): Promise<boolean> {
 
     applyAccountProfile(cloud);
 
-    if (cloud.bank_accounts && cloud.bank_accounts.length > 0) {
-      const local = getBankAccounts(email);
-      const merged = mergeBankAccountsFromCloud(local, cloud.bank_accounts);
-      saveBankAccountsLocal(merged, email);
-    }
+    applyCloudBankAccounts(email, cloud);
 
     applyUserData(email, cloud.user_data);
     return true;

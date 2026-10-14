@@ -95,6 +95,52 @@ export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: strin
   }
 }
 
+export async function cloudInsertUser(acct: Partial<CloudAccount> & { email: string }): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
+      method: 'POST',
+      headers: { ...writeHdrs(), 'Prefer': 'return=representation' },
+      body: JSON.stringify({ ...acct, email: acct.email.toLowerCase() }),
+    });
+    if (!res.ok) {
+      console.error('[cloud] Create user failed:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.some((row: CloudAccount) => row.email?.toLowerCase() === acct.email.toLowerCase());
+  } catch (err) {
+    console.error('[cloud] Create user error:', err);
+    return false;
+  }
+}
+
+export async function cloudCheckUserExists(
+  email: string,
+): Promise<{ exists: boolean; error?: string }> {
+  if (!isCloudEnabled()) {
+    return { exists: false, error: 'Supabase is not configured in this build.' };
+  }
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}&select=email`,
+      { method: 'GET', headers: readHdrs() }
+    );
+    if (!res.ok) {
+      console.error('[cloud] User existence check failed:', res.status, await res.text().catch(() => ''));
+      return { exists: false, error: `Supabase user check failed (${res.status}).` };
+    }
+    const rows = await res.json();
+    if (!Array.isArray(rows)) {
+      return { exists: false, error: 'Supabase returned an invalid user lookup response.' };
+    }
+    return { exists: rows.length > 0 };
+  } catch (err) {
+    console.error('[cloud] User existence check error:', err);
+    return { exists: false, error: 'Could not check Supabase for an existing account.' };
+  }
+}
+
 /** PATCH only the fields that changed — never overwrites password/pin with empty values */
 export async function cloudPatchUser(email: string, fields: Record<string, any>): Promise<void> {
   if (!isCloudEnabled()) return;
@@ -106,16 +152,24 @@ export async function cloudPatchUser(email: string, fields: Record<string, any>)
   } catch (err) { console.error('[cloud] Patch error:', err); }
 }
 
-export async function cloudUpdateBalance(email: string, balance: number, bankAccounts?: any[]) {
-  if (!isCloudEnabled()) return;
+export async function cloudUpdateBalance(email: string, balance: number, bankAccounts?: any[]): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
   try {
     const body: Record<string, any> = { balance };
     if (bankAccounts) body.bank_accounts = bankAccounts;
-    await fetch(
+    const res = await fetch(
       `${SUPABASE_URL}/rest/v1/accounts?email=eq.${encodeURIComponent(email.toLowerCase())}`,
       { method: 'PATCH', headers: writeHdrs(), body: JSON.stringify(body) }
     );
-  } catch (err) { console.error('[cloud] Update error:', err); }
+    if (!res.ok) {
+      console.error('[cloud] Update failed:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[cloud] Update error:', err);
+    return false;
+  }
 }
 
 export async function cloudDeleteUser(email: string) {

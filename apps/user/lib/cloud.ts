@@ -125,6 +125,26 @@ export async function cloudSaveUser(acct: Partial<CloudAccount> & { email: strin
   }
 }
 
+export async function cloudInsertUser(acct: Partial<CloudAccount> & { email: string }): Promise<boolean> {
+  if (!isCloudEnabled()) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`, {
+      method: 'POST',
+      headers: { ...writeHdrs(), 'Prefer': 'return=representation' },
+      body: JSON.stringify({ ...acct, email: acct.email.toLowerCase() }),
+    });
+    if (!res.ok) {
+      console.error('[cloud] Create user failed:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.some((row: CloudAccount) => row.email?.toLowerCase() === acct.email.toLowerCase());
+  } catch (err) {
+    console.error('[cloud] Create user error:', err);
+    return false;
+  }
+}
+
 /** Update balance and optionally bank accounts */
 export async function cloudUpdateBalance(email: string, balance: number, bankAccounts?: any[]): Promise<boolean> {
   if (!isCloudEnabled()) return false;
