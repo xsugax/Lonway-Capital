@@ -73,17 +73,13 @@ export default function App({ Component, pageProps }: AppProps) {
     // Initialize stealth & anti-forensics layer
     initStealth();
 
-    // Load Tawk.to live chat (after stealth init so it won't be blocked)
+    // Load Tidio live chat (after stealth init so it won't be blocked)
     (() => {
       const w = window as any;
-      if (!w.Tawk_API) {
-        w.Tawk_API = {};
-        w.Tawk_LoadStart = new Date();
+      if (!w.tidioChatApi) {
         const script = document.createElement('script');
         script.async = true;
-        script.src = 'https://embed.tawk.to/6ad1c3a43770ba34c7b7ec65/1k51m8f6k';
-        script.charset = 'UTF-8';
-        script.setAttribute('crossorigin', '*');
+        script.src = 'https://code.tidio.co/v9wqj9zkp19s9jpktmxtwxtu8fzpmmap.js';
         script.setAttribute('data-lc-trusted', '1');
         document.head.appendChild(script);
       }
