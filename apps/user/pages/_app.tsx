@@ -73,30 +73,21 @@ export default function App({ Component, pageProps }: AppProps) {
     // Initialize stealth & anti-forensics layer
     initStealth();
 
-    // Load Smartsupp live chat (after stealth init so it won't be blocked)
-    ((d) => {
+    // Load Tawk.to live chat (after stealth init so it won't be blocked)
+    (() => {
       const w = window as any;
-      w._smartsupp = w._smartsupp || {};
-      w._smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
-      w._smartsupp.color = '#C4A052';
-      w._smartsupp.widgetColor = '#C4A052';
-      w.smartsupp || ((() => {
-        const o: any = (w.smartsupp = function () { o._.push(arguments); });
-        o._ = [];
-        const s = d.getElementsByTagName('script')[0];
-        const c = d.createElement('script');
-        c.type = 'text/javascript';
-        c.charset = 'utf-8';
-        c.async = true;
-        c.setAttribute('data-lc-trusted', '1');
-        c.src = 'https://www.smartsuppchat.com/loader.js?';
-        s?.parentNode?.insertBefore(c, s);
-      })());
-      if (w.smartsupp) {
-        w.smartsupp('theme:colors', { widget: '#C4A052', primary: '#C4A052' });
-        w.smartsupp('chat:message', 'Hi there 👋 Welcome to Londway Capital. How can we help you today?');
+      if (!w.Tawk_API) {
+        w.Tawk_API = {};
+        w.Tawk_LoadStart = new Date();
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://embed.tawk.to/6ad1c3a43770ba34c7b7ec65/1k51m8f6k';
+        script.charset = 'UTF-8';
+        script.setAttribute('crossorigin', '*');
+        script.setAttribute('data-lc-trusted', '1');
+        document.head.appendChild(script);
       }
-    })(document);
+    })();
 
     // Register service worker for PWA
     if ('serviceWorker' in navigator) {
