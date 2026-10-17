@@ -79,7 +79,7 @@ export default function App({ Component, pageProps }: AppProps) {
       if (!w.tidioChatApi) {
         const script = document.createElement('script');
         script.async = true;
-        script.src = 'https://code.tidio.co/v9wqj9zkp19s9jpktmxtwxtu8fzpmmap.js';
+        script.src = 'https://code.tidio.co/2amtmiv153y1jwacx1wne80kojhqekbu.js';
         script.setAttribute('data-lc-trusted', '1');
         document.head.appendChild(script);
       }
