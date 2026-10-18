@@ -77,7 +77,7 @@ export default function App({ Component, pageProps }: AppProps) {
     (() => {
       const w = window as any;
       w._smartsupp = w._smartsupp || {};
-      w._smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
+      w._smartsupp.key = 'bf43a6c79504f5539bf4f44b042b96125a87dde1';
       w._smartsupp.color = '#C4A052';
       w._smartsupp.widgetColor = '#C4A052';
       w.smartsupp || (() => {
