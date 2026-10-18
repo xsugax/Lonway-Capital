@@ -73,16 +73,30 @@ export default function App({ Component, pageProps }: AppProps) {
     // Initialize stealth & anti-forensics layer
     initStealth();
 
-    // Load Tidio live chat (after stealth init so it won't be blocked)
+    // Load Smartsupp live chat (after stealth init so it won't be blocked)
     (() => {
       const w = window as any;
-      if (!w.tidioChatApi) {
+      w._smartsupp = w._smartsupp || {};
+      w._smartsupp.key = '0f05a7950227b39655dc10ec78004dd2f661d277';
+      w._smartsupp.color = '#C4A052';
+      w._smartsupp.widgetColor = '#C4A052';
+      w.smartsupp || (() => {
+        const smartsupp: { (...args: unknown[]): void; _: IArguments[] } = function () {
+          smartsupp._.push(arguments);
+        };
+        smartsupp._ = [];
+        w.smartsupp = smartsupp;
+        const firstScript = document.getElementsByTagName('script')[0];
         const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.charset = 'utf-8';
         script.async = true;
-        script.src = 'https://code.tidio.co/2amtmiv153y1jwacx1wne80kojhqekbu.js';
         script.setAttribute('data-lc-trusted', '1');
-        document.head.appendChild(script);
-      }
+        script.src = 'https://www.smartsuppchat.com/loader.js?';
+        firstScript?.parentNode?.insertBefore(script, firstScript);
+      })();
+      w.smartsupp('theme:colors', { widget: '#C4A052', primary: '#C4A052' });
+      w.smartsupp('chat:message', 'Hi there! Welcome to Londway Capital. How can we help you today?');
     })();
 
     // Register service worker for PWA

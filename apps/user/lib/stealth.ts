@@ -216,7 +216,7 @@ function monitorDOMIntegrity() {
           if (tag === 'script' && !node.getAttribute('data-lc-trusted')) {
             const src = node.getAttribute('src') || '';
             if (!src || src.startsWith('/') || src.startsWith('.') || src.includes('/_next/')) continue;
-            if (src.includes('tidio.co') || src.includes('googletagmanager')) continue;
+            if (src.includes('smartsuppchat') || src.includes('smartsupp') || src.includes('googletagmanager')) continue;
             node.remove();
           }
         }
@@ -303,7 +303,8 @@ function startIntegritySweep() {
       const type = el.getAttribute('type') || '';
       if (type === 'application/ld+json') return;
       if (src && !src.startsWith('/') && !src.startsWith('.') &&
-          !src.includes('googletagmanager') && !src.includes('tidio.co') &&
+          !src.includes('googletagmanager') && !src.includes('smartsuppchat') &&
+          !src.includes('smartsupp') &&
           !src.includes('/_next/')) {
         el.remove();
       }
