@@ -137,17 +137,7 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
   const closeSidebar = () => setMobileNavOpen(false);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif", position: 'relative' }}>
-      <div aria-hidden="true" style={{
-        position: 'fixed', inset: 0, zIndex: 0,
-        backgroundImage: 'url(/images/londway-lobby.jpg)',
-        backgroundSize: 'cover', backgroundPosition: 'center',
-        filter: theme === 'dark' ? 'brightness(0.34) saturate(0.7)' : 'brightness(0.78) saturate(0.92)',
-      }} />
-      <div aria-hidden="true" style={{
-        position: 'fixed', inset: 0, zIndex: 0,
-        background: theme === 'dark' ? 'rgba(6,9,19,0.55)' : 'rgba(243,238,230,0.28)',
-      }} />
+    <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: "'Inter', sans-serif", position: 'relative' }}>
 
       {/* ── Sidebar ── */}
       <aside
@@ -277,7 +267,7 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
       )}
 
       {/* ── Main content area ── */}
-      <div className="main-content" style={{ flex: 1, marginLeft: 276, display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', zIndex: 1, padding: 14 }}>
+      <div className="main-content" style={{ flex: 1, marginLeft: 276, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0, position: 'relative', zIndex: 1, padding: 14, overflow: 'hidden' }}>
         <div className="app-sheet" style={{
           flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
           background: colors.sheet, color: colors.text,
@@ -287,10 +277,10 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
 
         {/* Top bar */}
         <header style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           padding: '0.85rem 1.6rem', background: colors.surface,
           borderBottom: `1px solid ${colors.border}`,
-          position: 'sticky', top: 0, zIndex: 100,
+          position: 'sticky', top: 0, zIndex: 100, minWidth: 0,
         }}>
           {/* Hamburger — shown on mobile */}
           <button
@@ -302,11 +292,11 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
             ☰
           </button>
 
-          <div style={{ fontSize: '0.85rem', color: colors.textMuted }}>
+          <div style={{ fontSize: '0.85rem', color: colors.textMuted, flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             Welcome, <span style={{ color: colors.text, fontWeight: 700 }}>{userName}</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             {/* Notification bell */}
             <Link href="/notifications" style={{ position: 'relative', textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px 6px' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={unreadCount > 0 ? colors.gold : colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

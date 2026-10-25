@@ -415,29 +415,29 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
   const chartLabelColor = colors.textFaint;
   const money = (n: number) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const glass = {
-    background: isDark ? 'rgba(255,255,255,0.03)' : '#fff',
+    background: colors.surface,
     border: `1px solid ${colors.border}`,
     boxShadow: colors.cardShadow,
   } as const;
 
   return (
-    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: colors.bg, minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <section className="dash-hero" style={{ position: 'relative', overflow: 'hidden', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
         <GlobeNetwork gold={colors.gold} isDark={isDark} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: '0.9rem', maxWidth: 'calc(100% - 84px)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: '0.9rem', maxWidth: '100%' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.68rem', color: colors.success, fontWeight: 700, letterSpacing: '0.08em' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: colors.success, boxShadow: `0 0 8px ${colors.success}` }}/>
               SECURE SESSION
             </div>
             {clock && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: colors.goldBg, border: `1px solid ${colors.border}`, borderRadius: 100, padding: '0.35rem 0.9rem', fontSize: '0.72rem', color: colors.text, fontWeight: 600, letterSpacing: '0.02em' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: colors.goldBg, border: `1px solid ${colors.border}`, borderRadius: 100, padding: '0.35rem 0.9rem', fontSize: '0.72rem', color: colors.text, fontWeight: 600, letterSpacing: '0.02em', maxWidth: '100%', overflowWrap: 'anywhere' }}>
                 {clock}{tzName ? ` · ${tzName}` : ''}
               </div>
             )}
           </div>
 
-          <h1 style={{ fontSize: 'clamp(1.7rem, 4vw, 2.6rem)', fontWeight: 800, color: colors.text, margin: '0 0 0.35rem', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
+          <h1 style={{ fontSize: 'clamp(1.7rem, 4vw, 2.6rem)', fontWeight: 800, color: colors.text, margin: '0 0 0.35rem', lineHeight: 1.15, letterSpacing: '-0.025em', overflowWrap: 'anywhere' }}>
             {greeting}
           </h1>
           <p style={{ color: colors.textMuted, fontSize: '1rem', margin: '0 0 1rem', lineHeight: 1.6 }}>
@@ -458,30 +458,30 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
           </Link>
 
           <div className="dash-hero-cards" style={{ display: 'flex', gap: 'clamp(8px, 2vw, 16px)', flexWrap: 'wrap', alignItems: 'stretch' }}>
-            <div style={{ ...glass, border: `1px solid ${colors.borderStrong}`, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem) clamp(1rem, 2vw, 1.6rem)', minWidth: 0, flex: '1.4 1 220px' }}>
-              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>{t('totalBalance')}</div>
-              <div className="dash-balance" style={{ color: colors.gold, fontSize: 'clamp(1.7rem, 4.5vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
+            <div style={{ ...glass, border: `1px solid ${colors.borderStrong}`, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem) clamp(1rem, 2vw, 1.6rem)', minWidth: 0, flex: '1.4 1 220px', overflow: 'hidden' }}>
+              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8, overflowWrap: 'anywhere' }}>{t('totalBalance')}</div>
+              <div className="dash-figure dash-figure-hero" style={{ color: colors.gold, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.15 }}>
                 {balanceAvailable ? `$${money(data.totalBalance)}` : 'Balance temporarily unavailable'}
               </div>
             </div>
-            <div style={{ ...glass, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem)', minWidth: 0, flex: '1 1 160px' }}>
-              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>{t('todayChange')}</div>
-              <div style={{ color: data.todayChange >= 0 ? colors.success : colors.danger, fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 800 }}>
+            <div style={{ ...glass, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem)', minWidth: 0, flex: '1 1 160px', overflow: 'hidden' }}>
+              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8, overflowWrap: 'anywhere' }}>{t('todayChange')}</div>
+              <div className="dash-figure dash-figure-stat" style={{ color: data.todayChange >= 0 ? colors.success : colors.danger, fontWeight: 800, lineHeight: 1.2 }}>
                 {data.todayChange >= 0 ? '+' : ''}${money(data.todayChange)}
               </div>
-              <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 6 }}>{data.todayChange === 0 ? 'No movement today' : 'Posted today'}</div>
+              <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 6, overflowWrap: 'anywhere' }}>{data.todayChange === 0 ? 'No movement today' : 'Posted today'}</div>
             </div>
-            <div style={{ ...glass, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem)', minWidth: 0, flex: '1 1 160px' }}>
-              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>{t('netWorth')}</div>
-              <div style={{ color: colors.text, fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 800 }}>${money(data.netWorth)}</div>
-              <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 6 }}>All accounts included</div>
+            <div style={{ ...glass, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem)', minWidth: 0, flex: '1 1 160px', overflow: 'hidden' }}>
+              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8, overflowWrap: 'anywhere' }}>{t('netWorth')}</div>
+              <div className="dash-figure dash-figure-stat" style={{ color: colors.text, fontWeight: 800, lineHeight: 1.2 }}>${money(data.netWorth)}</div>
+              <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 6, overflowWrap: 'anywhere' }}>All accounts included</div>
             </div>
-            <div style={{ ...glass, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem)', minWidth: 0, flex: '1 1 160px' }}>
-              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>{t('monthlyGrowth')}</div>
-              <div style={{ color: data.monthlyGrowth >= 0 ? colors.gold : colors.danger, fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 800 }}>
+            <div style={{ ...glass, borderRadius: 18, padding: 'clamp(1rem, 2vw, 1.4rem)', minWidth: 0, flex: '1 1 160px', overflow: 'hidden' }}>
+              <div style={{ color: colors.textMuted, fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8, overflowWrap: 'anywhere' }}>{t('monthlyGrowth')}</div>
+              <div className="dash-figure dash-figure-stat" style={{ color: data.monthlyGrowth >= 0 ? colors.gold : colors.danger, fontWeight: 800, lineHeight: 1.2 }}>
                 {data.monthlyGrowth >= 0 ? '+' : ''}${money(data.monthlyGrowth)}
               </div>
-              <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 6 }}>{data.monthlyGrowth > 0 ? 'Growing this month' : data.monthlyGrowth < 0 ? 'Net outflow this month' : 'No change yet'}</div>
+              <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 6, overflowWrap: 'anywhere' }}>{data.monthlyGrowth > 0 ? 'Growing this month' : data.monthlyGrowth < 0 ? 'Net outflow this month' : 'No change yet'}</div>
             </div>
           </div>
         </div>
@@ -504,16 +504,17 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
             {QUICK_ACTIONS.map(a => (
               <Link key={a.href} href={a.href} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '0.85rem 1rem', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 14, textDecoration: 'none', minWidth: 0, flex: '1 1 96px', boxShadow: colors.cardShadow }}>
                 <span style={{ width: 36, height: 36, borderRadius: 10, background: `${a.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>{a.icon}</span>
-                <span style={{ color: colors.text, fontSize: '0.78rem', fontWeight: 700 }}>{a.label}</span>
+                <span style={{ color: colors.text, fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', maxWidth: '100%', overflowWrap: 'anywhere' }}>{a.label}</span>
               </Link>
             ))}
           </div>
         </div>
 
         <div className="dash-perf-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14, marginBottom: '1.5rem' }}>
-          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.35rem 1.35rem 0.4rem' }}>
+          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.35rem 1.35rem 0.4rem', minWidth: 0, overflow: 'hidden' }}>
             <h2 style={{ margin: 0, color: colors.text, fontWeight: 700, fontSize: '1.05rem' }}>Portfolio performance</h2>
-            <div style={{ color: colors.textMuted, fontSize: '0.8rem', margin: '4px 0 8px' }}>Your balance at the close of each of the last seven months</div>
+            <div style={{ color: colors.textMuted, fontSize: '0.8rem', margin: '4px 0 8px', overflowWrap: 'anywhere' }}>Your balance at the close of each of the last seven months</div>
+            <div className="dash-chart">
             <Chart
               options={{
                 chart: { id: 'growth', toolbar: { show: false }, background: 'transparent', fontFamily: "'Inter', sans-serif" },
@@ -531,15 +532,16 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               type="area"
               height={240}
             />
+            </div>
           </div>
-          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.35rem', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.35rem', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
               <h2 style={{ margin: 0, color: colors.text, fontWeight: 700, fontSize: '1.05rem' }}>{t('accounts')}</h2>
               <Link href="/accounts" style={{ color: colors.gold, fontSize: '0.82rem', fontWeight: 700, textDecoration: 'none' }}>{t('viewAll')}</Link>
             </div>
             {data.accounts.length === 0 && <div style={{ color: colors.textMuted, fontSize: '0.9rem' }}>No accounts found.</div>}
             {data.accounts.map((acc: any, i: number) => (
-              <div key={acc.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '0.75rem 0', borderBottom: i < data.accounts.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
+              <div key={acc.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '0.75rem 0', borderBottom: i < data.accounts.length - 1 ? `1px solid ${colors.border}` : 'none', minWidth: 0 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 11, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
                   {ACC_ICONS[acc.type] ?? '💳'}
                 </div>
@@ -547,19 +549,19 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
                   <div style={{ fontWeight: 700, fontSize: '0.92rem', color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.name || acc.type}</div>
                   <div style={{ fontSize: '0.75rem', color: colors.textMuted, marginTop: 2 }}>{acc.type}</div>
                 </div>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: colors.text, flexShrink: 0 }}>${money(acc.balance)}</div>
+                <div className="dash-figure" style={{ fontWeight: 800, fontSize: '0.92rem', color: colors.text, textAlign: 'right', maxWidth: '46%' }}>${money(acc.balance)}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.25rem 1.35rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.25rem 1.35rem', marginBottom: '1.5rem', minWidth: 0, overflow: 'hidden' }}>
           <h2 style={{ margin: '0 0 0.85rem', color: colors.text, fontWeight: 700, fontSize: '1.05rem' }}>{t('marketPulse')}</h2>
           <MarketPulse colors={colors} />
         </div>
 
         <div className="dash-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14 }}>
-          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.35rem' }}>
+          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.border}`, boxShadow: colors.cardShadow, padding: '1.35rem', minWidth: 0, overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: '0.6rem' }}>
               <h2 style={{ margin: 0, color: colors.text, fontWeight: 700, fontSize: '1.05rem' }}>{t('recentTransactions')}</h2>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -575,24 +577,24 @@ export default function Dashboard({ user }: { user: { token: string; email?: str
               const amt = Math.abs(tx.amount ?? 0);
               const isPending = tx.status === 'pending';
               return (
-                <div key={tx.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0.8rem 0', borderTop: `1px solid ${colors.border}`, opacity: isPending ? 0.75 : 1 }}>
+                <div key={tx.id ?? i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '0.8rem 0', borderTop: `1px solid ${colors.border}`, opacity: isPending ? 0.75 : 1, minWidth: 0 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: isPending ? colors.goldBg : debit ? `${colors.danger}14` : `${colors.success}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isPending ? colors.gold : debit ? colors.danger : colors.success, fontWeight: 800 }}>
                     {isPending ? '…' : debit ? '↑' : '↓'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: colors.text }}>{tx.description ?? tx.label ?? 'Transaction'}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: colors.text, overflowWrap: 'anywhere' }}>{tx.description ?? tx.label ?? 'Transaction'}</div>
                     <div style={{ fontSize: '0.78rem', color: colors.textMuted, marginTop: 3 }}>
                       {[tx.accountType, tx.date ? new Date(tx.date).toLocaleDateString() : '', isPending ? 'Pending' : ''].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isPending ? colors.textMuted : debit ? colors.danger : colors.success, flexShrink: 0 }}>
+                  <div className="dash-figure" style={{ fontWeight: 800, fontSize: '0.92rem', color: isPending ? colors.textMuted : debit ? colors.danger : colors.success, textAlign: 'right', maxWidth: '42%' }}>
                     {debit ? '-' : '+'}${money(amt)}
                   </div>
                 </div>
               );
             })}
           </div>
-          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.borderStrong}`, boxShadow: colors.cardShadow, padding: '1.35rem', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: colors.surface, borderRadius: 18, border: `1px solid ${colors.borderStrong}`, boxShadow: colors.cardShadow, padding: '1.35rem', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
             <div style={{ color: colors.gold, fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Londway insight</div>
             <div style={{ color: colors.text, fontSize: '0.98rem', lineHeight: 1.7, flex: 1 }}>{data.insight}</div>
             <Link href="/insights" style={{ marginTop: '1.1rem', color: colors.gold, fontWeight: 700, fontSize: '0.92rem', textDecoration: 'none' }}>View all insights</Link>

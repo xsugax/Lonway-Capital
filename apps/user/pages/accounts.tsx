@@ -80,7 +80,7 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: ct.bg, borderRadius: 20, padding: '1.8rem',
+        background: ct.bg, borderRadius: 20, padding: '1.8rem', containerType: 'inline-size',
         position: 'relative', overflow: 'visible', cursor: 'default',
         transition: 'transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease',
         transform: hovered ? 'translateY(-5px) scale(1.01)' : 'translateY(0) scale(1)',
@@ -102,9 +102,9 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
 
       {/* Header: account info + ⋮ menu + chip */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.2rem', position: 'relative', zIndex: 10 }}>
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: '0.6rem', color: ct.accent, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>{account.type}</div>
-          <div style={{ color: ct.alt, fontWeight: 700, fontSize: '1rem' }}>{account.name}</div>
+          <div style={{ color: ct.alt, fontWeight: 700, fontSize: '1rem', overflowWrap: 'anywhere' }}>{account.name}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* ⋮ Actions menu — always visible, works on mobile & desktop */}
@@ -138,7 +138,7 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
       </div>
 
       <div style={{ position: 'relative', zIndex: 1, marginBottom: '1.2rem' }}>
-        <div style={{ color: ct.accent, fontWeight: 800, fontSize: '1.7rem', letterSpacing: '-0.025em' }}>
+        <div style={{ color: ct.accent, fontWeight: 800, fontSize: 'clamp(1.15rem, 4.5cqi, 1.7rem)', letterSpacing: '-0.025em', overflowWrap: 'anywhere', maxWidth: '100%' }}>
           {account.currency}{account.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </div>
         {account.recentActivity && (
@@ -314,18 +314,18 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
           <>
             <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 18, boxShadow: colors.cardShadow, marginBottom: '1.6rem' }}>
               {accounts.map((acc, i) => (
-                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0.95rem 1.2rem', borderTop: i === 0 ? 'none' : `1px solid ${colors.border}` }}>
+                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0.95rem 1.2rem', borderTop: i === 0 ? 'none' : `1px solid ${colors.border}`, minWidth: 0 }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '1rem', color: colors.text }}>{acc.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: '1rem', color: colors.text, overflowWrap: 'anywhere' }}>{acc.name}</div>
                     <div style={{ fontSize: '0.85rem', color: colors.textMuted, marginTop: 2 }}>{acc.type}</div>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '1.05rem', color: colors.text, flexShrink: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.05rem', color: colors.text, textAlign: 'right', maxWidth: '52%', overflowWrap: 'anywhere' }}>
                     {acc.currency}{Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.6rem', marginBottom: '2.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: '1.6rem', marginBottom: '2.5rem' }}>
               {accounts.map((acc, i) => (
                 <div key={acc.id}>
                   <BankCard
@@ -346,12 +346,12 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
                     <div style={{ marginTop: 8, background: colors.surface, borderRadius: 14, padding: '1rem', border: `1px solid ${colors.border}` }}>
                       {acc.transactions && acc.transactions.length > 0 ? (
                         acc.transactions.slice(0, 5).map((tx, ti) => (
-                          <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: ti < Math.min(acc.transactions!.length, 5) - 1 ? `1px solid ${colors.border}` : 'none' }}>
-                            <div>
-                              <div style={{ color: colors.text, fontSize: '0.8rem', fontWeight: 500 }}>{tx.description}</div>
+                          <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, padding: '0.5rem 0', borderBottom: ti < Math.min(acc.transactions!.length, 5) - 1 ? `1px solid ${colors.border}` : 'none', minWidth: 0 }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ color: colors.text, fontSize: '0.8rem', fontWeight: 500, overflowWrap: 'anywhere' }}>{tx.description}</div>
                               <div style={{ color: colors.textFaint, fontSize: '0.67rem', marginTop: 1 }}>{tx.date}</div>
                             </div>
-                            <span style={{ color: tx.type === 'credit' ? colors.success : colors.danger, fontWeight: 700, fontSize: '0.82rem', flexShrink: 0, marginLeft: 8 }}>
+                            <span style={{ color: tx.type === 'credit' ? colors.success : colors.danger, fontWeight: 700, fontSize: '0.82rem', marginLeft: 8, textAlign: 'right', maxWidth: '46%', overflowWrap: 'anywhere' }}>
                               {tx.type === 'credit' ? '+' : '-'}{tx.currency}{Math.abs(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </span>
                           </div>
@@ -383,7 +383,7 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '1rem 1.3rem', background: `${a.color}0f`, border: `1px solid ${a.color}22`, borderRadius: 14, cursor: 'pointer', textDecoration: 'none', minWidth: 88 }}
                   >
                     <span style={{ width: 36, height: 36, borderRadius: 10, background: `${a.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.color, fontSize: '1.1rem', fontWeight: 800 }}>{a.icon}</span>
-                    <span style={{ color: colors.textMuted, fontSize: '0.76rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{a.label}</span>
+                    <span style={{ color: colors.textMuted, fontSize: '0.76rem', fontWeight: 600, textAlign: 'center', maxWidth: '100%', overflowWrap: 'anywhere' }}>{a.label}</span>
                   </a>
                 ))}
               </div>
