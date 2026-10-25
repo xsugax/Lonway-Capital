@@ -55,7 +55,7 @@ export default function HealthScore({ user }: { user?: { token: string; email?: 
   const scoreLabel = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Poor';
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Financial Health Score — Londway Capital</title>
         <meta name="description" content="Track your financial health score with Londway Capital. Analyze savings rate, debt management, investment growth, and emergency fund strength." />

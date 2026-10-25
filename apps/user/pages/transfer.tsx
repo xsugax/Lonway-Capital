@@ -28,6 +28,7 @@ interface Transfer {
   description: string;
   createdAt: string;
   country?: string;
+  cloudSync?: 'pending' | 'synced';
 }
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'AED', 'SGD', 'HKD', 'INR', 'BRL', 'MXN', 'ZAR', 'CNY', 'KRW', 'SEK', 'NOK', 'DKK', 'PLN', 'NZD', 'TRY', 'HUF', 'CZK'];
@@ -281,14 +282,14 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
                         const txEntry = {
                           id: ct.id || `admin-${Date.now()}`,
                           type: ct.type === 'credit' ? 'credit' : 'debit',
-                          description: ct.description || (ct.type === 'credit' ? 'Admin Credit' : 'Admin Debit'),
+                          description: ct.description || '',
                           amount: ct.amount,
                           date: ct.created_at || new Date().toISOString(),
                           status: 'completed',
                         };
                         checking.transactions = [txEntry, ...(Array.isArray(checking.transactions) ? checking.transactions : [])];
                       }
-                      checking.recentActivity = cloudOnly[0]?.description || (cloudOnly[0]?.type === 'credit' ? 'Admin Credit' : 'Admin Debit');
+                      checking.recentActivity = cloudOnly[0]?.description || '';
                       saveBankAccounts(bankAccts, user.email);
                     }
                   }
@@ -462,31 +463,40 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         fee: reviewData.fee + (reviewData.fxFee || 0),
         ...(reviewData.country ? { country: reviewData.country } : {}),
         ...(reviewData.bankName ? { bankName: reviewData.bankName } : {}),
+        cloudSync: 'pending' as const,
+        cloudPayload: {
+          id: ledgerTx.id,
+          reference: ledgerTx.reference,
+          sender_email: user?.email || '',
+          sender_name: user?.name || '',
+          recipient_name: reviewData.recipientName,
+          recipient_account: reviewData.iban || reviewData.accountNumber || '',
+          amount: reviewData.amount,
+          currency: reviewData.currency,
+          fee: reviewData.fee + (reviewData.fxFee || 0),
+          type: reviewData.type,
+          status: 'pending',
+          description: reviewData.memo || (isLocal ? 'Local Transfer' : 'International Wire'),
+          country: reviewData.country || '',
+          bank_name: reviewData.bankName || '',
+          created_at: new Date().toISOString(),
+        },
       };
       const all = getTransfers(user?.email);
       all.unshift(legacyTransfer);
       saveTransfers(all, user?.email);
 
+      try {
+        downloadReceiptFromLegacy(legacyTransfer, user?.name || 'Account Holder', user?.email || '');
+      } catch (err) {
+        console.error('[transfer] Receipt could not be opened:', err);
+      }
+
       // ─── Sync to Supabase for cross-device admin access ───
-      const cloudOk = await cloudSaveTransfer({
-        id: ledgerTx.id,
-        reference: ledgerTx.reference,
-        sender_email: user?.email || '',
-        sender_name: user?.name || '',
-        recipient_name: reviewData.recipientName,
-        recipient_account: reviewData.iban || reviewData.accountNumber || '',
-        amount: reviewData.amount,
-        currency: reviewData.currency,
-        fee: reviewData.fee + (reviewData.fxFee || 0),
-        type: reviewData.type,
-        status: 'pending',
-        description: reviewData.memo || (isLocal ? 'Local Transfer' : 'International Wire'),
-        country: reviewData.country || '',
-        bank_name: reviewData.bankName || '',
-        created_at: new Date().toISOString(),
-      });
-      if (!cloudOk) {
-        console.warn('[transfer] Cloud sync failed — transfer saved locally only');
+      const cloudOk = await cloudSaveTransfer(legacyTransfer.cloudPayload);
+      if (cloudOk) {
+        legacyTransfer.cloudSync = 'synced';
+        saveTransfers(all, user?.email);
       }
 
       // Deduct from checking and sync to cloud
@@ -520,15 +530,31 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
         const notifs = getNotifications(user.email);
         notifs.unshift({
           id: 'notif-' + Date.now(),
-          message: `📋 Transfer Receipt — ${reviewData.currency} ${reviewData.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${reviewData.recipientName}. Ref: ${ledgerTx.reference}. Status: Pending Review.${emailSent ? ` A confirmation email has been sent to ${user.email}.` : ''}`,
+          message: `Transfer saved — ${reviewData.currency} ${reviewData.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${reviewData.recipientName}. Ref: ${ledgerTx.reference}. Your receipt is ready here.${emailSent ? ` A confirmation email was sent to ${user.email}.` : ' Confirmation email could not be sent.'}${cloudOk ? '' : ' Saved on this device, sync pending.'}`,
           type: 'success',
           date: new Date().toISOString(),
           read: false,
+          transferData: {
+            id: legacyTransfer.id,
+            reference: legacyTransfer.reference,
+            recipientName: legacyTransfer.recipientName,
+            toAccountId: legacyTransfer.toAccountId,
+            amount: legacyTransfer.amount,
+            currency: legacyTransfer.currency,
+            type: legacyTransfer.type,
+            status: legacyTransfer.status,
+            description: legacyTransfer.description,
+            createdAt: legacyTransfer.createdAt,
+            country: legacyTransfer.country,
+            bankName: reviewData.bankName,
+          },
         });
         saveNotifications(notifs, user.email);
       }
 
-      setSubmitResult({ ok: true, message: `Transfer submitted — awaiting admin approval. You will be notified once approved.${reviewData.fee > 0 ? ` Wire fee: $${reviewData.fee.toFixed(2)}` : ''}${reviewData.fxRate ? ` FX Rate: 1 USD = ${reviewData.fxRate} ${reviewData.currency}` : ''}`, ref: ledgerTx.reference });
+      const syncNote = cloudOk ? '' : ' Saved on this device, sync pending.';
+      const emailNote = emailSent ? '' : ' Confirmation email could not be sent.';
+      setSubmitResult({ ok: true, message: `Transfer submitted — awaiting admin approval. Your receipt is ready.${syncNote}${emailNote}${reviewData.fee > 0 ? ` Wire fee: $${reviewData.fee.toFixed(2)}` : ''}${reviewData.fxRate ? ` FX Rate: 1 USD = ${reviewData.fxRate} ${reviewData.currency}` : ''}`, ref: ledgerTx.reference });
       setLocalRecipient(''); setLocalRouting(''); setLocalAccountNum(''); setLocalBankName(''); setLocalAmount(''); setLocalMemo('');
       setIntlName(''); setIntlIban(''); setIntlSwift(''); setIntlBankName(''); setIntlCountry(''); setIntlCurrency('EUR'); setIntlAmount(''); setIntlMemo('');
       setReviewData(null);
@@ -556,7 +582,7 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
   const validS: React.CSSProperties = { color: '#50C878', fontSize: '0.72rem', marginTop: 4, fontWeight: 600 };
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Transfers — Londway Capital | Send Money Worldwide</title>
         <meta name="description" content="Send money locally and internationally with Londway Capital. Near-instant transfers in 195 currencies with institutional-grade security." />
@@ -664,21 +690,9 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
           </div>
         </div>
       )}
-      {/* Hero */}
-      <div style={{ background: `linear-gradient(180deg, ${colors.surface} 0%, ${colors.bg} 100%)`, borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2.5rem)', position: 'relative', overflow: 'hidden' }}>
-        <svg style={{ position: 'absolute', right: '4%', top: '50%', transform: 'translateY(-50%)', opacity: 0.05, pointerEvents: 'none' }} width="320" height="110" viewBox="0 0 320 110">
-          <circle cx="50" cy="55" r="35" fill="none" stroke="#C4A052" strokeWidth="1.2"/><circle cx="50" cy="55" r="20" fill="none" stroke="#C4A052" strokeWidth="0.7"/>
-          <line x1="88" y1="55" x2="232" y2="55" stroke="#C4A052" strokeWidth="1" strokeDasharray="6 4"/>
-          <polygon points="232,49 246,55 232,61" fill="#C4A052"/>
-          <circle cx="270" cy="55" r="35" fill="none" stroke="#C4A052" strokeWidth="1.2"/><circle cx="270" cy="55" r="20" fill="none" stroke="#C4A052" strokeWidth="0.7"/>
-        </svg>
-        <div style={{ maxWidth: 960, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.28rem 0.9rem', marginBottom: '1rem', fontSize: '0.62rem', color: colors.gold, fontWeight: 700, letterSpacing: '0.12em' }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }}/>SECURE TRANSFERS
-          </div>
-          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>Transfer Funds</h1>
-          <p style={{ color: colors.textFaint, fontSize: '0.88rem' }}>Local &amp; international wire transfers · IBAN/SWIFT validated · Compliance reviewed before release</p>
-        </div>
+      <div style={{ maxWidth: 980, margin: '0 auto', padding: 'clamp(1.25rem, 3vw, 2.25rem) clamp(1rem, 3vw, 2rem) 0' }}>
+        <h1 style={{ color: colors.text, fontWeight: 700, fontSize: 'clamp(1.6rem, 4vw, 2.15rem)', margin: 0, letterSpacing: '-0.03em' }}>Transfer money</h1>
+        <p style={{ color: colors.textMuted, fontSize: '0.95rem', margin: '0.45rem 0 0' }}>Local and international wires are checked before the money moves.</p>
       </div>
 
       <div style={{ maxWidth: 980, margin: '0 auto', padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(0.8rem, 2vw, 1.5rem)' }}>
@@ -689,8 +703,8 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 0, marginBottom: '1.8rem', background: colors.inputBg, borderRadius: 12, padding: 4, border: `1px solid ${colors.border}` }}>
               {(['local', 'international'] as TransferType[]).map(t => (
-                <button key={t} onClick={() => { setTab(t); setSubmitResult(null); }} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'Inter, sans-serif', fontSize: '0.88rem', transition: 'all 0.2s', background: tab === t ? `linear-gradient(135deg, ${colors.gold}, ${colors.goldDim})` : 'transparent', color: tab === t ? (theme === 'dark' ? colors.bg : '#fff') : colors.textFaint }}>
-                  {t === 'local' ? '🏦 Local Transfer' : '🌍 International Wire'}
+                <button key={t} onClick={() => { setTab(t); setSubmitResult(null); }} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: 'Inter, sans-serif', fontSize: '0.95rem', background: tab === t ? colors.surface : 'transparent', color: tab === t ? colors.text : colors.textMuted, boxShadow: tab === t ? colors.cardShadow : 'none' }}>
+                  {t === 'local' ? 'Local transfer' : 'International wire'}
                 </button>
               ))}
             </div>
@@ -873,13 +887,23 @@ export default function Transfer({ user }: { user: { token: string; email?: stri
                   {history.map(tx => (
                     <tr key={tx.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
                       <td style={{ padding: '11px 10px', fontFamily: 'monospace', fontSize: '0.78rem', color: colors.gold }}>{tx.reference}</td>
-                      <td style={{ padding: '11px 10px', color: colors.text, fontSize: '0.88rem' }}>{tx.recipientName || tx.toAccountId}</td>
+                      <td style={{ padding: '11px 10px', color: colors.text, fontSize: '0.88rem' }}>
+                        <div>{tx.recipientName || tx.toAccountId}</div>
+                        {tx.description && !/^(local transfer|international wire)$/i.test(tx.description.trim()) && (
+                          <div style={{ marginTop: 3, color: colors.textMuted, fontSize: '0.78rem', lineHeight: 1.35 }}>{tx.description}</div>
+                        )}
+                      </td>
                       <td style={{ padding: '11px 10px' }}><span style={{ background: tx.type === 'international' ? colors.surface2 : colors.goldBg, color: tx.type === 'international' ? colors.textMuted : colors.gold, borderRadius: 5, padding: '2px 7px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>{tx.type}</span></td>
                       <td style={{ padding: '11px 10px', color: colors.text, fontWeight: 700, fontSize: '0.9rem' }}>{tx.currency} {tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td style={{ padding: '11px 10px', color: colors.textFaint, fontSize: '0.82rem' }}>{new Date(tx.createdAt).toLocaleDateString()}</td>
-                      <td style={{ padding: '11px 10px' }}><StatusBadge status={tx.status} /></td>
                       <td style={{ padding: '11px 10px' }}>
-                        <button onClick={() => handleReceiptDownload(tx)} title="Download PDF Receipt" style={{ background: colors.goldBg, border: `1px solid ${colors.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: colors.gold, fontSize: '0.72rem', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>📄 PDF</button>
+                        <StatusBadge status={tx.status} />
+                        {tx.cloudSync === 'pending' && (
+                          <div style={{ marginTop: 4, fontSize: '0.75rem', color: colors.textMuted, lineHeight: 1.35 }}>Saved on this device, sync pending</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '11px 10px' }}>
+                        <button onClick={() => handleReceiptDownload(tx)} title="Open receipt" style={{ background: 'transparent', border: `1px solid ${colors.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: colors.text, fontSize: '0.78rem', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>Receipt</button>
                       </td>
                     </tr>
                   ))}

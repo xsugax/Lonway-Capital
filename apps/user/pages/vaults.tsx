@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
@@ -194,7 +194,7 @@ export default function Vaults({ user }: { user: { token: string; email?: string
   const totalSaved = vaults.reduce((s, v) => s + v.balance, 0);
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Savings Vaults — Londway Capital | High-Yield 4.8% APY</title>
         <meta name="description" content="Grow your wealth with Londway Capital high-yield savings vaults. Earn up to 4.8% APY with institutional-grade security and flexible access." />

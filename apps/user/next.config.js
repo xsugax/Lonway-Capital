@@ -21,7 +21,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.smartsuppchat.com https://*.smartsuppchat.com https://smartsuppcdn.com https://*.smartsuppcdn.com",
       "font-src 'self' https://fonts.gstatic.com https://www.smartsuppchat.com https://*.smartsuppchat.com https://smartsuppcdn.com https://*.smartsuppcdn.com",
       "img-src 'self' data: blob: https:",
-      `connect-src 'self' ${supabaseConnectOrigin()} https://api.emailjs.com https://www.google-analytics.com https://www.smartsuppchat.com https://*.smartsuppchat.com https://smartsuppcdn.com https://*.smartsuppcdn.com https://smartsupp.com https://*.smartsupp.com wss://www.smartsuppchat.com wss://*.smartsuppchat.com wss://smartsuppcdn.com wss://*.smartsuppcdn.com wss://smartsupp.com wss://*.smartsupp.com`,
+      `connect-src 'self' ${supabaseConnectOrigin()} https://api.emailjs.com https://api.coingecko.com https://min-api.cryptocompare.com https://api.coinbase.com https://api.frankfurter.app https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://www.google-analytics.com https://www.smartsuppchat.com https://*.smartsuppchat.com https://smartsuppcdn.com https://*.smartsuppcdn.com https://smartsupp.com https://*.smartsupp.com wss://www.smartsuppchat.com wss://*.smartsuppchat.com wss://smartsuppcdn.com wss://*.smartsuppcdn.com wss://smartsupp.com wss://*.smartsupp.com`,
       "frame-src https://www.smartsuppchat.com https://*.smartsuppchat.com https://smartsuppcdn.com https://*.smartsuppcdn.com",
       "media-src 'self' https://www.smartsuppchat.com https://*.smartsuppchat.com https://smartsuppcdn.com https://*.smartsuppcdn.com",
       "frame-ancestors 'none'",

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
@@ -215,7 +215,7 @@ export default function Profile({ user }: { user?: { name: string; email: string
   };
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Profile — Londway Capital | Account Settings</title>
         <meta name="description" content="Manage your Londway Capital profile, security settings, KYC verification, and account preferences." />

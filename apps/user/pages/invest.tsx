@@ -298,22 +298,29 @@ export default function Invest({ user }: { user: { token: string; email?: string
     setPriceStatus('loading');
     const prices: Record<string, number> = {};
 
-    // Crypto via CoinGecko (CORS-friendly, free)
+    try {
+      const res = await fetch('https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH&tsyms=USD');
+      if (res.ok) {
+        const data = await res.json();
+        if (Number(data?.BTC?.USD) > 0) prices.BTC = Number(data.BTC.USD);
+        if (Number(data?.ETH?.USD) > 0) prices.ETH = Number(data.ETH.USD);
+      }
+    } catch {}
+
     try {
       const ids = MARKET_ASSETS.filter(a => a.coingeckoId).map(a => a.coingeckoId).join(',');
       const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
       if (res.ok) {
         const data = await res.json();
         for (const a of MARKET_ASSETS.filter(a => a.coingeckoId)) {
-          if (data[a.coingeckoId!]?.usd) prices[a.ticker] = data[a.coingeckoId!].usd;
+          if (!prices[a.ticker] && data[a.coingeckoId!]?.usd) prices[a.ticker] = data[a.coingeckoId!].usd;
         }
       }
     } catch {}
 
-    // Stocks via Yahoo Finance
-    const stockSymbols = MARKET_ASSETS.filter(a => !a.coingeckoId).map(a => a.ticker).join(',');
+    const stockSymbols = MARKET_ASSETS.filter(a => !a.coingeckoId).map(a => a.ticker);
     const tryYahoo = async (host: string) => {
-      const res = await fetch(`https://${host}/v7/finance/quote?symbols=${stockSymbols}`);
+      const res = await fetch(`https://${host}/v7/finance/quote?symbols=${stockSymbols.join(',')}`);
       if (!res.ok) return false;
       const data = await res.json();
       const quotes: any[] = data?.quoteResponse?.result ?? [];
@@ -326,6 +333,16 @@ export default function Invest({ user }: { user: { token: string; email?: string
       const ok = await tryYahoo('query1.finance.yahoo.com');
       if (!ok) await tryYahoo('query2.finance.yahoo.com');
     } catch {}
+    const missing = stockSymbols.filter(symbol => !(Number(prices[symbol]) > 0));
+    await Promise.all(missing.map(async (symbol) => {
+      try {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const price = Number(data?.chart?.result?.[0]?.meta?.regularMarketPrice);
+        if (price > 0) prices[symbol] = price;
+      } catch { /* this symbol stays unmarked */ }
+    }));
 
     setLivePrices(prices);
     const hasData = Object.keys(prices).length > 0;
@@ -451,7 +468,7 @@ export default function Invest({ user }: { user: { token: string; email?: string
   };
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Investments — Londway Capital | AI-Driven Portfolio</title>
         <meta name="description" content="Invest smarter with Londway Capital AI-driven portfolio management. Trade stocks, ETFs, and bonds with institutional-grade research and analytics." />

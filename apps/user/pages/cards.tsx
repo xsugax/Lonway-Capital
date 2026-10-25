@@ -741,7 +741,7 @@ export default function Cards({ user }: { user: { token: string; email?: string 
   };
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Cards — Londway Capital | Premium Debit & Credit Cards</title>
         <meta name="description" content="Manage your Londway Capital premium debit and credit cards. From Standard to Black World Elite, experience luxury banking." />

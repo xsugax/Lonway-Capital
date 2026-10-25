@@ -14,6 +14,7 @@ import { startInactivityTimer, stopInactivityTimer } from '../lib/crypto';
 import { initStealth, patchLocalStorage } from '../lib/stealth';
 import { pullUserFromCloud } from '../lib/sync';
 import { isCloudEnabled } from '../lib/cloud';
+import DocumentPreview from '../components/DocumentPreview';
 
 // Patch localStorage BEFORE any component renders — encrypts all londway_* keys
 if (typeof window !== 'undefined') patchLocalStorage();
@@ -80,6 +81,8 @@ export default function App({ Component, pageProps }: AppProps) {
       w._smartsupp.key = 'bf43a6c79504f5539bf4f44b042b96125a87dde1';
       w._smartsupp.color = '#C4A052';
       w._smartsupp.widgetColor = '#C4A052';
+      w._smartsupp.offsetX = 16;
+      w._smartsupp.offsetY = 16;
       w.smartsupp || (() => {
         const smartsupp: { (...args: unknown[]): void; _: IArguments[] } = function () {
           smartsupp._.push(arguments);
@@ -145,6 +148,7 @@ export default function App({ Component, pageProps }: AppProps) {
     if (u.email && isCloudEnabled()) pullUserFromCloud(u.email).catch(() => {});
     setShowLogin(false);
     setShowRegister(false);
+    if (u.role !== 'admin') void router.replace('/');
     // Send real-time login security alert email (fire-and-forget)
     import('../lib/email').then(({ sendLoginAlert, getDeviceInfo }) => {
       sendLoginAlert(u.email, u.name, getDeviceInfo()).catch(() => {});
@@ -163,6 +167,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <ThemeProvider>
       <LangProvider>
+        <DocumentPreview />
         <Head>
           <title>Londway Capital — Premium Private Banking & Wealth Management</title>
           <link rel="canonical" href={`https://londwaycapital.com${router.asPath === '/' ? '' : router.asPath.split('?')[0]}`} />

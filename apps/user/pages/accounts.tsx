@@ -157,8 +157,8 @@ function BankCard({ account, themeIdx, onFreeze, onCopy, copied, tFn }: BankCard
   );
 }
 
-export default function Accounts({ user }: { user: { token: string; email?: string } }) {
-  const { colors } = useTheme();
+export default function Accounts({ user }: { user: { token: string; email?: string; name?: string } }) {
+  const { colors, theme } = useTheme();
   const { t } = useLang();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -281,31 +281,25 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
   const totalBalance = accounts.reduce((sum, a) => sum + (a.balance ?? 0), 0);
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Accounts — Londway Capital | Private Banking</title>
         <meta name="description" content="Manage your Londway Capital bank accounts. Track balances, view transactions, and control your checking and savings accounts with premium private banking." />
       </Head>
-      {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${colors.border}`, padding: 'clamp(1.2rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vw, 2rem)' }}>
-        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 40% 80% at 5% 50%, ${colors.goldBg} 0%, transparent 70%)`, pointerEvents: 'none' }}/>
-        <div style={{ position: 'relative', maxWidth: 960, margin: '0 auto' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 100, padding: '0.28rem 0.9rem', marginBottom: '1rem', fontSize: '0.62rem', color: colors.gold, fontWeight: 700, letterSpacing: '0.12em' }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: colors.gold, boxShadow: `0 0 8px ${colors.gold}` }}/>
-            {t('accountCenter').toUpperCase()}
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(1.25rem, 3vw, 2.25rem) clamp(1rem, 3vw, 2rem) 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <h1 style={{ color: colors.text, fontWeight: 700, fontSize: 'clamp(1.6rem, 4vw, 2.15rem)', margin: 0, letterSpacing: '-0.03em' }}>{t('yourAccounts')}</h1>
+            {!loading && accounts.length > 0 && (
+              <p style={{ color: colors.textMuted, fontSize: '0.95rem', margin: '0.45rem 0 0' }}>
+                {t('totalBalance')} {accounts[0]?.currency}{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })} · {t('acrossAccounts')}
+              </p>
+            )}
           </div>
-          <h1 style={{ color: colors.text, fontWeight: 800, fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', marginBottom: '0.4rem', letterSpacing: '-0.025em' }}>{t('yourAccounts')}</h1>
           {!loading && accounts.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ color: colors.textFaint, fontSize: '0.85rem' }}>{t('totalBalance')}:</span>
-              <span style={{ color: colors.gold, fontWeight: 800, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {accounts[0]?.currency}{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
-              <span style={{ color: colors.textFaint, fontSize: '0.78rem' }}>{t('acrossAccounts')}</span>
-              <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-                <button onClick={() => user?.email && exportCSV(user.email, 'Client')} title="Download CSV Statement" style={{ background: colors.goldBg, border: `1px solid ${colors.borderStrong}`, borderRadius: 8, padding: '5px 14px', color: colors.gold, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.04em' }}>📥 CSV</button>
-                <button onClick={() => user?.email && exportPDF(user.email, 'Client')} title="Print / Save PDF Statement" style={{ background: `linear-gradient(135deg, ${colors.gold}, ${colors.goldDim})`, border: 'none', borderRadius: 8, padding: '5px 14px', color: '#0D1628', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.04em' }}>📄 PDF</button>
-              </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => user?.email && exportCSV(user.email, user?.name || 'Client')} style={{ background: 'transparent', border: `1px solid ${colors.border}`, borderRadius: 10, padding: '0.7rem 0.95rem', color: colors.text, fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>CSV</button>
+              <button onClick={() => user?.email && exportPDF(user.email, user?.name || 'Client')} style={{ background: colors.gold, border: 'none', borderRadius: 10, padding: '0.7rem 0.95rem', color: theme === 'dark' ? '#1A1505' : '#fff', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Statement</button>
             </div>
           )}
         </div>
@@ -318,6 +312,19 @@ export default function Accounts({ user }: { user: { token: string; email?: stri
           <div style={{ color: colors.danger, textAlign: 'center', marginTop: 40, background: `${colors.danger}10`, border: `1px solid ${colors.danger}28`, borderRadius: 12, padding: '1.6rem' }}>{error}</div>
         ) : (
           <>
+            <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 18, boxShadow: colors.cardShadow, marginBottom: '1.6rem' }}>
+              {accounts.map((acc, i) => (
+                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0.95rem 1.2rem', borderTop: i === 0 ? 'none' : `1px solid ${colors.border}` }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '1rem', color: colors.text }}>{acc.name}</div>
+                    <div style={{ fontSize: '0.85rem', color: colors.textMuted, marginTop: 2 }}>{acc.type}</div>
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '1.05rem', color: colors.text, flexShrink: 0 }}>
+                    {acc.currency}{Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              ))}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.6rem', marginBottom: '2.5rem' }}>
               {accounts.map((acc, i) => (
                 <div key={acc.id}>

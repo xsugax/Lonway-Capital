@@ -13,8 +13,10 @@ function adminEmailReady(purpose: string): boolean {
   return false;
 }
 
-async function sendAdminEmail(email: string, params: Record<string, string>, purpose: string): Promise<void> {
-  if (!adminEmailReady(purpose)) return;
+async function sendAdminEmail(email: string, params: Record<string, string>, purpose: string): Promise<{ ok: boolean; error?: string }> {
+  if (!adminEmailReady(purpose)) {
+    return { ok: false, error: `${purpose} email is not configured. The customer can open the receipt in the app.` };
+  }
   try {
     const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
       method: 'POST',
@@ -28,11 +30,13 @@ async function sendAdminEmail(email: string, params: Record<string, string>, pur
     });
     if (!response.ok) {
       console.error(`[Admin Email] ${purpose} failed with HTTP ${response.status}:`, await response.text().catch(() => ''));
-      return;
+      return { ok: false, error: `${purpose} email failed (${response.status}). The customer can open the receipt in the app.` };
     }
     console.info(`[Admin Email] ${purpose} accepted by EmailJS → ${email}`);
+    return { ok: true };
   } catch (err) {
     console.error(`[Admin Email] ${purpose} request failed:`, err);
+    return { ok: false, error: `${purpose} email could not be sent. The customer can open the receipt in the app.` };
   }
 }
 
@@ -148,8 +152,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,t
 </body></html>`;
 }
 
-async function sendApprovalReceiptEmail(email: string, userName: string, ref: string, amount: number, currency: string, recipient: string, type: string, account?: string) {
-  if (!adminEmailReady('approval receipt')) return;
+async function sendApprovalReceiptEmail(email: string, userName: string, ref: string, amount: number, currency: string, recipient: string, type: string, account?: string): Promise<{ ok: boolean; error?: string }> {
   const firstName = userName.split(' ')[0];
   const amtFmt = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const typeLabel = type === 'international' ? 'International Wire Transfer' : 'Domestic ACH Transfer';
@@ -196,7 +199,7 @@ async function sendApprovalReceiptEmail(email: string, userName: string, ref: st
 
 <p style="margin:0;font-size:10px;color:#9CA3AF;line-height:1.6;text-align:center;">This is an automated receipt from Londway Capital. For questions about this transfer, contact <a href="mailto:support@londwaycapital.com" style="color:#C4A052;text-decoration:none;font-weight:600;">support@londwaycapital.com</a>.</p>`;
   const html = receiptEmailHtml('Transfer Receipt', body);
-  await sendAdminEmail(email, {
+  return sendAdminEmail(email, {
     to_email: email, to_name: userName, from_name: 'Londway Capital',
     subject: `Transfer Approved — Receipt for ${amtFmt} to ${recipient} (${ref})`,
     html_content: html, reply_to: 'support@londwaycapital.com',
@@ -757,6 +760,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
   const [data, setData] = useState(loadData);
   const [tab, setTab] = useState<Tab>('overview');
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [receiptNotes, setReceiptNotes] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
 
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -907,6 +911,34 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     const entry: AuditEntry = { id: uid(), timestamp: new Date().toISOString(), action, admin: aName, target, details };
     setData(prev => { const next = { ...prev, audit: [...prev.audit, entry] }; saveData(next); return next; });
   }, [aName]);
+
+  const approveUserTransfer = async (tx: any) => {
+    updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
+    updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
+    cloudUpdateTransferStatus(tx.id, 'completed').catch(() => {});
+    addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
+    const approveUser = data.users.find(u => u.email === tx._userEmail);
+    let receipt: { ok: boolean; error?: string };
+    try {
+      receipt = await sendApprovalReceiptEmail(tx._userEmail, approveUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName, tx.type, tx.toAccountId);
+    } catch {
+      receipt = { ok: false, error: 'Receipt email could not be sent. The customer can open the receipt in the app.' };
+    }
+    const note = receipt.ok
+      ? 'Receipt email sent. The customer can also open it in the app.'
+      : (receipt.error || 'Receipt email did not send. The customer can open the receipt in the app.');
+    setReceiptNotes(prev => ({ ...prev, [tx.id]: note }));
+    notify(receipt.ok, receipt.ok ? `Transfer approved: ${tx.reference}` : `Transfer approved: ${tx.reference}. ${note}`);
+    const amountLabel = `${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+    writeUserNotification('londway_notifications', tx._userEmail, {
+      id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
+      message: receipt.ok
+        ? `✅ Transfer Approved — ${amountLabel} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`
+        : `✅ Transfer Approved — ${amountLabel} to ${tx.recipientName}. Ref: ${tx.reference}. Your receipt is saved in the app. The email could not be sent.`,
+      transferData: { id: tx.id, reference: tx.reference, recipientName: tx.recipientName, toAccountId: tx.toAccountId, amount: Number(tx.amount), currency: tx.currency, type: tx.type, status: 'completed', description: tx.description || `${tx.type} transfer`, createdAt: tx.createdAt, country: tx.country, bankName: tx.bankName },
+    });
+    setData({ ...data });
+  };
 
   useEffect(() => {
     if (!isCloudEnabled()) return;
@@ -1221,14 +1253,18 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     if (!fundModal) return;
     const amount = parseFloat(fundAmt);
     if (!amount || amount <= 0) { notify(false, 'Invalid amount'); return; }
+    const note = fundDesc.trim();
+    if (!note) { notify(false, 'Enter a description: where the funds are from, or what this is for'); return; }
     const user = data.users.find(u => u.id === fundModal.userId);
     if (!user) return;
     const isCredit = fundModal.mode === 'credit';
+    const source = fundSender.trim();
+    const description = source ? `${note} — ${isCredit ? 'from' : 'to'} ${source}` : note;
     const newBalance = isCredit ? user.balance + amount : user.balance - amount;
     const tx: Transaction = {
       id: uid(), userId: user.id, userName: fundSender || user.name,
       type: isCredit ? 'credit' : 'debit', amount, currency: 'USD', status: 'completed',
-      description: fundDesc || (isCredit ? 'Wire Transfer Received' : 'Account Adjustment'),
+      description,
       reference: `ADM-${Date.now().toString(36).toUpperCase()}`,
       createdAt: fundDate ? new Date(fundDate).toISOString() : new Date().toISOString(),
       processedAt: new Date().toISOString(),
@@ -1267,6 +1303,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         id: tx.id,
         reference: tx.reference,
         recipientName: isCredit ? user.name : (fundSender || 'Londway Capital'),
+        senderName: isCredit ? (fundSender || 'Londway Capital') : user.name,
         toAccountId: '',
         amount,
         currency: 'USD',
@@ -1275,6 +1312,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
         description: tx.description,
         createdAt: tx.createdAt,
         fee: 0,
+        bankName: 'Londway Capital',
       });
       localStorage.setItem(tfKey, JSON.stringify(tfArr));
     } catch {}
@@ -1283,8 +1321,21 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     writeUserNotification('londway_notifications', user.email, {
       id: 'notif-' + Date.now(), type: isCredit ? 'success' : 'warning', date: new Date().toISOString(), read: false,
       message: isCredit
-        ? `💰 Funds Received — USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} has been credited to your account. Description: ${tx.description}.`
-        : `📤 Account Debited — USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} has been debited from your account. Description: ${tx.description}.`,
+        ? `Funds received — USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} credited to your account. ${tx.description}. Ref: ${tx.reference}.`
+        : `Account debited — USD ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} debited from your account. ${tx.description}. Ref: ${tx.reference}.`,
+      transferData: {
+        id: tx.id,
+        reference: tx.reference,
+        recipientName: isCredit ? user.name : (source || 'Londway Capital'),
+        senderName: isCredit ? (source || 'Londway Capital') : user.name,
+        amount,
+        currency: 'USD',
+        type: isCredit ? 'credit' : 'debit',
+        status: 'completed',
+        description: tx.description,
+        createdAt: tx.createdAt,
+        bankName: 'Londway Capital',
+      },
     });
     addAudit(isCredit ? 'account_credited' : 'account_debited', user.email, `${fmtMoney(amount)} — ${tx.description}${fundDate ? ' (backdated)' : ''}`);
     notify(true, `${isCredit ? 'Credited' : 'Debited'} ${fmtMoney(amount)} ${isCredit ? 'to' : 'from'} ${user.name}`);
@@ -1299,7 +1350,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       accountId: accounts[0]?.id || '',
       mode: 'credit',
       amount: '',
-      description: transferRef ? `Admin adjustment for ${transferRef}` : 'Admin balance adjustment',
+      description: '',
     });
     setAccountHistoryModal({ email, name: name || email, transferRef });
   }
@@ -1329,7 +1380,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
       ? Math.round(amount * 100) / 100
       : Math.round((isCredit ? before + amount : Math.max(0, before - amount)) * 100) / 100;
     const delta = Math.round((after - before) * 100) / 100;
-    const description = accountHistoryForm.description.trim() || (isSet ? 'Admin balance correction' : 'Admin balance adjustment');
+    const description = accountHistoryForm.description.trim();
+    if (!description) { notify(false, 'Enter a description: where the funds are from, or what this is for'); return; }
     account.balance = after;
     account.recentActivity = description;
     account.transactions = [{
@@ -1369,10 +1421,15 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     if (!user) { notify(false, 'Select a user'); return; }
     const amount = parseFloat(nt.amount);
     if (!amount || amount <= 0) { notify(false, 'Invalid amount'); return; }
+    const note = nt.description.trim();
+    if (!note) { notify(false, 'Enter a description: where the funds are from, or what this is for'); return; }
+    const source = nt.senderName.trim();
+    const isPositive = ['credit', 'interest'].includes(nt.type);
+    const description = source ? `${note} — ${isPositive ? 'from' : 'to'} ${source}` : note;
     const tx: Transaction = {
       id: uid(), userId: user.id, userName: nt.senderName || user.name,
       type: nt.type, amount, currency: nt.currency, status: nt.status,
-      description: nt.description || 'Wire Transfer',
+      description,
       reference: `MAN-${Date.now().toString(36).toUpperCase()}`,
       createdAt: nt.createdAt ? new Date(nt.createdAt).toISOString() : new Date().toISOString(),
       processedAt: nt.status === 'completed' ? new Date().toISOString() : undefined,
@@ -1385,7 +1442,6 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
     persist({ ...data, users, transactions: [...data.transactions, tx] });
     // Sync completed transactions to the user's bank account
     if (nt.status === 'completed') {
-      const isPositive = ['credit', 'interest'].includes(nt.type);
       syncUserBankAccounts(user.email, amount, isPositive, { id: tx.id, description: tx.description, createdAt: tx.createdAt });
     }
     addAudit('transaction_created', user.email, `${nt.type} ${fmtMoney(amount)}${nt.createdAt ? ' (backdated)' : ''}`);
@@ -1606,21 +1662,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                           <td style={{ ...tdS, color: SL, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '—'}</td>
                           <td style={tdS}>
                             <div style={{ display: 'flex', gap: 5 }}>
-                              <button style={btnP} onClick={() => {
-                                updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
-                                updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
-                                cloudUpdateTransferStatus(tx.id, 'completed').catch(() => {});
-                                addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
-                                notify(true, `Transfer approved: ${tx.reference}`);
-                                const approveUser = data.users.find(u => u.email === tx._userEmail);
-                                sendApprovalReceiptEmail(tx._userEmail, approveUser?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName, tx.type, tx.toAccountId).catch(() => {});
-                                writeUserNotification('londway_notifications', tx._userEmail, {
-                                  id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
-                                  message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
-                                  transferData: { id: tx.id, reference: tx.reference, recipientName: tx.recipientName, toAccountId: tx.toAccountId, amount: Number(tx.amount), currency: tx.currency, type: tx.type, status: 'completed', description: tx.description || `${tx.type} transfer`, createdAt: tx.createdAt, country: tx.country, bankName: tx.bankName },
-                                });
-                                setData({ ...data });
-                              }}>✓ Approve</button>
+                              <button style={btnP} onClick={() => { void approveUserTransfer(tx); }}>✓ Approve</button>
                               <button style={btnD} onClick={() => {
                                 updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                 updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
@@ -1637,6 +1679,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                 setData({ ...data });
                               }}>✕ Reject</button>
                             </div>
+                            {receiptNotes[tx.id] && (
+                              <div style={{ marginTop: 6, maxWidth: 240, fontSize: '0.68rem', lineHeight: 1.4, color: /failed|not configured|could not|did not/i.test(receiptNotes[tx.id]) ? '#B91C1C' : '#166534' }}>{receiptNotes[tx.id]}</div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1865,21 +1910,7 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                             <div style={{ display: 'flex', gap: 5 }}>
                               {tx.status === 'pending' && (
                                 <>
-                                  <button style={btnP} onClick={() => {
-                                    updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'completed' });
-                                    updateCoreTransactionStatus(tx.id, 'completed', aName, 'Transfer approved by admin');
-                                    cloudUpdateTransferStatus(tx.id, 'completed').catch(() => {});
-                                    addAudit('transfer_approved', tx.recipientName, `${tx.reference} — ${tx.currency} ${tx.amount}`);
-                                    notify(true, `Transfer approved: ${tx.reference}`);
-                                    const approveUser2 = data.users.find(u => u.email === tx._userEmail);
-                                    sendApprovalReceiptEmail(tx._userEmail, approveUser2?.name || tx.recipientName, tx.reference, Number(tx.amount), tx.currency, tx.recipientName, tx.type, tx.toAccountId).catch(() => {});
-                                    writeUserNotification('londway_notifications', tx._userEmail, {
-                                      id: 'notif-' + Date.now(), type: 'success', date: new Date().toISOString(), read: false,
-                                      message: `✅ Transfer Approved — ${tx.currency} ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${tx.recipientName}. Ref: ${tx.reference}. A receipt has been sent to your email.`,
-                                      transferData: { id: tx.id, reference: tx.reference, recipientName: tx.recipientName, toAccountId: tx.toAccountId, amount: Number(tx.amount), currency: tx.currency, type: tx.type, status: 'completed', description: tx.description || `${tx.type} transfer`, createdAt: tx.createdAt, country: tx.country, bankName: tx.bankName },
-                                    });
-                                    setData({ ...data });
-                                  }}>✓ Approve</button>
+                                  <button style={btnP} onClick={() => { void approveUserTransfer(tx); }}>✓ Approve</button>
                                   <button style={btnD} onClick={() => {
                                     updateUserItem('londway_transfers', tx._userEmail, tx.id, { status: 'rejected' });
                                     updateCoreTransactionStatus(tx.id, 'failed', aName, 'Transfer rejected by admin — amount refunded');
@@ -1907,6 +1938,9 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                                 setData({ ...data });
                               }}>🗑</button>
                             </div>
+                            {receiptNotes[tx.id] && (
+                              <div style={{ marginTop: 6, maxWidth: 240, fontSize: '0.68rem', lineHeight: 1.4, color: /failed|not configured|could not|did not/i.test(receiptNotes[tx.id]) ? '#B91C1C' : '#166534' }}>{receiptNotes[tx.id]}</div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -2386,8 +2420,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 <input style={inp} value={fundSender} onChange={e => setFundSender(e.target.value)} placeholder="e.g. JP Morgan, Wire Services, Client Name..." />
                 <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Appears as the transaction source name. Leave empty to use account holder name.</div></div>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
-                <input style={inp} value={fundDesc} onChange={e => setFundDesc(e.target.value)} placeholder="Wire deposit, salary payment, account correction..." />
-                <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Shown to the user as the transaction description.</div></div>
+                <input style={inp} value={fundDesc} onChange={e => setFundDesc(e.target.value)} placeholder="Payroll from Acme, client wire, card refund..." required />
+                <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Required. This is the note the customer sees — where the money is from, or what it is for.</div></div>
               <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate (optional)</label>
                 <input style={inp} type="datetime-local" value={fundDate} onChange={e => setFundDate(e.target.value)} />
                 <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Leave empty for now</div></div>
@@ -2425,8 +2459,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
                 <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>{accountHistoryForm.mode === 'set' ? 'New Balance' : 'Amount'}</label>
                   <input style={inp} type="number" min="0" step="0.01" value={accountHistoryForm.amount} onChange={e => setAccountHistoryForm(p => ({ ...p, amount: e.target.value }))} required /></div>
               </div>
-              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>History Note</label>
-                <input style={inp} value={accountHistoryForm.description} onChange={e => setAccountHistoryForm(p => ({ ...p, description: e.target.value }))} /></div>
+              <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
+                <input style={inp} value={accountHistoryForm.description} onChange={e => setAccountHistoryForm(p => ({ ...p, description: e.target.value }))} placeholder="Where the funds are from, or what this is for" required /></div>
               <button type="submit" style={{ ...btnP, padding: '11px', borderRadius: 10 }}>Apply Account Update</button>
             </form>
             <div style={{ display: 'grid', gap: 12 }}>
@@ -2611,7 +2645,8 @@ export default function AdminDashboard({ onLogout, adminName }: { user: { token:
               <input style={inp} value={nt.senderName} onChange={e => setNt(p => ({ ...p, senderName: e.target.value }))} placeholder="e.g. JP Morgan, Wire Services..." />
               <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Appears as sender. Leave empty to use account holder name.</div></div>
             <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Description</label>
-              <input style={inp} value={nt.description} onChange={e => setNt(p => ({ ...p, description: e.target.value }))} placeholder="Wire deposit, card purchase, salary..." /></div>
+              <input style={inp} value={nt.description} onChange={e => setNt(p => ({ ...p, description: e.target.value }))} placeholder="Payroll from Acme, client wire, card refund..." required />
+              <div style={{ color: SL, fontSize: '0.7rem', marginTop: 4 }}>Required. The customer sees this note on the account, statement, and receipt.</div></div>
             <div><label style={{ display: 'block', color: SL, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>Backdate (optional)</label>
               <input style={inp} type="datetime-local" value={nt.createdAt} onChange={e => setNt(p => ({ ...p, createdAt: e.target.value }))} /></div>
             <button type="submit" style={{ ...btnP, padding: '12px', fontSize: '0.9rem', borderRadius: 10 }}>Create Transaction</button>

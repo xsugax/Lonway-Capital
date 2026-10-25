@@ -1,47 +1,28 @@
 'use client';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // ─── Scroll-reveal hook ────────────────────────────────────────────────────
 function useReveal(threshold = 0.18) {
-  const ref = useRef<HTMLElement>(null);
+  const [node, setNode] = useState<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    if (!ref.current) return;
+    if (!node) return;
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
       { threshold }
     );
-    obs.observe(ref.current);
+    obs.observe(node);
     return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
-
-// ─── Parallax hook (translates bg on scroll) ──────────────────────────────
-function useParallax(strength = 60) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const bgRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const onScroll = () => {
-      if (!sectionRef.current || !bgRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      const vh = window.innerHeight;
-      // progress: -1 (above viewport) → +1 (below viewport)
-      const progress = (vh / 2 - (rect.top + rect.height / 2)) / (vh / 2 + rect.height / 2);
-      bgRef.current.style.transform = `translateY(${progress * strength}px) scale(1.1)`;
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [strength]);
-  return { sectionRef, bgRef };
+  }, [node, threshold]);
+  return { setNode, visible };
 }
 
 // ─── Photo section component ───────────────────────────────────────────────
 interface PhotoSectionProps {
   id?: string;
   photoUrl: string;
+  imageAlt?: string;
   bgPosition?: string;
   align: 'left' | 'right';
   height?: number;
@@ -49,219 +30,35 @@ interface PhotoSectionProps {
   headline: React.ReactNode;
   body: React.ReactNode;
   footer?: React.ReactNode;
+  focus?: string;
   gradientDir?: string;
   overlayDir?: string;
 }
 
 function PhotoSection({
-  id, photoUrl, bgPosition = 'center', align, height = 560,
-  label, headline, body, footer,
-  gradientDir, overlayDir,
+  id, photoUrl, align, label, headline, body, footer, imageAlt, focus,
 }: PhotoSectionProps) {
-  const { colors: c, theme: t } = useTheme();
-  const dk = t === 'dark';
-  const G = c.gold;
-  const IV = c.text;
-  const PT = c.textMuted;
-
-  const { ref: revealRef, visible } = useReveal(0.15);
-  const { sectionRef, bgRef } = useParallax(55);
-  const isLeft = align === 'left';
-  const gDir = gradientDir ?? (isLeft ? '135deg' : '225deg');
-  const oDir = overlayDir ?? (isLeft ? '90deg' : '270deg');
-
-  // Merge the two refs
-  const setRef = useCallback((node: HTMLElement | null) => {
-    (revealRef as React.MutableRefObject<HTMLElement | null>).current = node;
-    (sectionRef as React.MutableRefObject<HTMLElement | null>).current = node;
-  }, [revealRef, sectionRef]);
-
-  const bgBase = dk ? 'rgba(6,9,19,' : 'rgba(245,240,232,';
-
-  return (
-    <section ref={setRef as React.RefCallback<HTMLElement>} id={id}
-      style={{ position: 'relative', height, overflow: 'hidden' }}>
-      {/* Parallax background */}
-      <div ref={bgRef} style={{
-        position: 'absolute', inset: '-10% 0', height: '120%',
-        backgroundImage: `url(${photoUrl})`,
-        backgroundSize: 'cover',
-        backgroundPosition: bgPosition,
-        filter: dk ? 'brightness(0.26) saturate(0.65)' : 'brightness(0.38) saturate(0.7)',
-        willChange: 'transform',
-        transition: 'filter 0.6s ease',
-      }}/>
-      {/* Overlay gradients */}
-      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(${gDir}, ${bgBase}0.95) 0%, ${G}08 55%, transparent 100%)` }}/>
-      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(${oDir}, ${bgBase}0.6) 0%, transparent 50%)` }}/>
-      {/* Gold accent line */}
-      <div style={{
-        position: 'absolute', [isLeft ? 'left' : 'right']: 0, top: '20%', bottom: '20%',
-        width: 2,
-        background: `linear-gradient(180deg, transparent 0%, ${G}59 40%, ${G}59 60%, transparent 100%)`,
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'scaleY(1)' : 'scaleY(0)',
-        transition: 'opacity 0.8s ease 0.4s, transform 0.8s cubic-bezier(0.16,1,0.3,1) 0.4s',
-        transformOrigin: 'center',
-      }}/>
-      {/* Content */}
-      <div style={{
-        position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto',
-        height: '100%', display: 'flex', alignItems: 'center',
-        justifyContent: isLeft ? 'flex-start' : 'flex-end',
-        padding: '0 clamp(1.2rem, 4vw, 3.5rem)',
-      }}
-        className="photo-section-inner"
-      >
-        <div style={{
-          maxWidth: 560,
-          textAlign: isLeft ? 'left' : 'right',
-          opacity: visible ? 1 : 0,
-          transform: visible ? 'translateY(0)' : `translateY(${isLeft ? 36 : -36}px)`,
-          transition: 'opacity 0.85s cubic-bezier(0.16,1,0.3,1) 0.15s, transform 0.85s cubic-bezier(0.16,1,0.3,1) 0.15s',
-        }}>
-          {/* Label */}
-          <div style={{
-            fontSize: '0.66rem', color: G, fontWeight: 700, letterSpacing: '0.2em',
-            textTransform: 'uppercase', marginBottom: '0.9rem',
-            opacity: visible ? 1 : 0,
-            transform: visible ? 'translateX(0)' : `translateX(${isLeft ? -20 : 20}px)`,
-            transition: 'opacity 0.7s ease 0.05s, transform 0.7s ease 0.05s',
-            display: 'flex', alignItems: 'center', gap: 8,
-            justifyContent: isLeft ? 'flex-start' : 'flex-end',
-          }}>
-            {isLeft && <span style={{ width: 24, height: 1, background: G, display: 'inline-block' }}/>}
-            {label}
-            {!isLeft && <span style={{ width: 24, height: 1, background: G, display: 'inline-block' }}/>}
-          </div>
-          {/* Headline */}
-          <h2 style={{
-            fontSize: 'clamp(2.1rem, 3.8vw, 3.2rem)', fontWeight: 800, color: IV,
-            lineHeight: 1.1, letterSpacing: '-0.025em', marginBottom: '1.2rem',
-            opacity: visible ? 1 : 0,
-            transform: visible ? 'translateY(0)' : 'translateY(22px)',
-            transition: 'opacity 0.8s ease 0.25s, transform 0.8s cubic-bezier(0.16,1,0.3,1) 0.25s',
-          }}>{headline}</h2>
-          {/* Body */}
-          <p style={{
-            fontSize: '1rem', color: PT, lineHeight: 1.85, maxWidth: 500,
-            margin: isLeft ? '0' : '0 0 0 auto',
-            opacity: visible ? 1 : 0,
-            transform: visible ? 'translateY(0)' : 'translateY(16px)',
-            transition: 'opacity 0.75s ease 0.38s, transform 0.75s ease 0.38s',
-          }}>{body}</p>
-          {/* Optional footer (buttons etc.) */}
-          {footer && (
-            <div style={{
-              marginTop: '1.8rem',
-              opacity: visible ? 1 : 0,
-              transform: visible ? 'translateY(0)' : 'translateY(12px)',
-              transition: 'opacity 0.7s ease 0.5s, transform 0.7s ease 0.5s',
-            }}>{footer}</div>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── SVG: Financial District at Night ────────────────────────────────────
-function Cityscape() {
   const { colors: c } = useTheme();
   const G = c.gold;
+  const { setNode, visible } = useReveal(0.12);
+  const ink = '#F7F1E6';
+
   return (
-    <svg viewBox="0 0 1440 340" xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMidYMax meet"
-      style={{ display: 'block', width: '100%', height: '100%' }}>
-      <defs>
-        <radialGradient id="groundHaze" cx="50%" cy="100%" r="70%">
-          <stop offset="0%" stopColor={G} stopOpacity="0.07"/>
-          <stop offset="100%" stopColor={G} stopOpacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="1440" height="340" fill="url(#groundHaze)"/>
-
-      {/* Far background – very faint */}
-      <g opacity="0.08" stroke={G} strokeWidth="0.35" fill="none">
-        {[[40,280,25,60],[75,260,35,80],[120,273,22,67],[160,255,42,85],[212,268,28,72],
-          [1100,270,30,70],[1145,252,40,88],[1198,265,25,75],[1238,250,45,90],
-          [1295,268,32,72],[1348,280,90,60]
-        ].map(([x,y,w,h],i) => <rect key={i} x={x} y={y} width={w} height={h}/>)}
-      </g>
-
-      {/* Left mid cluster */}
-      <g opacity="0.2" stroke={G} fill="rgba(196,160,82,0.02)">
-        <rect x="285" y="145" width="68" height="195" strokeWidth="0.6"/>
-        <rect x="286" y="132" width="66" height="17" strokeWidth="0.4" fill="none"/>
-        <rect x="363" y="175" width="54" height="165" strokeWidth="0.5"/>
-        <rect x="427" y="160" width="62" height="180" strokeWidth="0.55"/>
-      </g>
-      {[0,1,2,3,4,5,6,7].map(r => [0,1,2,3].map(c => (
-        <rect key={`lm${r}${c}`} x={293+c*15} y={152+r*19} width="9" height="12"
-          fill={G} opacity={(r+c)%3===0?0.28:0.04}/>
-      )))}
-
-      {/* Left tower */}
-      <g opacity="0.28">
-        <rect x="498" y="82" width="86" height="258"
-          fill="rgba(196,160,82,0.025)" stroke={G} strokeWidth="0.65"/>
-        <polygon points="498,82 541,52 584,82" fill="none" stroke={G} strokeWidth="0.5"/>
-        <line x1="541" y1="52" x2="541" y2="44" stroke={G} strokeWidth="0.65"/>
-        {[0,1,2,3,4,5,6,7,8,9,10].map(r => [0,1,2,3,4].map(c => (
-          <rect key={`lt${r}${c}`} x={504+c*16} y={90+r*21} width="10" height="13"
-            fill={G} opacity={(r*c+r)%5===0?0.32:r%2===0?0.07:0.03}/>
-        )))}
-      </g>
-
-      {/* ── CENTRAL TOWER ── */}
-      <g>
-        <rect x="648" y="22" width="144" height="318"
-          fill="rgba(196,160,82,0.04)" stroke={G} strokeWidth="0.9" opacity="0.5"/>
-        <rect x="659" y="10" width="122" height="16"
-          fill="rgba(196,160,82,0.04)" stroke={G} strokeWidth="0.6" opacity="0.45"/>
-        <rect x="673" y="0" width="94" height="13"
-          fill="rgba(196,160,82,0.04)" stroke={G} strokeWidth="0.5" opacity="0.4"/>
-        <line x1="720" y1="0" x2="720" y2="-16" stroke={G} strokeWidth="0.75" opacity="0.6"/>
-        <circle cx="720" cy="-17" r="2.5" fill={G} opacity="0.45"/>
-        <line x1="720" y1="28" x2="720" y2="340" stroke={G} strokeWidth="0.25" opacity="0.18"/>
-        {[0,1,2,3,4,5,6].map(i => (
-          <line key={i} x1="648" y1={28+i*44} x2="792" y2={28+i*44}
-            stroke={G} strokeWidth="0.2" opacity="0.14"/>
-        ))}
-        {[0,1,2,3,4,5,6,7,8,9,10,11,12,13].map(r => [0,1,2,3,4,5,6,7].map(c => (
-          <rect key={`ct${r}${c}`} x={653+c*17} y={30+r*22} width="11" height="14"
-            fill={G} opacity={(r+c)%4===0?0.42:(r*c)%3===0?0.14:0.04}/>
-        )))}
-      </g>
-
-      {/* Right tower */}
-      <g opacity="0.28">
-        <rect x="858" y="74" width="92" height="266"
-          fill="rgba(196,160,82,0.025)" stroke={G} strokeWidth="0.65"/>
-        <rect x="868" y="62" width="72" height="15"
-          fill="none" stroke={G} strokeWidth="0.4" opacity="0.6"/>
-        <rect x="880" y="50" width="48" height="15"
-          fill="none" stroke={G} strokeWidth="0.35" opacity="0.5"/>
-        {[0,1,2,3,4,5,6,7,8,9,10,11].map(r => [0,1,2,3,4].map(c => (
-          <rect key={`rt${r}${c}`} x={863+c*17} y={82+r*19} width="11" height="12"
-            fill={G} opacity={(r+c)%3===0?0.3:0.04}/>
-        )))}
-      </g>
-
-      {/* Right mid cluster */}
-      <g opacity="0.2" stroke={G} fill="rgba(196,160,82,0.02)">
-        <rect x="966" y="150" width="58" height="190" strokeWidth="0.5"/>
-        <rect x="1034" y="170" width="48" height="170" strokeWidth="0.5"/>
-        <rect x="996" y="136" width="30" height="204" strokeWidth="0.55"/>
-        {[0,1,2,3,4,5,6,7].map(r => [0,1].map(c => (
-          <rect key={`rmc${r}${c}`} x={970+c*26} y={158+r*19} width="12" height="12"
-            fill={G} opacity={r%3===0?0.22:0.04} stroke="none"/>
-        )))}
-      </g>
-
-      <line x1="0" y1="339" x2="1440" y2="339" stroke={G} strokeWidth="0.8" opacity="0.28"/>
-      <ellipse cx="720" cy="339" rx="660" ry="18" fill={G} opacity="0.025"/>
-    </svg>
+    <section
+      id={id}
+      ref={setNode}
+      className={`welcome-field${align === 'right' ? ' is-right' : ''}`}
+      style={{ ['--welcome-photo' as string]: `url(${photoUrl})`, ['--welcome-focus' as string]: focus || 'center', opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(18px)', transition: 'opacity 0.7s ease, transform 0.7s ease' }}
+    >
+      <div className="welcome-field-scrim" aria-hidden="true" />
+      <img src={photoUrl} alt={imageAlt || label} className="welcome-field-print" />
+      <div className="welcome-field-copy">
+        <div style={{ fontSize: '0.72rem', color: G, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: '0.85rem' }}>{label}</div>
+        <h2 style={{ fontSize: 'clamp(1.85rem, 3.4vw, 2.8rem)', fontWeight: 800, color: ink, lineHeight: 1.12, letterSpacing: '-0.025em', margin: '0 0 1rem' }}>{headline}</h2>
+        <p style={{ fontSize: '1.02rem', color: 'rgba(247,241,230,0.88)', lineHeight: 1.75, margin: 0, maxWidth: 520 }}>{body}</p>
+        {footer && <div style={{ marginTop: '1.5rem' }}>{footer}</div>}
+      </div>
+    </section>
   );
 }
 
@@ -272,30 +69,30 @@ function VaultDoor() {
   const spokes = [0, 45, 90, 135, 180, 225, 270, 315];
   return (
     <svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg"
-      style={{ width: '100%', height: '100%', maxWidth: 280 }}>
+      style={{ width: '100%', height: '100%' }}>
       <rect x="10" y="10" width="260" height="260" rx="14"
-        fill="rgba(196,160,82,0.03)" stroke={G} strokeWidth="1.2" opacity="0.2"/>
+        fill="rgba(196,160,82,0.04)" stroke={G} strokeWidth="1.4" opacity="0.55"/>
       <rect x="28" y="28" width="224" height="224" rx="8"
-        fill="rgba(196,160,82,0.03)" stroke={G} strokeWidth="1.5" opacity="0.28"/>
+        fill="rgba(196,160,82,0.03)" stroke={G} strokeWidth="1.6" opacity="0.7"/>
       <circle cx="140" cy="140" r="90"
-        fill="rgba(196,160,82,0.04)" stroke={G} strokeWidth="1.5" opacity="0.35"/>
+        fill="rgba(196,160,82,0.05)" stroke={G} strokeWidth="1.6" opacity="0.72"/>
       <circle cx="140" cy="140" r="76"
-        fill="none" stroke={G} strokeWidth="0.7" opacity="0.18"/>
+        fill="none" stroke={G} strokeWidth="0.8" opacity="0.4"/>
       <circle cx="140" cy="140" r="62"
-        fill="rgba(196,160,82,0.04)" stroke={G} strokeWidth="1.2" opacity="0.28"/>
+        fill="rgba(196,160,82,0.04)" stroke={G} strokeWidth="1.3" opacity="0.62"/>
       {spokes.map(angle => {
         const rad = angle * Math.PI / 180;
         return (
           <line key={angle}
             x1={140 + 62 * Math.cos(rad)} y1={140 + 62 * Math.sin(rad)}
             x2={140 + 89 * Math.cos(rad)} y2={140 + 89 * Math.sin(rad)}
-            stroke={G} strokeWidth="5.5" strokeLinecap="round" opacity="0.22"/>
+            stroke={G} strokeWidth="5.5" strokeLinecap="round" opacity="0.55"/>
         );
       })}
       <circle cx="140" cy="140" r="38"
-        fill="rgba(196,160,82,0.05)" stroke={G} strokeWidth="1" opacity="0.3"/>
+        fill="rgba(196,160,82,0.06)" stroke={G} strokeWidth="1.2" opacity="0.7"/>
       <circle cx="140" cy="140" r="25"
-        fill="rgba(196,160,82,0.06)" stroke={G} strokeWidth="1.5" opacity="0.32"/>
+        fill="rgba(196,160,82,0.08)" stroke={G} strokeWidth="1.6" opacity="0.75"/>
       {Array.from({ length: 12 }, (_, i) => {
         const a = (i * 30) * Math.PI / 180;
         const r1 = i % 3 === 0 ? 29 : 31;
@@ -303,17 +100,17 @@ function VaultDoor() {
           <line key={i}
             x1={140 + r1 * Math.cos(a)} y1={140 + r1 * Math.sin(a)}
             x2={140 + 37 * Math.cos(a)} y2={140 + 37 * Math.sin(a)}
-            stroke={G} strokeWidth={i % 3 === 0 ? 1.6 : 0.8} opacity="0.4"/>
+            stroke={G} strokeWidth={i % 3 === 0 ? 1.6 : 0.8} opacity="0.75"/>
         );
       })}
       <circle cx="197" cy="140" r="15"
-        fill="rgba(196,160,82,0.08)" stroke={G} strokeWidth="1.5" opacity="0.3"/>
-      <circle cx="197" cy="140" r="6" fill={G} opacity="0.22"/>
-      <circle cx="140" cy="140" r="9" fill={G} opacity="0.28"/>
-      <circle cx="140" cy="140" r="3.5" fill={G} opacity="0.6"/>
+        fill="rgba(196,160,82,0.1)" stroke={G} strokeWidth="1.5" opacity="0.7"/>
+      <circle cx="197" cy="140" r="6" fill={G} opacity="0.55"/>
+      <circle cx="140" cy="140" r="9" fill={G} opacity="0.55"/>
+      <circle cx="140" cy="140" r="3.5" fill={G} opacity="0.9"/>
       {[[44,44],[236,44],[44,236],[236,236]].map(([x, y]) => (
         <circle key={`b${x}${y}`} cx={x} cy={y} r="8"
-          fill="rgba(196,160,82,0.06)" stroke={G} strokeWidth="1" opacity="0.22"/>
+          fill="rgba(196,160,82,0.08)" stroke={G} strokeWidth="1" opacity="0.55"/>
       ))}
     </svg>
   );
@@ -448,8 +245,8 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
   const S2  = colors.surface;
   const S3  = isDark ? '#141E38' : colors.surface2;
   const IV  = colors.text;
-  const SL  = colors.textFaint;
-  const PT  = colors.textMuted;
+  const SL  = isDark ? colors.textFaint : '#3A3328';
+  const PT  = isDark ? colors.textMuted : '#241F16';
 
   const [scrolled, setScrolled] = useState(false);
   const [tIdx, setTIdx] = useState(0);
@@ -494,9 +291,9 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
         height: 64, padding: '0 1.5rem',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: scrolled ? (isDark ? 'rgba(6,9,19,0.96)' : 'rgba(245,240,232,0.96)') : 'transparent',
-        backdropFilter: scrolled ? 'blur(20px)' : 'none',
-        borderBottom: scrolled ? `1px solid ${GBR}` : 'none',
+        background: isDark ? 'rgba(6,9,19,0.94)' : 'rgba(245,240,232,0.96)',
+        backdropFilter: 'blur(18px)',
+        borderBottom: `1px solid ${GBR}`,
         transition: 'all 0.35s ease',
       }}>
         {/* Logo */}
@@ -620,31 +417,10 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       `}</style>
 
       {/* ──────────────── HERO ──────────────── */}
-      <section style={{
-        position: 'relative', minHeight: '100vh',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', textAlign: 'center',
-        padding: 'clamp(4rem, 10vw, 8rem) clamp(1rem, 3vw, 2rem) 0', overflow: 'hidden',
-      }}>
-        {/* Radial glow */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0,
-          background: isDark
-            ? 'radial-gradient(ellipse 90% 55% at 50% -15%, rgba(196,160,82,0.065) 0%, transparent 65%)'
-            : 'radial-gradient(ellipse 90% 55% at 50% -15%, rgba(139,105,20,0.06) 0%, transparent 65%)' }}/>
-        {/* Grid */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, opacity: isDark ? 0.5 : 0.3,
-          backgroundImage: `linear-gradient(${G}08 1px, transparent 1px), linear-gradient(90deg, ${G}08 1px, transparent 1px)`,
-          backgroundSize: '80px 80px' }}/>
-        {/* Orbs */}
-        <div style={{ position: 'absolute', top: '8%', left: '6%', width: 480, height: 480, borderRadius: '50%',
-          background: `radial-gradient(circle, ${G}0A 0%, transparent 70%)`,
-          filter: 'blur(40px)', zIndex: 0, pointerEvents: 'none' }}/>
-        <div style={{ position: 'absolute', bottom: '18%', right: '5%', width: 360, height: 360, borderRadius: '50%',
-          background: isDark ? 'radial-gradient(circle, rgba(162,178,191,0.03) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(139,105,20,0.04) 0%, transparent 70%)',
-          filter: 'blur(40px)', zIndex: 0, pointerEvents: 'none' }}/>  
-
-        {/* Hero content */}
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 840 }}>
+      <section className="welcome-field welcome-field-hero" style={{ ['--welcome-focus' as string]: 'center 40%' }}>
+        <div className="welcome-field-scrim" aria-hidden="true" />
+        <img src="/images/londway-skyline.jpg" alt="The city skyline above Londway Capital" className="welcome-field-print" />
+        <div className="welcome-field-inner">
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: GB, border: `1px solid ${GBR}`, borderRadius: 100,
@@ -655,9 +431,9 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
             PRIVATE BANKING · EST. 2020
           </div>
 
-          <h1 key={theme} style={{ fontSize: 'clamp(3rem, 7vw, 5.8rem)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.025em', marginBottom: '1.4rem' }}>
+          <h1 key={theme} style={{ fontSize: 'clamp(2.15rem, 4.2vw, 3.5rem)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.025em', marginBottom: '1.1rem' }}>
             <span style={{ display: 'block', fontSize: '0.2em', color: G, letterSpacing: '0.2em', fontWeight: 700, marginBottom: '0.6rem', textTransform: 'uppercase' as const }}>Londway Capital</span>
-            <span style={{ display: 'block', color: IV }}>Wealth that works</span>
+            <span style={{ display: 'block', color: '#F7F1E6' }}>Wealth that works</span>
             <span style={{
               display: 'block',
               background: `linear-gradient(135deg, ${G} 0%, #DCC880 50%, ${G} 100%)`,
@@ -665,12 +441,12 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
             }}>as hard as you do.</span>
           </h1>
 
-          <p style={{ fontSize: '1.08rem', color: PT, maxWidth: 540, margin: '0 auto 2.4rem', lineHeight: 1.82 }}>
+          <p style={{ fontSize: '1.08rem', color: 'rgba(247,241,230,0.88)', maxWidth: 540, margin: '0 0 2rem', lineHeight: 1.82 }}>
             Londway Capital is the private bank for founders, executives, and families who demand more — combining
             institutional-grade security with the intelligence of modern technology.
           </p>
 
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap', marginBottom: '3rem' }}>
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'flex-start', flexWrap: 'wrap', marginBottom: '1.6rem' }}>
             <button onClick={onOpenAccount} style={{
               background: G, color: isDark ? BG : '#fff', border: 'none',
               padding: '0.9rem 2.4rem', borderRadius: 8, fontSize: '0.95rem',
@@ -682,34 +458,28 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
               Open Your Account
             </button>
             <button onClick={onSignIn} style={{
-              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', color: IV,
-              border: `1px solid ${GBR}`,
+              background: 'rgba(255,255,255,0.08)', color: '#F7F1E6',
+              border: '1px solid rgba(247,241,230,0.35)',
               padding: '0.9rem 2rem', borderRadius: 8, fontSize: '0.95rem',
               fontWeight: 500, cursor: 'pointer', backdropFilter: 'blur(8px)', transition: 'all 0.25s',
             }}
               onMouseOver={e => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = G; el.style.color = G; }}
-              onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = GBR; el.style.color = IV; }}>
+              onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = 'rgba(247,241,230,0.35)'; el.style.color = '#F7F1E6'; }}>
               Sign In to Dashboard
             </button>
           </div>
 
           {/* Certifications */}
-          <div style={{ display: 'flex', gap: 22, justifyContent: 'center', flexWrap: 'wrap', opacity: isDark ? 0.35 : 0.55, fontSize: '0.7rem', color: PT, letterSpacing: '0.09em', fontWeight: 500 }}>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-start', flexWrap: 'wrap', fontSize: '0.72rem', color: 'rgba(247,241,230,0.82)', letterSpacing: '0.08em', fontWeight: 700 }}>
             {['FDIC INSURED', 'SOC 2 TYPE II', 'PCI DSS L1', 'ISO 27001', 'FINRA MEMBER'].map(c => (
               <span key={c} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ color: G }}>✦</span>{c}
               </span>
             ))}
           </div>
-        </div>
-
-        {/* City skyline */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 340, zIndex: 0, pointerEvents: 'none' }}>
-          <Cityscape/>
-        </div>
 
         {/* ── Dashboard mockup ── */}
-        <div style={{ position: 'relative', zIndex: 2, marginTop: '3.5rem', width: '100%', maxWidth: 860, paddingBottom: '3rem' }}>
+        <div style={{ position: 'relative', zIndex: 2, margin: '1.25rem auto 0', width: 'min(860px, calc(100% - 2rem))', paddingBottom: '3rem' }}>
           <div style={{
             background: isDark ? `linear-gradient(145deg, ${S2} 0%, ${S1} 100%)` : `linear-gradient(145deg, #fff 0%, ${colors.surface2} 100%)`,
             border: `1px solid ${GBR}`, borderRadius: 16, padding: '1.8rem',
@@ -748,6 +518,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
             </div>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ── STAT RULE ── */}
@@ -765,9 +536,10 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       {/* ──────────────── DIGITAL BANKING ──────────────── */}
       <PhotoSection
         id="private-banking"
-        photoUrl="https://images.pexels.com/photos/4482903/pexels-photo-4482903.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&dpr=1"
-        bgPosition="center 40%"
-        align="right"
+        photoUrl="/images/londway-office.jpg"
+        imageAlt="Londway Capital private office, where a client meets their banker"
+        focus="center 40%"
+        align="left"
         label="PRIVATE BANKING"
         headline={<>Manage your money<br/><span style={{ color: G }}>anywhere, anytime.</span></>}
         body="Access your complete financial life from any device. Real-time balances, instant transfers, international payments — all protected by biometric authentication and end-to-end encryption."
@@ -799,48 +571,35 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
         </div>
       </section>
 
-      {/* ──────────────── VAULT / SECURITY SPLIT ──────────────── */}
-      <section id="security" style={{
-        padding: 'clamp(3rem, 6vw, 6rem) clamp(1rem, 4vw, 3rem)', scrollMarginTop: 70,
-        background: isDark
-          ? `linear-gradient(180deg, transparent 0%, rgba(196,160,82,0.018) 50%, transparent 100%)`
-          : `linear-gradient(180deg, transparent 0%, rgba(139,105,20,0.03) 50%, transparent 100%)`,
-        borderTop: `1px solid ${GBR}`, borderBottom: `1px solid ${GBR}`,
-      }}>
-        <div className="welcome-security-grid" style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(2rem, 5vw, 5rem)', alignItems: 'center' }}>
-          {/* Text */}
-          <div>
-            <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1.2rem', textTransform: 'uppercase' }}>THE LONDWAY VAULT</div>
-            <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, color: IV, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: '1.5rem' }}>
-              Your wealth.<br/>Impenetrably<br/><span style={{ color: G }}>protected.</span>
-            </h2>
-            <p style={{ color: SL, lineHeight: 1.85, marginBottom: '2rem', fontSize: '0.93rem' }}>
-              Your deposits are guarded by the same cryptographic architecture trusted by central banks and sovereign wealth funds.
-              Every byte encrypted. Every transaction verified. Every anomaly investigated in milliseconds.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              {[
-                'Military-grade AES-256 encryption at rest & in transit',
-                'Multi-factor authentication with biometric verification',
-                'Real-time Anti fraud detection — 1,400+ signals per second',
-                'SOC 2 Type II and ISO 27001 certified infrastructure',
-                'FDIC insured up to $250,000 per depositor',
-              ].map(item => (
-                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.88rem', color: PT }}>
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: GB, border: `1px solid ${GBR}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '0.5rem', color: G }}>✓</span>
-                  </div>
-                  {item}
+      {/* ──────────────── VAULT / SECURITY ──────────────── */}
+      <section id="security" className={`welcome-field welcome-vault${isDark ? ' is-dark' : ' is-light'}`}>
+        <div className="vault-door-bg" aria-hidden="true">
+          <VaultDoor/>
+        </div>
+        <div className="welcome-field-copy">
+          <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1.2rem', textTransform: 'uppercase' }}>THE LONDWAY VAULT</div>
+          <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, color: isDark ? '#F7F1E6' : '#1A1505', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: '1.5rem' }}>
+            Your wealth.<br/>Impenetrably<br/><span style={{ color: G }}>protected.</span>
+          </h2>
+          <p style={{ color: isDark ? 'rgba(247,241,230,0.86)' : 'rgba(26,21,5,0.82)', lineHeight: 1.85, marginBottom: '2rem', fontSize: '0.93rem' }}>
+            Your deposits are guarded by the same cryptographic architecture trusted by central banks and sovereign wealth funds.
+            Every byte encrypted. Every transaction verified. Every anomaly investigated in milliseconds.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+            {[
+              'Military-grade AES-256 encryption at rest & in transit',
+              'Multi-factor authentication with biometric verification',
+              'Real-time Anti fraud detection — 1,400+ signals per second',
+              'SOC 2 Type II and ISO 27001 certified infrastructure',
+              'FDIC insured up to $250,000 per depositor',
+            ].map(item => (
+              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.88rem', color: isDark ? 'rgba(247,241,230,0.9)' : 'rgba(26,21,5,0.86)' }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: GB, border: `1px solid ${GBR}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '0.5rem', color: G }}>✓</span>
                 </div>
-              ))}
-            </div>
-          </div>
-          {/* Vault SVG */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: 260, height: 260, position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: `radial-gradient(circle, rgba(196,160,82,0.06) 0%, transparent 70%)` }}/>
-              <VaultDoor/>
-            </div>
+                {item}
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -927,20 +686,16 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       </section>
 
       {/* ──────────────── ABOUT LONDWAY CAPITAL ──────────────── */}
-      <section id="about" style={{
-        padding: 'clamp(3rem, 7vw, 7rem) 2rem', scrollMarginTop: 70,
-        background: isDark
-          ? `linear-gradient(180deg, transparent 0%, rgba(196,160,82,0.012) 50%, transparent 100%)`
-          : `linear-gradient(180deg, transparent 0%, rgba(139,105,20,0.025) 50%, transparent 100%)`,
-        borderTop: `1px solid ${GBR}`, borderBottom: `1px solid ${GBR}`,
-      }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <section id="about" className="welcome-field" style={{ ['--welcome-focus' as string]: 'center 45%', scrollMarginTop: 70 }}>
+        <div className="welcome-field-scrim" aria-hidden="true" />
+        <img src="/images/londway-lobby.jpg" alt="The Londway Capital banking hall" className="welcome-field-print" />
+        <div className="welcome-field-inner">
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
             <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1rem', textTransform: 'uppercase' }}>ABOUT LONDWAY CAPITAL</div>
-            <h2 style={{ fontSize: 'clamp(1.9rem, 4vw, 3rem)', fontWeight: 800, letterSpacing: '-0.02em', color: IV, marginBottom: '0.9rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.9rem, 4vw, 3rem)', fontWeight: 800, letterSpacing: '-0.02em', color: '#F7F1E6', marginBottom: '0.9rem' }}>
               Built for those who<br/><span style={{ color: G }}>demand excellence.</span>
             </h2>
-            <p style={{ color: PT, maxWidth: 560, margin: '0 auto', lineHeight: 1.85, fontSize: '1rem' }}>
+            <p style={{ color: 'rgba(247,241,230,0.88)', maxWidth: 560, margin: '0 auto', lineHeight: 1.85, fontSize: '1rem' }}>
               Londway Capital was founded with a singular vision: to redefine private banking for the modern era. We combine centuries of financial wisdom with cutting-edge technology to serve founders, executives, and families worldwide.
             </p>
           </div>
@@ -971,7 +726,7 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
             ].map(s => (
               <div key={s.l} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.8rem', fontWeight: 800, color: G, letterSpacing: '-0.02em', lineHeight: 1 }}>{s.n}</div>
-                <div style={{ fontSize: '0.7rem', color: SL, marginTop: 6, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>{s.l}</div>
+                <div style={{ fontSize: '0.7rem', color: 'rgba(247,241,230,0.75)', marginTop: 6, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>{s.l}</div>
               </div>
             ))}
           </div>
@@ -979,61 +734,65 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
       </section>
 
       {/* ──────────────── LONDWAY CARDS ──────────────── */}
-      <PhotoSection
-        photoUrl="https://images.pexels.com/photos/50987/money-card-business-credit-card-50987.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&dpr=1"
-        bgPosition="center 55%"
-        align="left"
-        height={600}
-        label="LONDWAY CARDS"
-        headline={<>Your card, your<br/><span style={{ color: G }}>privileges worldwide.</span></>}
-        body="Premium metal cards accepted globally. Zero foreign transaction fees, unlimited cashback, airport lounge access, and real-time spending controls — built for people who move."
-        footer={
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            <button onClick={onSignIn} style={{
-              background: G, color: isDark ? BG : '#fff', border: 'none',
-              padding: '0.8rem 1.8rem', borderRadius: 8, fontSize: '0.9rem',
-              fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
-              boxShadow: `0 0 30px ${G}4D`, transition: 'all 0.22s',
-            }}
-              onMouseOver={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = `0 8px 40px ${G}73`; }}
-              onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform = 'none'; el.style.boxShadow = `0 0 30px ${G}4D`; }}>
-              Apply for Debit Card
-            </button>
-            <button onClick={onSignIn} style={{
-              background: `${G}14`, color: G,
-              border: `1px solid ${G}4D`,
-              padding: '0.8rem 1.8rem', borderRadius: 8, fontSize: '0.9rem',
-              fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
-              backdropFilter: 'blur(8px)', transition: 'all 0.22s',
-            }}
-              onMouseOver={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = `${G}26`; el.style.transform = 'translateY(-2px)'; }}
-              onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = `${G}14`; el.style.transform = 'none'; }}>
-              Apply for Credit Card
-            </button>
+      <section id="cards" style={{ padding: 'clamp(6rem, 12vw, 9rem) clamp(1.25rem, 5vw, 4.5rem) clamp(5.5rem, 10vw, 8rem)' }}>
+        <div style={{ width: 'min(1120px, 100%)', margin: '0 auto' }}>
+          <div style={{ maxWidth: 640 }}>
+            <div style={{ fontSize: '0.72rem', color: G, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: '1.1rem' }}>LONDWAY CARDS</div>
+            <h2 style={{ fontSize: 'clamp(1.85rem, 3.4vw, 2.8rem)', fontWeight: 800, color: IV, letterSpacing: '-0.025em', lineHeight: 1.12, margin: '0 0 1.25rem' }}>
+              Your card, your<br/><span style={{ color: G }}>privileges worldwide.</span>
+            </h2>
+            <p style={{ color: PT, fontSize: '1.05rem', lineHeight: 1.8, margin: '0 0 2.4rem', maxWidth: 520 }}>
+              Navy metal, a gold edge, and the Londway monogram. Accepted worldwide, with no foreign transaction fees, lounge access, and spending controls you can change the moment you need them.
+            </p>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <button onClick={onSignIn} style={{
+                background: G, color: isDark ? BG : '#fff', border: 'none',
+                padding: '0.8rem 1.8rem', borderRadius: 8, fontSize: '0.9rem',
+                fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
+                boxShadow: `0 0 30px ${G}4D`, transition: 'all 0.22s',
+              }}
+                onMouseOver={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = `0 8px 40px ${G}73`; }}
+                onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform = 'none'; el.style.boxShadow = `0 0 30px ${G}4D`; }}>
+                Apply for Debit Card
+              </button>
+              <button onClick={onSignIn} style={{
+                background: 'transparent', color: G,
+                border: `1px solid ${G}`,
+                padding: '0.8rem 1.8rem', borderRadius: 8, fontSize: '0.9rem',
+                fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
+                transition: 'all 0.22s',
+              }}
+                onMouseOver={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = GB; el.style.transform = 'translateY(-2px)'; }}
+                onMouseOut={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.transform = 'none'; }}>
+                Apply for Credit Card
+              </button>
+            </div>
           </div>
-        }
-      />
+        </div>
+      </section>
 
-      {/* ──────────────── THE LONDWAY DIFFERENCE ──────────────── */}
-      <PhotoSection
-        photoUrl="https://images.pexels.com/photos/351264/pexels-photo-351264.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&dpr=1"
-        bgPosition="center 40%"
-        align="left"
-        label="THE LONDWAY DIFFERENCE"
-        headline={<>Bank with confidence.<br/><span style={{ color: G }}>Grow with Londway.</span></>}
-        body="Join 2.4 million members who've elevated their financial lives. When you bank with Londway Capital, you're not just managing money — you're building a legacy that lasts generations."
-      />
+      <section style={{ padding: 'clamp(7rem, 14vw, 11rem) clamp(1.5rem, 6vw, 3rem)', textAlign: 'center' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <div style={{ fontSize: '0.68rem', color: G, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1.4rem' }}>THE LONDWAY DIFFERENCE</div>
+          <h2 style={{ fontSize: 'clamp(1.7rem, 3.2vw, 2.35rem)', fontWeight: 700, color: IV, letterSpacing: '-0.02em', lineHeight: 1.25, margin: '0 0 1.35rem' }}>
+            Bank with confidence.<br/><span style={{ color: G }}>Grow with Londway.</span>
+          </h2>
+          <p style={{ color: PT, lineHeight: 1.85, fontSize: '1.02rem', margin: 0 }}>
+            Join 2.4 million members who&apos;ve elevated their financial lives. When you bank with Londway Capital, you&apos;re building a legacy that lasts generations.
+          </p>
+        </div>
+      </section>
 
       {/* ──────────────── FINAL CTA ──────────────── */}
-      <section style={{ padding: 'clamp(3.5rem, 8vw, 8rem) 2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 50% 50% at 50% 50%, ${G}0A 0%, transparent 70%)` }}/>
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 680, margin: '0 auto' }}>
-          <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.15em', marginBottom: '1.4rem', textTransform: 'uppercase' }}>BEGIN TODAY</div>
-          <h2 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.8rem)', fontWeight: 800, color: IV, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: '1.2rem' }}>
+      <section style={{ padding: 'clamp(5.5rem, 11vw, 8.5rem) clamp(1.5rem, 5vw, 2.5rem)', textAlign: 'center', position: 'relative', overflow: 'hidden', background: isDark ? S1 : colors.surface, borderTop: `1px solid ${GBR}` }}>
+        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 42% 55% at 50% 42%, ${G}14 0%, transparent 70%)` }}/>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 640, margin: '0 auto' }}>
+          <div style={{ fontSize: '0.7rem', color: G, fontWeight: 700, letterSpacing: '0.16em', marginBottom: '1.6rem', textTransform: 'uppercase' }}>BEGIN TODAY</div>
+          <h2 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.4rem)', fontWeight: 800, color: IV, letterSpacing: '-0.03em', lineHeight: 1.12, marginBottom: '1.4rem' }}>
             The finest banking<br/>experience<br/><span style={{ color: G }}>awaits you.</span>
           </h2>
-          <p style={{ color: SL, lineHeight: 1.8, maxWidth: 460, margin: '0 auto 2.5rem' }}>
-            Join 2.4 million discerning members. Take control of your financial destiny with a bank built for people who refuse to settle.
+          <p style={{ color: SL, lineHeight: 1.8, maxWidth: 440, margin: '0 auto 2.75rem' }}>
+            Open an account in minutes. A bank built for people who refuse to settle.
           </p>
           <button onClick={onOpenAccount} style={{
             background: G, color: isDark ? BG : '#fff', border: 'none',
@@ -1048,34 +807,10 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
         </div>
       </section>
 
-      {/* ──────────────── SEO IMAGE GALLERY — Crawlable branded images ──────────────── */}
-      <section style={{ padding: 'clamp(2rem, 4vw, 4rem) 1rem', borderTop: `1px solid ${GBR}`, background: isDark ? S1 : colors.surface2 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ fontSize: '0.68rem', color: G, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', textAlign: 'center', marginBottom: '1.6rem' }}>THE LONDWAY EXPERIENCE</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-            {[
-              { src: '/images/londway-capital-headquarters.png', alt: 'Londway Capital headquarters building in the Financial District with gold-illuminated windows and LC logo' },
-              { src: '/images/londway-capital-private-banking-office.png', alt: 'Londway Capital private banking consultation room with panoramic city views and premium furniture' },
-              { src: '/images/londway-capital-security.png', alt: 'Londway Capital bank-grade security vault with AES-256 encryption and FDIC insurance' },
-              { src: '/images/londway-capital-mobile-banking-app.png', alt: 'Londway Capital mobile banking app showing account balance and transactions' },
-              { src: '/images/londway-capital-global-banking.png', alt: 'Londway Capital global banking network with offices in New York London Dubai Singapore and Tokyo' },
-              { src: '/images/londway-capital-premium-cards.png', alt: 'Londway Capital premium debit and credit cards Standard Gold Elite and Black World Elite tiers' },
-              { src: '/images/londway-capital-wealth-management.png', alt: 'Londway Capital wealth management portfolio analytics and 5-year growth performance' },
-              { src: '/images/londway-capital-investment-dashboard.png', alt: 'Londway Capital investment dashboard with portfolio performance asset allocation and dividend tracking' },
-            ].map(img => (
-              <div key={img.src} style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${GBR}`, background: isDark ? S2 : '#fff' }}>
-                <img src={img.src} alt={img.alt} width={360} height={189} loading="lazy" decoding="async"
-                  style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ──────────────── FOOTER ──────────────── */}
-      <footer style={{ borderTop: `1px solid ${GBR}`, padding: 'clamp(1.5rem, 4vw, 3rem)', background: isDark ? S1 : colors.surface2 }}>
+      <footer style={{ borderTop: `1px solid ${GBR}`, padding: 'clamp(3.25rem, 7vw, 5rem) clamp(1.5rem, 5vw, 3rem) clamp(1.75rem, 4vw, 2.5rem)', background: isDark ? S1 : colors.surface2 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 32, marginBottom: '2.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '2.5rem 3.5rem', marginBottom: '3.25rem' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
                 <svg width="24" height="24" viewBox="0 0 36 36" fill="none">
@@ -1093,16 +828,16 @@ export default function Welcome({ onSignIn, onOpenAccount }: WelcomeProps) {
               { title: 'Legal', links: ['Privacy Policy', 'Terms', 'Security', 'Disclosures'] },
             ].map(col => (
               <div key={col.title}>
-                <div style={{ color: IV, fontWeight: 600, fontSize: '0.8rem', marginBottom: 14, letterSpacing: '0.06em' }}>{col.title}</div>
+                <div style={{ color: IV, fontWeight: 600, fontSize: '0.8rem', marginBottom: 16, letterSpacing: '0.06em' }}>{col.title}</div>
                 {col.links.map(l => (
-                  <div key={l} style={{ color: SL, fontSize: '0.8rem', marginBottom: 9, cursor: 'pointer', transition: 'color 0.2s' }}
+                  <div key={l} style={{ color: SL, fontSize: '0.82rem', marginBottom: 12, lineHeight: 1.4, cursor: 'pointer', transition: 'color 0.2s' }}
                     onMouseOver={e => (e.currentTarget.style.color = G)}
                     onMouseOut={e => (e.currentTarget.style.color = SL)}>{l}</div>
                 ))}
               </div>
             ))}
           </div>
-          <div style={{ borderTop: `1px solid ${GBR}`, paddingTop: '1.4rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ borderTop: `1px solid ${GBR}`, paddingTop: '1.6rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ color: SL, fontSize: '0.72rem' }}>© 2026 Londway Capital, Inc. All rights reserved. FDIC Member.</div>
             <div style={{ color: SL, fontSize: '0.72rem' }}>Regulated by OCC · FINRA Member · SIPC Protected</div>
           </div>

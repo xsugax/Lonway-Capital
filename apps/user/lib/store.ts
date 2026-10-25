@@ -1,7 +1,7 @@
 // Per-user data store — localStorage is a fast cache; Supabase is source of truth when configured.
 // Data is transparently encrypted by the stealth layer (stealth.ts patchLocalStorage).
 
-import { isCloudEnabled, cloudUpdateBalance, cloudPatchUserData, type CloudUserData } from './cloud';
+import { isCloudEnabled, cloudUpdateBalance, cloudPatchUserData, cloudSaveTransfer, type CloudUserData } from './cloud';
 
 // ═══════════════════════════════════════════
 // Tier Limits
@@ -270,6 +270,22 @@ export function getTransfers(email?: string): any[] { return getOrSeed(userKey(T
 export function saveTransfers(transfers: any[], email?: string) {
   save(userKey(TRANSFERS_BASE, email), transfers);
   if (email) pushExtrasToCloud(email, { transfers });
+}
+
+/** Retry transfers that were saved on this device while the cloud write failed. */
+export async function retryPendingTransfers(email?: string): Promise<void> {
+  if (!email || !isCloudEnabled()) return;
+  const transfers = getTransfers(email);
+  let changed = false;
+  for (const transfer of transfers) {
+    if (transfer?.cloudSync !== 'pending' || !transfer.cloudPayload) continue;
+    const ok = await cloudSaveTransfer(transfer.cloudPayload);
+    if (ok) {
+      transfer.cloudSync = 'synced';
+      changed = true;
+    }
+  }
+  if (changed) saveTransfersLocal(transfers, email);
 }
 
 // ═══════════════════════════════════════════

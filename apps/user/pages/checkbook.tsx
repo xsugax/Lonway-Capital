@@ -133,7 +133,7 @@ export default function Checkbook({ user }: { user: { token: string; id?: string
   const activeBook = selected || (checkbooks.find(b => b.status === 'active') ?? null);
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Checkbook — Londway Capital | Manage Checks</title>
         <meta name="description" content="Request and manage checkbooks with Londway Capital. Track check usage, order new books, and manage your checking account seamlessly." />

@@ -1,8 +1,6 @@
 ﻿'use client';
 import React, { useEffect, useState, useRef } from 'react';
-
-const G = '#C4A052';
-const BG = '#060913';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MESSAGES = [
   'Establishing encrypted connection\u2026',
@@ -13,12 +11,12 @@ const MESSAGES = [
 ];
 
 // Floating gold particle
-function Particle({ x, y, size, dur, delay }: { x: number; y: number; size: number; dur: number; delay: number }) {
+function Particle({ x, y, size, dur, delay, color }: { x: number; y: number; size: number; dur: number; delay: number; color: string }) {
   return (
     <div style={{
       position: 'absolute', left: x + '%', top: y + '%',
       width: size, height: size, borderRadius: '50%',
-      background: G, opacity: 0,
+      background: color, opacity: 0,
       animation: `loaderFloat ${dur}s ${delay}s ease-in-out infinite`,
     }}/>
   );
@@ -33,6 +31,12 @@ const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
 }));
 
 export default function BankLoader({ onDone }: { onDone: () => void }) {
+  const { theme, colors } = useTheme();
+  const dark = theme === 'dark';
+  const G = colors.gold;
+  const ink = colors.text;
+  const line = dark ? 'rgba(196,160,82,0.16)' : 'rgba(139,105,20,0.22)';
+  const lineFaint = dark ? 'rgba(196,160,82,0.07)' : 'rgba(139,105,20,0.14)';
   const [progress, setProgress] = useState(0);
   const [fading, setFading] = useState(false);
   const rafRef = useRef<number>(0);
@@ -41,7 +45,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
     const DURATION = 2800;
     const start = performance.now();
     const tick = (now: number) => {
-      const p = Math.min(100, ((now - start) / DURATION) * 100);
+      const p = Math.max(0, Math.min(100, ((now - start) / DURATION) * 100));
       setProgress(p);
       if (p < 100) {
         rafRef.current = requestAnimationFrame(tick);
@@ -63,7 +67,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999, background: BG,
+      position: 'fixed', inset: 0, zIndex: 9999, background: colors.bg,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: fading ? 0 : 1,
       transition: 'opacity 0.75s cubic-bezier(0.4,0,0.2,1)',
@@ -71,20 +75,20 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
       {/* Grid */}
       <div style={{
         position: 'absolute', inset: 0,
-        backgroundImage: 'linear-gradient(rgba(196,160,82,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(196,160,82,0.02) 1px,transparent 1px)',
+        backgroundImage: `linear-gradient(${lineFaint} 1px,transparent 1px),linear-gradient(90deg,${lineFaint} 1px,transparent 1px)`,
         backgroundSize: '60px 60px',
       }}/>
 
       {/* Glow */}
       <div style={{
         position: 'absolute', width: 700, height: 700, borderRadius: '50%',
-        background: 'radial-gradient(circle,rgba(196,160,82,0.055) 0%,transparent 65%)',
+        background: `radial-gradient(circle,${dark ? 'rgba(196,160,82,0.055)' : 'rgba(139,105,20,0.12)'} 0%,transparent 65%)`,
         filter: 'blur(60px)',
       }}/>
 
       {/* Particles */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-        {PARTICLES.map((p, i) => <Particle key={i} {...p}/>)}
+        {PARTICLES.map((p, i) => <Particle key={i} {...p} color={G}/>)}
       </div>
 
       {/* Corner accent lines */}
@@ -96,7 +100,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
           top: cy ? undefined : 32,
           bottom: cy ? 32 : undefined,
           width: 40, height: 40,
-          borderColor: 'rgba(196,160,82,0.22)',
+          borderColor: line,
           borderStyle: 'solid',
           borderWidth: br as string,
         }}/>
@@ -108,8 +112,8 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
         <svg width="172" height="172" viewBox="0 0 172 172">
           <defs>
             <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#E8D080"/>
-              <stop offset="100%" stopColor="#C4A052"/>
+              <stop offset="0%" stopColor={dark ? '#E8D080' : '#C4A052'}/>
+              <stop offset="100%" stopColor={G}/>
             </linearGradient>
             <filter id="glow">
               <feGaussianBlur stdDeviation="2.5" result="blur"/>
@@ -118,7 +122,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
           </defs>
 
           {/* Outer track */}
-          <circle cx="86" cy="86" r={R} fill="none" stroke="rgba(196,160,82,0.07)" strokeWidth="2.5"/>
+          <circle cx="86" cy="86" r={R} fill="none" stroke={lineFaint} strokeWidth="2.5"/>
           {/* Progress arc */}
           <circle cx="86" cy="86" r={R} fill="none"
             stroke="url(#pg)" strokeWidth="2.5"
@@ -131,12 +135,12 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
 
           {/* Vault door outer rect */}
           <rect x="46" y="46" width="80" height="80" rx="7"
-            fill="rgba(196,160,82,0.03)" stroke="rgba(196,160,82,0.16)" strokeWidth="1.2"/>
+            fill={colors.goldBg} stroke={line} strokeWidth="1.2"/>
           {/* Vault door ring */}
           <circle cx="86" cy="86" r="30"
-            fill="rgba(196,160,82,0.04)" stroke="rgba(196,160,82,0.2)" strokeWidth="1.2"/>
+            fill={colors.goldBg} stroke={line} strokeWidth="1.2"/>
           <circle cx="86" cy="86" r="21"
-            fill="rgba(196,160,82,0.06)" stroke="rgba(196,160,82,0.13)" strokeWidth="0.8"/>
+            fill={colors.goldBg} stroke={lineFaint} strokeWidth="0.8"/>
 
           {/* Rotating spokes group */}
           <g style={{ transformOrigin: '86px 86px', animation: `loaderVaultSpin ${spokeSpeed}s linear infinite` }}>
@@ -157,13 +161,13 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
 
           {/* Handle */}
           <circle cx="112" cy="86" r="8"
-            fill="rgba(196,160,82,0.07)" stroke={G} strokeWidth="1.2" opacity="0.28"/>
+            fill={colors.goldBg} stroke={G} strokeWidth="1.2" opacity="0.45"/>
           <circle cx="112" cy="86" r="3.5" fill={G} opacity="0.22"/>
 
           {/* Corner bolts */}
           {[[50,50],[122,50],[50,122],[122,122]].map(([bx,by]) => (
             <circle key={`${bx}${by}`} cx={bx} cy={by} r="3"
-              fill="rgba(196,160,82,0.06)" stroke={G} strokeWidth="0.7" opacity="0.2"/>
+              fill={colors.goldBg} stroke={G} strokeWidth="0.7" opacity="0.45"/>
           ))}
 
           {/* Tick marks around progress ring */}
@@ -174,7 +178,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
               <line key={`t${angle}`}
                 x1={86 + inner * Math.cos(rad)} y1={86 + inner * Math.sin(rad)}
                 x2={86 + outer * Math.cos(rad)} y2={86 + outer * Math.sin(rad)}
-                stroke="rgba(196,160,82,0.18)" strokeWidth={angle % 90 === 0 ? 1.5 : 0.8}/>
+                stroke={line} strokeWidth={angle % 90 === 0 ? 1.5 : 0.8}/>
             );
           })}
         </svg>
@@ -183,12 +187,12 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
         <div style={{ textAlign: 'center', marginTop: -6, marginBottom: 30 }}>
           <div style={{
             fontSize: '1.35rem', fontWeight: 800, letterSpacing: '0.2em',
-            color: '#EAE0D0', fontFamily: "'Inter',sans-serif",
+            color: ink, fontFamily: "'Inter',sans-serif",
           }}>
             LONDWAY<span style={{ color: G }}> CAPITAL</span>
           </div>
           <div style={{
-            fontSize: '0.58rem', color: 'rgba(196,160,82,0.4)',
+            fontSize: '0.58rem', color: dark ? 'rgba(196,160,82,0.55)' : G,
             letterSpacing: '0.26em', marginTop: 5, fontFamily: "'Inter',sans-serif",
           }}>PRIVATE BANKING</div>
         </div>
@@ -196,20 +200,20 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
         {/* Progress bar track */}
         <div style={{ width: 220, marginBottom: 14 }}>
           <div style={{
-            height: 2, background: 'rgba(196,160,82,0.07)',
+            height: 2, background: lineFaint,
             borderRadius: 2, overflow: 'hidden',
           }}>
             <div style={{
               height: '100%', borderRadius: 2,
-              background: `linear-gradient(90deg, rgba(196,160,82,0.5), ${G}, rgba(220,200,128,0.9))`,
+              background: `linear-gradient(90deg, ${line}, ${G}, ${dark ? 'rgba(220,200,128,0.9)' : G})`,
               width: `${progress}%`,
               transition: 'width 0.08s linear',
-              boxShadow: '0 0 10px rgba(196,160,82,0.55)',
+              boxShadow: `0 0 10px ${dark ? 'rgba(196,160,82,0.55)' : 'rgba(139,105,20,0.35)'}`,
             }}/>
           </div>
           <div style={{
             display: 'flex', justifyContent: 'space-between', marginTop: 8,
-            fontSize: '0.6rem', color: 'rgba(196,160,82,0.28)',
+            fontSize: '0.6rem', color: dark ? 'rgba(196,160,82,0.45)' : G,
             fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em',
           }}>
             <span>SECURE</span>
@@ -220,7 +224,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
 
         {/* Status message */}
         <div style={{
-          fontSize: '0.7rem', color: 'rgba(162,178,191,0.55)',
+          fontSize: '0.7rem', color: colors.textMuted,
           letterSpacing: '0.05em', fontFamily: "'Inter',sans-serif",
           minHeight: 19, textAlign: 'center',
           transition: 'opacity 0.3s',
@@ -230,7 +234,7 @@ export default function BankLoader({ onDone }: { onDone: () => void }) {
 
         {/* Security badges row */}
         <div style={{
-          display: 'flex', gap: 16, marginTop: 32, opacity: 0.18,
+          display: 'flex', gap: 16, marginTop: 32, opacity: dark ? 0.28 : 0.55,
           fontSize: '0.55rem', color: G, letterSpacing: '0.1em',
           fontFamily: "'Inter',sans-serif",
         }}>

@@ -22,6 +22,9 @@ export interface ThemeColors {
   inputBg: string;
   inputBorder: string;
   overlayBg: string;
+  sheet: string;
+  shadow: string;
+  cardShadow: string;
 }
 
 const DARK: ThemeColors = {
@@ -43,15 +46,18 @@ const DARK: ThemeColors = {
   inputBg: 'rgba(255,255,255,0.04)',
   inputBorder: 'rgba(196,160,82,0.18)',
   overlayBg: 'rgba(6,9,19,0.85)',
+  sheet: '#060913',
+  shadow: '0 18px 50px rgba(0,0,0,0.45)',
+  cardShadow: '0 10px 28px rgba(0,0,0,0.28)',
 };
 
 const LIGHT: ThemeColors = {
-  bg: '#F5F0E8',
+  bg: '#F3EEE6',
   surface: '#FFFFFF',
-  surface2: '#EDE8DF',
-  navBg: '#FFFFFF',
-  border: 'rgba(139,105,20,0.15)',
-  borderStrong: 'rgba(139,105,20,0.3)',
+  surface2: '#E7E0D4',
+  navBg: '#FFFCF8',
+  border: 'rgba(26,21,5,0.08)',
+  borderStrong: 'rgba(139,105,20,0.28)',
   gold: '#8B6914',
   goldDim: 'rgba(139,105,20,0.65)',
   goldBg: 'rgba(139,105,20,0.08)',
@@ -63,7 +69,10 @@ const LIGHT: ThemeColors = {
   danger: '#C53030',
   inputBg: 'rgba(0,0,0,0.04)',
   inputBorder: 'rgba(139,105,20,0.25)',
-  overlayBg: 'rgba(245,240,232,0.92)',
+  overlayBg: 'rgba(243,238,230,0.92)',
+  sheet: '#F3EEE6',
+  shadow: '0 18px 50px rgba(40,28,10,0.18)',
+  cardShadow: '0 8px 24px rgba(40,28,10,0.06)',
 };
 
 interface ThemeCtx {
@@ -75,7 +84,7 @@ interface ThemeCtx {
 const Ctx = createContext<ThemeCtx>({ theme: 'dark', colors: DARK, toggle: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     try {
@@ -107,6 +116,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       '--scrollbar-thumb-hover',
       theme === 'dark' ? 'rgba(196,160,82,0.4)' : 'rgba(139,105,20,0.4)',
     );
+    document.documentElement.style.setProperty('--lw-shadow', c.shadow);
+    document.documentElement.style.setProperty('--lw-card-shadow', c.cardShadow);
   }, [theme]);
 
   return (

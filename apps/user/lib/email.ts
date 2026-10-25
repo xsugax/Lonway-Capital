@@ -247,11 +247,15 @@ async function sendViaEmailJS(
       .replace(/\s{2,}/g, ' ')
       .trim()
       .substring(0, 2000);
+    const codeMatch = subject.match(/\b(\d{6})\b/);
     await emailjs.send(EMAILJS_SERVICE_ID, templateId, {
       to_email: to,
       to_name: toName,
       from_name: 'Londway Capital',
       subject,
+      message: textContent,
+      code: codeMatch?.[1] || '',
+      otp: codeMatch?.[1] || '',
       html_content: htmlContent,
       text_content: textContent,
       reply_to: 'support@londwaycapital.com',

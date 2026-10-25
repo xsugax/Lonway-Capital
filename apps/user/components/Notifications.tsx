@@ -11,11 +11,14 @@ interface TransferData {
   toAccountId?: string;
   amount: number;
   currency: string;
-  type: 'local' | 'international';
+  type: 'local' | 'international' | 'credit' | 'debit' | string;
   status: string;
   description?: string;
   createdAt: string;
   country?: string;
+  bankName?: string;
+  senderName?: string;
+  fee?: number;
 }
 
 interface Notification {
@@ -111,7 +114,7 @@ export default function Notifications({ user }: { user: { token: string; email?:
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: 'Inter, sans-serif' }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: 'Inter, sans-serif' }}>
       <section style={{ maxWidth: 640, margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: 10 }}>

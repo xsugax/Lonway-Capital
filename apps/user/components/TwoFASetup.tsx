@@ -43,7 +43,7 @@ export default function TwoFASetup({ user }: { user: { token: string } }) {
   };
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <section style={{ background: colors.surface, borderRadius: 16, padding: '2.5rem', boxShadow: `0 4px 32px ${colors.gold}13`, border: `1px solid ${colors.border}`, minWidth: 0, width: '100%', maxWidth: 400 }}>
         <h2 style={{ color: colors.gold, fontWeight: 700, fontSize: '2rem', marginBottom: '1.5rem', textAlign: 'center' }}>Two-Factor Authentication</h2>
         {step === 'init' && (

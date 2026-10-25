@@ -8,6 +8,7 @@ import {
   hashPassword, verifyPassword, generateSessionToken,
   isLockedOut, recordFailedAttempt, clearLockout,
 } from '../lib/crypto';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface LoginProps {
   onLogin: (user: { name: string; token: string; role: string; email: string }) => void;
@@ -136,6 +137,7 @@ const GB = 'rgba(196,160,82,0.07)';
 const GBD = 'rgba(196,160,82,0.15)';
 
 export default function Login({ onLogin, onClose, modal = false, mode = 'login', onSwitchMode }: LoginProps) {
+  const { colors, theme } = useTheme();
   const isRegister = mode === 'register';
 
   const [visible, setVisible] = useState(false);
@@ -521,12 +523,12 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Styles ───
   const inp: React.CSSProperties = {
     width: '100%', padding: '0.75rem 1rem', borderRadius: 10, boxSizing: 'border-box',
-    border: `1.5px solid ${GBD}`, background: 'rgba(255,255,255,0.04)',
-    color: '#fff', fontSize: '0.92rem', outline: 'none', fontFamily: 'Inter, sans-serif',
+    border: `1.5px solid ${colors.border}`, background: colors.inputBg || colors.surface,
+    color: colors.text, fontSize: '0.95rem', outline: 'none', fontFamily: 'Inter, sans-serif',
   };
   const lbl: React.CSSProperties = {
-    display: 'block', fontSize: '0.73rem', color: '#889', fontWeight: 600,
-    marginBottom: 6, letterSpacing: '0.06em',
+    display: 'block', fontSize: '0.78rem', color: colors.textMuted, fontWeight: 600,
+    marginBottom: 6,
   };
   const btn: React.CSSProperties = {
     background: G, color: '#060913', border: 'none', borderRadius: 10,
@@ -535,8 +537,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     boxShadow: '0 0 20px rgba(196,160,82,0.3)',
   };
   const btnO: React.CSSProperties = {
-    ...btn, background: 'transparent', color: G,
-    border: `1px solid ${GBD}`, boxShadow: 'none',
+    ...btn, background: 'transparent', color: colors.text,
+    border: `1px solid ${colors.border}`, boxShadow: 'none',
   };
 
   // ─── Step indicator ───
@@ -577,14 +579,14 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Registration Steps ───
   const regPersonalInfo = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Personal Information</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Tell us about yourself to get started</p>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Personal Information</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>Tell us about yourself to get started</p>
       <Err />
       <div><label style={lbl}>FULL NAME</label><input style={inp} value={rName} onChange={e => setRName(e.target.value)} placeholder="Jane Doe" /></div>
       <div><label style={lbl}>EMAIL ADDRESS</label><input type="email" style={inp} value={rEmail} onChange={e => setREmail(e.target.value)} placeholder="you@example.com" /></div>
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ flex: 1 }}><label style={lbl}>PHONE NUMBER</label><input type="tel" style={inp} value={rPhone} onChange={e => setRPhone(e.target.value)} placeholder="+1 (555) 123-4567" /></div>
-        <div style={{ flex: 1 }}><label style={lbl}>DATE OF BIRTH</label><input type="date" style={{ ...inp, colorScheme: 'dark' }} value={rDob} onChange={e => setRDob(e.target.value)} /></div>
+        <div style={{ flex: 1 }}><label style={lbl}>DATE OF BIRTH</label><input type="date" style={{ ...inp, colorScheme: theme === 'dark' ? 'dark' : 'light' }} value={rDob} onChange={e => setRDob(e.target.value)} /></div>
       </div>
       <button style={{ ...btn, opacity: sending ? 0.6 : 1, cursor: sending ? 'wait' : 'pointer' }} onClick={regNext} disabled={sending}>
         {sending ? 'Sending...' : 'Continue →'}
@@ -598,8 +600,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     const sC = ['#ff4d4f', '#faad14', '#52c41a', '#00b96b'];
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Create Password</h3>
-        <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Choose a strong password for your account</p>
+        <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Create Password</h3>
+        <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>Choose a strong password for your account</p>
         <Err />
         <div>
           <label style={lbl}>PASSWORD</label>
@@ -621,8 +623,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
 
   const regIdVerify = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>ID Verification</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Upload your government-issued ID</p>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>ID Verification</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>Upload your government-issued ID</p>
       <Err />
       {(['front', 'back'] as const).map(side => (
         <div key={side}>
@@ -640,7 +642,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
             ) : (
               <label style={{ cursor: 'pointer', display: 'block' }}>
                 <div style={{ fontSize: '1.4rem', marginBottom: 2 }}>📄</div>
-                <div style={{ color: '#889', fontSize: '0.78rem' }}>Click to upload {side}</div>
+                <div style={{ color: colors.textMuted, fontSize: '0.78rem' }}>Click to upload {side}</div>
                 <input type="file" accept="image/*" onChange={handleIdFile(side)} style={{ display: 'none' }} />
               </label>
             )}
@@ -653,8 +655,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
 
   const regFace = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13, alignItems: 'center' }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Face Verification</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0, textAlign: 'center' }}>Position your face in the frame</p>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Face Verification</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0, textAlign: 'center' }}>Position your face in the frame</p>
       <Err />
       <div style={{ position: 'relative', width: 200, height: 200, borderRadius: '50%', overflow: 'hidden', border: `3px solid ${faceData ? '#52c41a' : G}`, flexShrink: 0 }}>
         {faceData ? (
@@ -698,11 +700,11 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
 
   const regEmailCode = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Email Verification</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Email Verification</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>
         {regCodeFallback
-          ? <>Could not deliver to <span style={{ color: G }}>{rEmail}</span>. Your code is shown below.</>  
-          : <>A 6-digit code was sent to <span style={{ color: G }}>{rEmail}</span>. Check your inbox &amp; spam.</>}
+          ? <>Email delivery is unavailable right now. Use the code below to finish opening your account.</>
+          : <>A 6-digit code was sent to <span style={{ color: G }}>{rEmail}</span>. Check your inbox and spam folder.</>}
       </p>
       {codeSentMsg && (
         <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>
@@ -713,7 +715,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.25)', borderRadius: 10, padding: '14px 18px', textAlign: 'center' }}>
           <div style={{ fontSize: '0.65rem', color: 'rgba(196,160,82,0.6)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Your one-time code</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 800, color: G, letterSpacing: '0.4em', fontFamily: 'monospace' }}>{rGenCode}</div>
-          <div style={{ fontSize: '0.68rem', color: '#556', marginTop: 6 }}>Enter this code in the field below</div>
+          <div style={{ fontSize: '0.68rem', color: colors.textMuted, marginTop: 6 }}>Enter this code in the field below</div>
         </div>
       )}
       <Err />
@@ -740,8 +742,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   const regSuccess = () => (
     <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
       <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(80,200,120,0.1)', border: '2px solid #52c41a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>✓</div>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.15rem', margin: 0 }}>Account Created!</h3>
-      <p style={{ color: '#889', fontSize: '0.82rem', margin: 0, lineHeight: 1.6 }}>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.15rem', margin: 0 }}>Account Created!</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.82rem', margin: 0, lineHeight: 1.6 }}>
         Welcome to Londway Capital, {rName}. Your account has been verified and is ready to use.
       </p>
       {faceData && (
@@ -782,8 +784,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Registration: PIN Setup (step 5) ───
   const regPinSetup = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Set Your 4-Digit PIN</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Choose a PIN for quick login and transfer authorization</p>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Set Your 4-Digit PIN</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>Choose a PIN for quick login and transfer authorization</p>
       <Err />
       <div style={{ marginBottom: 4 }}>
         <label style={{ ...lbl, textAlign: 'center', display: 'block', marginBottom: 12 }}>ENTER PIN</label>
@@ -802,8 +804,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Login: PIN step ───
   const loginPinStep = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Enter Your PIN</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Enter your 4-digit PIN to continue</p>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Enter Your PIN</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>Enter your 4-digit PIN to continue</p>
       <Err />
       <PinPad pin={lPin} setPin={setLPin} />
       <div style={{ marginTop: 8 }}>
@@ -829,8 +831,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     };
     if (forgotStep === 0) return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Reset Password</h3>
-        <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Enter your registered email address</p>
+        <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Reset Password</h3>
+        <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>Enter your registered email address</p>
         <Err />
         <div><label style={lbl}>EMAIL ADDRESS</label><input type="email" style={inp} value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="you@example.com" /></div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -841,10 +843,10 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     );
     if (forgotStep === 1) return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Enter Reset Code</h3>
-        <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>
+        <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Enter Reset Code</h3>
+        <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>
           {forgotCodeFallback
-            ? <>Could not deliver to <span style={{ color: G }}>{forgotEmail}</span>. Your code is shown below.</>
+            ? <>Email delivery is unavailable right now. Use the code below to reset your password.</>
             : <>A 6-digit code was sent to <span style={{ color: G }}>{forgotEmail}</span>. Check your inbox &amp; spam.</>}
         </p>
         {codeSentMsg && <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>✓ {codeSentMsg}</div>}
@@ -852,7 +854,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.25)', borderRadius: 10, padding: '14px 18px', textAlign: 'center' }}>
             <div style={{ fontSize: '0.65rem', color: 'rgba(196,160,82,0.6)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Your one-time code</div>
             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: G, letterSpacing: '0.4em', fontFamily: 'monospace' }}>{forgotGenCode}</div>
-            <div style={{ fontSize: '0.68rem', color: '#556', marginTop: 6 }}>Enter this code in the field below</div>
+            <div style={{ fontSize: '0.68rem', color: colors.textMuted, marginTop: 6 }}>Enter this code in the field below</div>
           </div>
         )}
         <Err />
@@ -865,7 +867,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     );
     if (forgotStep === 2) return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Set New Password</h3>
+        <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Set New Password</h3>
         <Err />
         <div><label style={lbl}>NEW PASSWORD</label><input type="password" style={inp} value={forgotPw} onChange={e => setForgotPw(e.target.value)} placeholder="Min 6 characters" /></div>
         <div><label style={lbl}>CONFIRM PASSWORD</label><input type="password" style={inp} value={forgotPwC} onChange={e => setForgotPwC(e.target.value)} placeholder="Re-enter password" /></div>
@@ -894,8 +896,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
     return (
       <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(80,200,120,0.1)', border: '2px solid #52c41a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>✓</div>
-        <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.15rem', margin: 0 }}>Password Updated!</h3>
-        <p style={{ color: '#889', fontSize: '0.82rem', margin: 0 }}>Your password has been reset. You can now sign in.</p>
+        <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.15rem', margin: 0 }}>Password Updated!</h3>
+        <p style={{ color: colors.textMuted, fontSize: '0.82rem', margin: 0 }}>Your password has been reset. You can now sign in.</p>
         <button style={btn} onClick={() => { setForgotMode(false); setForgotStep(0); setForgotEmail(''); setForgotCode(''); setForgotPw(''); setForgotPwC(''); setCodeSentMsg(''); }}>Sign In →</button>
       </div>
     );
@@ -904,8 +906,8 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
   // ─── Login Steps ───
   const loginCredentials = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Welcome Back</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>Sign in to your private banking dashboard</p>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Welcome Back</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>Sign in to your private banking dashboard</p>
       {activateMsg && (
         <div style={{ background: 'rgba(80,200,120,0.09)', border: '1px solid rgba(80,200,120,0.25)', borderRadius: 10, padding: '0.65rem 1rem', color: '#52c41a', fontSize: '0.78rem', lineHeight: 1.5 }}>
           ✓ {activateMsg}
@@ -951,11 +953,11 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
 
   const loginCodeStep = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Security Verification</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0 }}>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Security Verification</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0 }}>
         {loginCodeFallback
-          ? <>Could not deliver to <span style={{ color: G }}>{lEmail}</span>. Your code is shown below.</>
-          : <>A 6-digit code was sent to <span style={{ color: G }}>{lEmail}</span>. Check your inbox &amp; spam.</>}
+          ? <>Email delivery is unavailable right now. Use the code below to sign in. This only appears when the email cannot be sent.</>
+          : <>A 6-digit code was sent to <span style={{ color: G }}>{lEmail}</span>. Check your inbox and spam folder.</>}
       </p>
       {codeSentMsg && (
         <div style={{ background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.2)', borderRadius: 8, padding: '0.5rem 1rem', color: '#52c41a', fontSize: '0.78rem', textAlign: 'center' }}>
@@ -966,7 +968,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         <div style={{ background: 'rgba(196,160,82,0.07)', border: '1px solid rgba(196,160,82,0.25)', borderRadius: 10, padding: '14px 18px', textAlign: 'center' }}>
           <div style={{ fontSize: '0.65rem', color: 'rgba(196,160,82,0.6)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Your one-time code</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 800, color: G, letterSpacing: '0.4em', fontFamily: 'monospace' }}>{lGenCode}</div>
-          <div style={{ fontSize: '0.68rem', color: '#556', marginTop: 6 }}>Enter this code in the field below</div>
+          <div style={{ fontSize: '0.68rem', color: colors.textMuted, marginTop: 6 }}>Enter this code in the field below</div>
         </div>
       )}
       <Err />
@@ -986,18 +988,18 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
 
   const loginFaceStep = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13, alignItems: 'center' }}>
-      <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Face Verification</h3>
-      <p style={{ color: '#556', fontSize: '0.8rem', margin: 0, textAlign: 'center' }}>Look at the camera to verify your identity</p>
+      <h3 style={{ color: colors.text, fontWeight: 700, fontSize: '1.08rem', margin: 0 }}>Face Verification</h3>
+      <p style={{ color: colors.textMuted, fontSize: '0.8rem', margin: 0, textAlign: 'center' }}>Look at the camera to verify your identity</p>
       <Err />
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
         {matched?.faceData && (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.6rem', color: '#889', marginBottom: 4, fontWeight: 600 }}>REGISTERED</div>
+            <div style={{ fontSize: '0.6rem', color: colors.textMuted, marginBottom: 4, fontWeight: 600 }}>REGISTERED</div>
             <img src={matched.faceData} alt="" style={{ width: 90, height: 90, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GBD}` }} />
           </div>
         )}
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '0.6rem', color: '#889', marginBottom: 4, fontWeight: 600 }}>LIVE</div>
+          <div style={{ fontSize: '0.6rem', color: colors.textMuted, marginBottom: 4, fontWeight: 600 }}>LIVE</div>
           <div style={{ position: 'relative', width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', border: `3px solid ${scanning ? '#52c41a' : G}` }}>
             <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
             {scanning && (
@@ -1068,10 +1070,10 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
 
   const formContent = (
     <div className="login-card" style={{
-      background: 'linear-gradient(160deg, #12172e 0%, #0d1020 100%)',
-      border: '1px solid rgba(196,160,82,0.14)',
+      background: colors.surface,
+      border: `1px solid ${colors.border}`,
       borderRadius: 20, padding: '2.2rem', width: '100%', maxWidth: 440,
-      boxShadow: '0 30px 100px rgba(0,0,0,0.8), 0 0 60px rgba(196,160,82,0.06)',
+      boxShadow: colors.cardShadow,
       position: 'relative' as const,
       transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.97)',
       opacity: visible ? 1 : 0, transition: 'all 0.4s cubic-bezier(0.16,1,0.3,1)',
@@ -1079,7 +1081,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       {modal && onClose && (
         <button onClick={onClose} style={{
           position: 'absolute', top: 14, right: 16, background: 'none', border: 'none',
-          color: '#555', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1, padding: 4,
+          color: colors.textMuted, cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1, padding: 4,
         }}>✕</button>
       )}
 
@@ -1090,7 +1092,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
           <path d="M11,27 V15 C11,6.5 25,6.5 25,15 V27" stroke={G} strokeWidth="2" fill={`${G}08`} strokeLinejoin="round"/>
           <line x1="7.5" y1="27" x2="28.5" y2="27" stroke={G} strokeWidth="1" strokeLinecap="round"/>
         </svg>
-        <span style={{ fontWeight: 800, fontSize: '1.08rem', color: '#fff', letterSpacing: '0.05em' }}>
+        <span style={{ fontWeight: 800, fontSize: '1.08rem', color: colors.text, letterSpacing: '0.05em' }}>
           LONDWAY <span style={{ color: G }}>CAPITAL</span>
         </span>
       </div>
@@ -1098,7 +1100,7 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
       {renderContent()}
 
       {((isRegister && regStep === 0) || (!isRegister && loginStep === 0)) && (
-        <div style={{ textAlign: 'center', marginTop: '1.2rem', fontSize: '0.78rem', color: '#445' }}>
+        <div style={{ textAlign: 'center', marginTop: '1.2rem', fontSize: '0.9rem', color: colors.textMuted }}>
           {isRegister ? 'Already have an account? ' : 'New to Londway? '}
           <span onClick={() => onSwitchMode?.(isRegister ? 'login' : 'register')}
             style={{ color: 'rgba(196,160,82,0.6)', cursor: 'pointer' }}>
@@ -1107,31 +1109,67 @@ export default function Login({ onLogin, onClose, modal = false, mode = 'login',
         </div>
       )}
 
-      <div style={{ marginTop: '1.2rem', display: 'flex', justifyContent: 'center', gap: 14, opacity: 0.35, fontSize: '0.66rem', color: '#888' }}>
+      <div style={{ marginTop: '1.2rem', display: 'flex', justifyContent: 'center', gap: 14, fontSize: '0.78rem', color: colors.textMuted }}>
         <span>🔒 256-bit SSL</span><span>✦ FDIC Insured</span><span>✦ SOC 2</span>
       </div>
     </div>
   );
 
-  if (modal) {
-    return (
-      <div onClick={handleBackdrop} style={{
-        position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,5,10,0.85)',
-        backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '1rem', opacity: visible ? 1 : 0, transition: 'opacity 0.3s ease',
-        overflowY: 'auto',
-      }}>
-        {formContent}
-      </div>
-    );
-  }
-
   return (
-    <main style={{
-      background: '#070910', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '1.5rem', backgroundImage: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(196,160,82,0.05) 0%, transparent 70%)',
-    }}>
-      {formContent}
-    </main>
+    <div
+      className="login-split"
+      style={{
+        position: modal ? 'fixed' : 'relative',
+        inset: modal ? 0 : undefined,
+        zIndex: modal ? 1000 : undefined,
+        minHeight: '100vh',
+        display: 'flex',
+        background: '#F3EEE6',
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 0.3s ease',
+      }}
+    >
+      <section
+        className="login-photo"
+        onClick={modal && onClose ? () => onClose() : undefined}
+        style={{
+          flex: '1.05 1 46%',
+          minHeight: '100vh',
+          position: 'relative',
+          backgroundImage: 'url(/images/londway-lobby.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          cursor: modal ? 'pointer' : 'default',
+        }}
+      >
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(18,14,8,0.08) 0%, rgba(18,14,8,0.62) 100%)' }} />
+        <div style={{ position: 'absolute', left: 36, right: 36, bottom: 40, color: '#F7F1E6' }}>
+          <div style={{ fontSize: '0.72rem', letterSpacing: '0.16em', fontWeight: 700 }}>LONDWAY CAPITAL</div>
+          <div style={{ fontSize: 'clamp(1.6rem, 3vw, 2.3rem)', fontWeight: 700, lineHeight: 1.2, marginTop: 10, maxWidth: 420 }}>A quieter way to see your money.</div>
+        </div>
+      </section>
+      <section
+        className="login-pane"
+        onClick={modal ? handleBackdrop : undefined}
+        style={{
+          flex: '1 1 54%',
+          display: 'flex',
+          background: '#F3EEE6',
+          overflowY: 'auto',
+          minHeight: '100vh',
+        }}
+      >
+        <div style={{ margin: 'auto', width: '100%', maxWidth: 480, padding: '1.5rem 1.25rem' }}>
+          {formContent}
+        </div>
+      </section>
+      <style>{`
+        @media (max-width: 860px) {
+          .login-split { flex-direction: column !important; }
+          .login-photo { min-height: 220px !important; flex: none !important; width: 100%; }
+          .login-pane { min-height: 0 !important; }
+        }
+      `}</style>
+    </div>
   );
 }

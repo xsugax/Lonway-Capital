@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from '../contexts/ThemeContext';
@@ -159,7 +159,7 @@ export default function Insights({ user }: { user: { token: string } }) {
   const avgSavingsRate = 22;
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Insights — Londway Capital | Financial Intelligence</title>
         <meta name="description" content="Get AI-powered financial insights from Londway Capital. Personalized analytics, spending trends, and actionable recommendations for your wealth." />

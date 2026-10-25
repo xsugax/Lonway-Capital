@@ -6,21 +6,59 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLang, LANG_NAMES, LangCode } from '../contexts/LanguageContext';
 import { getNotifications, saveNotifications } from '../lib/store';
 
-const NAV_ITEMS = [
-  { href: '/',              icon: '🏠', label: 'Dashboard' },
-  { href: '/accounts',      icon: '🏛', label: 'Accounts' },
-  { href: '/transfer',      icon: '↗',  label: 'Transfer' },
-  { href: '/crypto',        icon: '₿',  label: 'Crypto' },
-  { href: '/cards',         icon: '💳', label: 'Cards' },
-  { href: '/vaults',        icon: '🏦', label: 'Vaults' },
-  { href: '/invest',        icon: '📈', label: 'Invest' },
-  { href: '/insights',      icon: '💡', label: 'Insights' },
-  { href: '/health-score',  icon: '❤',  label: 'Health Score' },
-  { href: '/checkbook',     icon: '📒', label: 'Checkbook' },
-  { href: '/notifications', icon: '🔔', label: 'Notifications' },
-  { href: '/profile',       icon: '👤', label: 'Profile' },
-  { href: '/twofa',         icon: '🔐', label: '2FA Setup' },
+const NAV_GROUPS = [
+  {
+    label: 'Everyday',
+    items: [
+      { href: '/', label: 'Dashboard', icon: 'home' },
+      { href: '/accounts', label: 'Accounts', icon: 'bank' },
+      { href: '/transfer', label: 'Transfer', icon: 'send' },
+      { href: '/cards', label: 'Cards', icon: 'card' },
+    ],
+  },
+  {
+    label: 'Wealth',
+    items: [
+      { href: '/vaults', label: 'Vaults', icon: 'vault' },
+      { href: '/invest', label: 'Invest', icon: 'chart' },
+      { href: '/crypto', label: 'Crypto', icon: 'coin' },
+      { href: '/insights', label: 'Insights', icon: 'bulb' },
+      { href: '/health-score', label: 'Health score', icon: 'heart' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { href: '/checkbook', label: 'Checkbook', icon: 'book' },
+      { href: '/notifications', label: 'Notifications', icon: 'bell' },
+      { href: '/profile', label: 'Profile', icon: 'user' },
+      { href: '/twofa', label: '2FA setup', icon: 'lock' },
+    ],
+  },
 ];
+
+function NavIcon({ name, color }: { name: string; color: string }) {
+  const paths: Record<string, React.ReactNode> = {
+    home: <><path d="M4 11.5 12 4l8 7.5" /><path d="M7 10.5V20h10v-9.5" /></>,
+    bank: <><path d="M4 10h16" /><path d="M6 10v8M10 10v8M14 10v8M18 10v8" /><path d="M3 18h18" /><path d="M12 4 3 10h18L12 4z" /></>,
+    send: <><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></>,
+    card: <><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /></>,
+    vault: <><rect x="5" y="3" width="14" height="18" rx="2" /><circle cx="12" cy="12" r="2.5" /></>,
+    chart: <><path d="M4 19V5" /><path d="M4 19h16" /><path d="m8 15 3-4 3 2 4-6" /></>,
+    coin: <><circle cx="12" cy="12" r="8" /><path d="M12 8v8" /><path d="M9.5 10.5c.5-1 1.4-1.5 2.5-1.5 1.6 0 2.5.8 2.5 2s-.9 1.8-2.5 2-2.5.8-2.5 2 1 2 2.5 2c1.1 0 2-.5 2.5-1.5" /></>,
+    bulb: <><path d="M9 18h6" /><path d="M10 21h4" /><path d="M8 14a5 5 0 1 1 8 0c-.6.8-1 1.6-1.2 2.5H9.2C9 15.6 8.6 14.8 8 14z" /></>,
+    heart: <path d="M12 19s-7-4.4-7-8.2A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 2.8C19 14.6 12 19 12 19z" />,
+    book: <><path d="M6 4.5h11a2 2 0 0 1 2 2V20H8a2 2 0 0 0-2 2z" /><path d="M6 4.5A2 2 0 0 0 4 6.5V20" /></>,
+    bell: <><path d="M6 16V10a6 6 0 1 1 12 0v6l1.5 2h-15z" /><path d="M10 18a2 2 0 0 0 4 0" /></>,
+    user: <><circle cx="12" cy="8" r="3.2" /><path d="M5 19.5c1.2-3 3.4-4.5 7-4.5s5.8 1.5 7 4.5" /></>,
+    lock: <><rect x="6" y="11" width="12" height="9" rx="2" /><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" /></>,
+  };
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
 
 export default function Layout({ children, onLogout, userName, userEmail }: { children: React.ReactNode; onLogout: () => void; userName: string; userEmail?: string }) {
   const { theme, colors, toggle } = useTheme();
@@ -99,16 +137,28 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
   const closeSidebar = () => setMobileNavOpen(false);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif", position: 'relative' }}>
+      <div aria-hidden="true" style={{
+        position: 'fixed', inset: 0, zIndex: 0,
+        backgroundImage: 'url(/images/londway-lobby.jpg)',
+        backgroundSize: 'cover', backgroundPosition: 'center',
+        filter: theme === 'dark' ? 'brightness(0.34) saturate(0.7)' : 'brightness(0.78) saturate(0.92)',
+      }} />
+      <div aria-hidden="true" style={{
+        position: 'fixed', inset: 0, zIndex: 0,
+        background: theme === 'dark' ? 'rgba(6,9,19,0.55)' : 'rgba(243,238,230,0.28)',
+      }} />
 
       {/* ── Sidebar ── */}
       <aside
         className={`sidebar-desktop${mobileNavOpen ? ' sidebar-open' : ''}`}
         style={{
-          width: 240, flexShrink: 0, background: colors.navBg,
-          borderRight: `1px solid ${colors.border}`,
+          width: 248, flexShrink: 0, background: colors.navBg,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 18,
+          boxShadow: colors.shadow,
           display: 'flex', flexDirection: 'column',
-          position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 200,
+          position: 'fixed', top: 14, left: 14, bottom: 14, zIndex: 200,
           transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
@@ -129,31 +179,37 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
         </div>
 
         {/* Nav links */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '0.6rem 0' }}>
-          {NAV_ITEMS.map(item => {
-            const active = router.pathname === item.href;
-            return (
-              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} onClick={closeSidebar}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '0.65rem 1.4rem', margin: '2px 0.6rem', borderRadius: 10,
-                  background: active ? colors.goldBg : 'transparent',
-                  color: active ? colors.gold : colors.textMuted,
-                  fontWeight: active ? 700 : 500,
-                  fontSize: '0.85rem',
-                  transition: 'background 0.15s, color 0.15s',
-                  cursor: 'pointer',
-                  border: active ? `1px solid ${colors.borderStrong}` : '1px solid transparent',
-                }}
-                  onMouseEnter={e => { if (!active) { e.currentTarget.style.background = colors.surface; e.currentTarget.style.color = colors.text; }}}
-                  onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = colors.textMuted; }}}
-                >
-                  <span style={{ fontSize: '1.05rem', width: 22, textAlign: 'center' }}>{item.icon}</span>
-                  <span>{item.label}</span>
-                </div>
-              </Link>
-            );
-          })}
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '0.85rem 0.7rem 0.6rem' }}>
+          {NAV_GROUPS.map(group => (
+            <div key={group.label} style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.textFaint, padding: '0.35rem 0.7rem 0.4rem' }}>
+                {group.label}
+              </div>
+              {group.items.map(item => {
+                const active = router.pathname === item.href;
+                return (
+                  <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} onClick={closeSidebar}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '0.78rem 0.85rem', margin: '2px 0', borderRadius: 10,
+                      background: active ? colors.goldBg : 'transparent',
+                      color: active ? colors.gold : colors.textMuted,
+                      fontWeight: active ? 700 : 500,
+                      fontSize: '0.92rem',
+                      transition: 'background 0.15s, color 0.15s',
+                      cursor: 'pointer',
+                    }}
+                      onMouseEnter={e => { if (!active) { e.currentTarget.style.background = colors.surface; e.currentTarget.style.color = colors.text; }}}
+                      onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = colors.textMuted; }}}
+                    >
+                      <NavIcon name={item.icon} color={active ? colors.gold : colors.textMuted} />
+                      <span>{item.label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Bottom controls */}
@@ -164,7 +220,7 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
             padding: '0.5rem 0.8rem', color: colors.textMuted, fontSize: '0.78rem',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            {theme === 'dark' ? '☀️' : '🌙'} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           </button>
 
           {/* Language selector */}
@@ -207,7 +263,7 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
             onMouseEnter={e => { e.currentTarget.style.borderColor = colors.danger; e.currentTarget.style.color = colors.danger; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.color = colors.textMuted; }}
           >
-            🚪 Sign Out
+            Sign out
           </button>
         </div>
       </aside>
@@ -221,15 +277,20 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
       )}
 
       {/* ── Main content area ── */}
-      <div className="main-content" style={{ flex: 1, marginLeft: 240, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div className="main-content" style={{ flex: 1, marginLeft: 276, display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', zIndex: 1, padding: 14 }}>
+        <div className="app-sheet" style={{
+          flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
+          background: colors.sheet, color: colors.text,
+          borderRadius: 22, boxShadow: colors.shadow,
+          border: `1px solid ${colors.border}`, overflow: 'hidden',
+        }}>
 
         {/* Top bar */}
         <header style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0.7rem 2rem', background: colors.navBg,
+          padding: '0.85rem 1.6rem', background: colors.surface,
           borderBottom: `1px solid ${colors.border}`,
           position: 'sticky', top: 0, zIndex: 100,
-          boxShadow: '0 2px 8px rgba(196,160,82,0.04)',
         }}>
           {/* Hamburger — shown on mobile */}
           <button
@@ -242,7 +303,7 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
           </button>
 
           <div style={{ fontSize: '0.85rem', color: colors.textMuted }}>
-            Welcome, <span style={{ color: colors.gold, fontWeight: 700 }}>{userName}</span>
+            Welcome, <span style={{ color: colors.text, fontWeight: 700 }}>{userName}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -274,7 +335,7 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
               onMouseEnter={e => { e.currentTarget.style.borderColor = colors.danger; e.currentTarget.style.color = colors.danger; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.color = colors.textMuted; }}
             >
-              Sign Out
+              Sign out
             </button>
           </div>
         </header>
@@ -306,6 +367,7 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
           })()}
           {children}
         </main>
+        </div>
       </div>
 
       {/* Responsive CSS — class-based, no attribute selectors */}
@@ -318,13 +380,26 @@ export default function Layout({ children, onLogout, userName, userEmail }: { ch
         @media (max-width: 768px) {
           /* Sidebar hidden by default on mobile */
           .sidebar-desktop {
-            transform: translateX(-100%);
+            transform: translateX(calc(-100% - 16px));
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            border-radius: 0 !important;
+            width: 272px !important;
             box-shadow: none;
           }
           /* Open state — toggled via className */
           .sidebar-desktop.sidebar-open {
             transform: translateX(0) !important;
             box-shadow: 4px 0 40px rgba(0,0,0,0.6);
+          }
+          .main-content {
+            margin-left: 0 !important;
+            padding: 8px !important;
+          }
+          .app-sheet {
+            border-radius: 16px !important;
+            min-height: calc(100vh - 16px);
           }
           /* Show hamburger, hide on desktop */
           .mobile-nav-btn {

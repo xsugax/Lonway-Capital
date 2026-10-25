@@ -36,23 +36,55 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
     ? (parseFloat(cryptoAmount) * prices[selectedCoin.id]).toFixed(2)
     : '';
 
-  // Fetch live prices from CoinGecko (free, no key)
   useEffect(() => {
-    const ids = COINS.map(c => c.id).join(',');
-    fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`)
-      .then(r => r.json())
-      .then((data: any) => {
-        const p: Record<string, number> = {};
-        COINS.forEach(c => { p[c.id] = data[c.id]?.usd ?? 0; });
-        setPrices(p);
-        setPriceLoading(false);
-      })
-      .catch(() => {
-        // Fallback prices if API is unavailable
-        setPrices({ bitcoin: 67000, ethereum: 3500, tether: 1, binancecoin: 580, solana: 175 });
-        setPriceError(true);
-        setPriceLoading(false);
-      });
+    let active = true;
+    const symbols: Record<string, string> = {
+      bitcoin: 'BTC', ethereum: 'ETH', tether: 'USDT', binancecoin: 'BNB', solana: 'SOL',
+    };
+
+    async function fromCryptoCompare(): Promise<Record<string, number> | null> {
+      const res = await fetch('https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,USDT,BNB,SOL&tsyms=USD');
+      if (!res.ok) return null;
+      const data = await res.json();
+      const next: Record<string, number> = {};
+      for (const coin of COINS) {
+        const value = Number(data?.[symbols[coin.id]]?.USD);
+        if (value > 0) next[coin.id] = value;
+      }
+      return Object.keys(next).length >= 4 ? next : null;
+    }
+
+    async function fromCoinGecko(): Promise<Record<string, number> | null> {
+      const ids = COINS.map(c => c.id).join(',');
+      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const next: Record<string, number> = {};
+      for (const coin of COINS) {
+        const value = Number(data?.[coin.id]?.usd);
+        if (value > 0) next[coin.id] = value;
+      }
+      return Object.keys(next).length >= 4 ? next : null;
+    }
+
+    async function loadPrices() {
+      try {
+        const live = await fromCryptoCompare().catch(() => null) || await fromCoinGecko().catch(() => null);
+        if (!active) return;
+        if (live) {
+          setPrices(live);
+          setPriceError(false);
+        } else {
+          setPriceError(true);
+        }
+      } finally {
+        if (active) setPriceLoading(false);
+      }
+    }
+
+    void loadPrices();
+    const timer = window.setInterval(() => { void loadPrices(); }, 60_000);
+    return () => { active = false; window.clearInterval(timer); };
   }, []);
 
   // Load tier & deposit history (sync from cloud first)
@@ -202,7 +234,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
   // ── Tier-locked overlay ──
   if (!tierAllowed) {
     return (
-      <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ maxWidth: 460, width: '100%', margin: '2rem', textAlign: 'center' }}>
           <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🔒</div>
           <h1 style={{ color: colors.gold, fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.75rem' }}>Crypto Funding Locked</h1>
@@ -220,7 +252,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
   }
 
   return (
-    <main style={{ background: colors.bg, minHeight: '100vh', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ background: 'transparent', minHeight: '100%', color: colors.text, fontFamily: "'Inter', sans-serif" }}>
       <Head>
         <title>Crypto — Londway Capital | Buy & Manage Cryptocurrency</title>
         <meta name="description" content="Buy, hold, and manage cryptocurrency securely with Londway Capital. Bitcoin, Ethereum, USDT, and more with real-time prices and instant deposits." />
@@ -238,7 +270,7 @@ export default function CryptoFunding({ user }: { user: { token: string; email?:
           <p style={{ color: colors.textFaint, fontSize: '0.9rem', maxWidth: 540 }}>
             Deposit Bitcoin, Ethereum, USDT, BNB, or Solana. Funds are instantly converted and credited to your Primary Checking account.
           </p>
-          {priceError && <div style={{ marginTop: '0.75rem', color: '#F59E0B', fontSize: '0.75rem' }}>⚠ Using cached prices — live data temporarily unavailable.</div>}
+          {priceError && <div style={{ marginTop: '0.75rem', color: '#F59E0B', fontSize: '0.75rem' }}>Live prices are temporarily unavailable. Refresh in a moment.</div>}
         </div>
       </div>
 
