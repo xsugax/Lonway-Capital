@@ -487,7 +487,17 @@ a {
   pointer-events: auto !important;
 }
 body:has(.login-card) #smartsupp-widget-container,
-body:has(#londway-doc-frame) #smartsupp-widget-container {
+body:has(#londway-doc-frame) #smartsupp-widget-container,
+body:has(.mobile-deposit) #smartsupp-widget-container {
   visibility: hidden !important;
+}
+@keyframes londway-check-scan {
+  0% { top: 10%; opacity: 0; }
+  12% { opacity: 0.9; }
+  88% { opacity: 0.9; }
+  100% { top: 86%; opacity: 0; }
+}
+@media (max-width: 640px) {
+  .mobile-deposit-pair { grid-template-columns: 1fr !important; }
 }
 
